@@ -114,6 +114,8 @@ html.has-touch .stage.immersive .touch { display: block; position: relative; tou
 .tb.rain { right: 6px; bottom: 100px; background: var(--sky); }
 .btns .bossonly { display: none; }
 .btns.boss .bossonly { display: grid; }
+.tb.special { right: 6px; bottom: 100px; background: var(--sky); display: none; }
+.btns.special-on .tb.special { display: grid; }
 @media (orientation: landscape) {
   .stage.immersive { grid-template-rows: 1fr; }
   .stage.immersive .screen { grid-row: 1; grid-column: 1; height: 100%; }
@@ -245,6 +247,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
           <button class="tb jump" type="button" data-key="jump"><span>Saltar</span></button>
           <button class="tb charge bossonly" type="button" data-key="charge"><span>Carga</span></button>
           <button class="tb rain bossonly" type="button" data-key="rain"><span>Lluvia</span></button>
+          <button class="tb special" type="button" data-key="special"><span>Dash</span></button>
         </div>
       </div>
     </div>
@@ -258,7 +261,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         <button class="px" id="sw-boss" type="button" aria-pressed="false">Ir directo al jefe <span class="state"></span></button>
         <button class="px" id="imm-btn" type="button">⛶ Pantalla de juego</button>
       </div>
-      <div class="keys-wrap"><p class="keys"><kbd>← →</kbd> mover · <kbd>espacio</kbd> saltar · <kbd>X</kbd> atacar · <kbd>↓</kbd> bajar · <kbd>J</kbd> juice · <kbd>C</kbd> crítico 100%</p><p class="keys">De jefe: <kbd>X</kbd> tajo · <kbd>espacio</kbd> salto aplastante · <kbd>Z</kbd> embestida · <kbd>V</kbd> lluvia de espadas</p><p class="keys">De villano: <kbd>X</kbd> ataca · de slime mantené <kbd>X</kbd> y soltá para tirar baba · <kbd>4</kbd> empieza el modo</p></div>
+      <div class="keys-wrap"><p class="keys"><kbd>← →</kbd> mover · <kbd>espacio</kbd> saltar · <kbd>X</kbd> atacar (mantené para cargar) · <kbd>Shift</kbd> o <kbd>V</kbd> dash del arquero o escudo del caballero · <kbd>↓</kbd> bajar · <kbd>J</kbd> juice · <kbd>C</kbd> crítico 100%</p><p class="keys">De jefe: <kbd>X</kbd> tajo · <kbd>espacio</kbd> salto aplastante · <kbd>Z</kbd> embestida · <kbd>V</kbd> lluvia de espadas</p><p class="keys">De villano: <kbd>X</kbd> ataca · de slime mantené <kbd>X</kbd> y soltá para tirar baba · <kbd>4</kbd> empieza el modo</p></div>
     </div>
 
     <ul class="juice" id="jlist" aria-label="Técnicas de juice: se iluminan cuando actúan">
@@ -1917,7 +1920,7 @@ for (const k in RAMP9) { RAMPS[k] = RAMP9[k].map(c => hex9(...c)); PAL[k] = RAMP
 /* =========================================================
    Sonidos jsfxr
    ========================================================= */
-const SFX_DEFS = {"salto":{"wave_type":0,"p_duty":0.45,"p_base_freq":0.3,"p_freq_ramp":0.24,"p_env_sustain":0.22,"p_env_decay":0.22,"p_hpf_freq":0.06,"p_lpf_freq":0.85,"sound_vol":0.3},"aterrizar":{"wave_type":3,"p_base_freq":0.14,"p_freq_ramp":-0.12,"p_env_sustain":0.05,"p_env_decay":0.2,"p_lpf_freq":0.42,"p_env_punch":0.3,"sound_vol":0.21},"disparo":{"wave_type":0,"p_duty":0.6,"p_base_freq":0.4,"p_freq_ramp":-0.2,"p_env_sustain":0.08,"p_env_decay":0.26,"p_env_punch":0.45,"p_vib_strength":0.45,"p_vib_speed":0.7,"p_lpf_freq":0.65,"p_hpf_freq":0.08,"sound_vol":0.26},"clavar":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.24,"p_freq_ramp":-0.5,"p_env_sustain":0.06,"p_env_decay":0.26,"p_env_punch":0.65,"p_vib_strength":0.5,"p_vib_speed":0.85,"p_lpf_freq":0.5,"sound_vol":0.3},"acierto":{"wave_type":3,"p_base_freq":0.45,"p_freq_ramp":-0.35,"p_env_sustain":0.03,"p_env_decay":0.2,"p_env_punch":0.7,"p_hpf_freq":0.15,"sound_vol":0.16},"moneda":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.52,"p_env_sustain":0.06,"p_env_decay":0.36,"p_env_punch":0.45,"p_arp_speed":0.62,"p_arp_mod":0.42,"sound_vol":0.26},"pisoton":{"wave_type":0,"p_duty":0.3,"p_base_freq":0.42,"p_freq_ramp":-0.45,"p_env_sustain":0.06,"p_env_decay":0.22,"p_env_punch":0.5,"p_hpf_freq":0.05,"sound_vol":0.28},"explotar":{"wave_type":3,"p_base_freq":0.3,"p_freq_ramp":-0.22,"p_env_sustain":0.12,"p_env_decay":0.32,"p_env_punch":0.6,"p_pha_offset":0.12,"p_pha_ramp":-0.1,"sound_vol":0.17},"dano":{"wave_type":1,"p_duty":1,"p_base_freq":0.46,"p_freq_ramp":-0.48,"p_env_sustain":0.1,"p_env_decay":0.3,"p_env_punch":0.2,"p_hpf_freq":0.12,"p_vib_strength":0.35,"p_vib_speed":0.5,"sound_vol":0.22},"oleada":{"wave_type":0,"p_duty":0.4,"p_base_freq":0.3,"p_freq_ramp":0.26,"p_repeat_speed":0.56,"p_env_sustain":0.32,"p_env_decay":0.36,"sound_vol":0.28},"menu":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.44,"p_env_sustain":0.08,"p_env_decay":0.14,"p_hpf_freq":0.1,"sound_vol":0.24},"derrota":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.34,"p_freq_ramp":-0.13,"p_env_sustain":0.42,"p_env_decay":0.5,"p_vib_strength":0.32,"p_vib_speed":0.42,"sound_vol":0.3},"tajo":{"wave_type":3,"p_base_freq":0.62,"p_freq_ramp":-0.18,"p_env_attack":0.08,"p_env_sustain":0.08,"p_env_decay":0.26,"p_hpf_freq":0.32,"p_lpf_freq":0.8,"p_lpf_ramp":-0.2,"sound_vol":0.27},"critico":{"wave_type":0,"p_duty":0.35,"p_base_freq":0.62,"p_env_sustain":0.08,"p_env_decay":0.44,"p_env_punch":0.7,"p_arp_speed":0.58,"p_arp_mod":0.5,"p_hpf_freq":0.12,"sound_vol":0.28},"alerta":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.64,"p_env_sustain":0.2,"p_env_decay":0.1,"p_hpf_freq":0.2,"sound_vol":0.2},"metal":{"wave_type":0,"p_duty":0.2,"p_base_freq":0.75,"p_freq_ramp":-0.1,"p_env_sustain":0.03,"p_env_decay":0.26,"p_env_punch":0.6,"p_pha_offset":0.15,"p_pha_ramp":-0.05,"p_hpf_freq":0.25,"p_vib_strength":0.2,"p_vib_speed":0.9,"sound_vol":0.22},"rugido":{"wave_type":3,"p_base_freq":0.12,"p_freq_ramp":-0.05,"p_env_attack":0.15,"p_env_sustain":0.45,"p_env_decay":0.5,"p_vib_strength":0.6,"p_vib_speed":0.35,"p_lpf_freq":0.35,"p_lpf_resonance":0.5,"sound_vol":0.12},"porton":{"wave_type":1,"p_duty":1,"p_base_freq":0.15,"p_freq_ramp":-0.08,"p_env_sustain":0.25,"p_env_decay":0.3,"p_env_punch":0.4,"p_repeat_speed":0.7,"p_lpf_freq":0.45,"sound_vol":0.17},"huesos":{"wave_type":0,"p_duty":0.7,"p_base_freq":0.55,"p_freq_ramp":-0.1,"p_env_sustain":0.2,"p_env_decay":0.18,"p_repeat_speed":0.75,"p_hpf_freq":0.35,"p_arp_mod":-0.3,"p_arp_speed":0.6,"sound_vol":0.24},"baba":{"wave_type":3,"p_base_freq":0.25,"p_freq_ramp":-0.2,"p_env_sustain":0.06,"p_env_decay":0.22,"p_env_punch":0.4,"p_lpf_freq":0.35,"p_lpf_resonance":0.6,"sound_vol":0.065},"posesion":{"wave_type":2,"p_base_freq":0.25,"p_freq_ramp":0.18,"p_env_attack":0.2,"p_env_sustain":0.3,"p_env_decay":0.35,"p_vib_strength":0.5,"p_vib_speed":0.55,"sound_vol":0.3}};
+const SFX_DEFS = {"salto":{"wave_type":0,"p_duty":0.45,"p_base_freq":0.3,"p_freq_ramp":0.24,"p_env_sustain":0.22,"p_env_decay":0.22,"p_hpf_freq":0.06,"p_lpf_freq":0.85,"sound_vol":0.3},"aterrizar":{"wave_type":3,"p_base_freq":0.14,"p_freq_ramp":-0.12,"p_env_sustain":0.05,"p_env_decay":0.2,"p_lpf_freq":0.42,"p_env_punch":0.3,"sound_vol":0.21},"disparo":{"wave_type":0,"p_duty":0.6,"p_base_freq":0.4,"p_freq_ramp":-0.2,"p_env_sustain":0.08,"p_env_decay":0.26,"p_env_punch":0.45,"p_vib_strength":0.45,"p_vib_speed":0.7,"p_lpf_freq":0.65,"p_hpf_freq":0.08,"sound_vol":0.26},"clavar":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.24,"p_freq_ramp":-0.5,"p_env_sustain":0.06,"p_env_decay":0.26,"p_env_punch":0.65,"p_vib_strength":0.5,"p_vib_speed":0.85,"p_lpf_freq":0.5,"sound_vol":0.3},"acierto":{"wave_type":3,"p_base_freq":0.45,"p_freq_ramp":-0.35,"p_env_sustain":0.03,"p_env_decay":0.2,"p_env_punch":0.7,"p_hpf_freq":0.15,"sound_vol":0.16},"moneda":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.52,"p_env_sustain":0.06,"p_env_decay":0.36,"p_env_punch":0.45,"p_arp_speed":0.62,"p_arp_mod":0.42,"sound_vol":0.26},"pisoton":{"wave_type":0,"p_duty":0.3,"p_base_freq":0.42,"p_freq_ramp":-0.45,"p_env_sustain":0.06,"p_env_decay":0.22,"p_env_punch":0.5,"p_hpf_freq":0.05,"sound_vol":0.28},"explotar":{"wave_type":3,"p_base_freq":0.3,"p_freq_ramp":-0.22,"p_env_sustain":0.12,"p_env_decay":0.32,"p_env_punch":0.6,"p_pha_offset":0.12,"p_pha_ramp":-0.1,"sound_vol":0.17},"dano":{"wave_type":1,"p_duty":1,"p_base_freq":0.46,"p_freq_ramp":-0.48,"p_env_sustain":0.1,"p_env_decay":0.3,"p_env_punch":0.2,"p_hpf_freq":0.12,"p_vib_strength":0.35,"p_vib_speed":0.5,"sound_vol":0.22},"oleada":{"wave_type":0,"p_duty":0.4,"p_base_freq":0.3,"p_freq_ramp":0.26,"p_repeat_speed":0.56,"p_env_sustain":0.32,"p_env_decay":0.36,"sound_vol":0.28},"menu":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.44,"p_env_sustain":0.08,"p_env_decay":0.14,"p_hpf_freq":0.1,"sound_vol":0.24},"derrota":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.34,"p_freq_ramp":-0.13,"p_env_sustain":0.42,"p_env_decay":0.5,"p_vib_strength":0.32,"p_vib_speed":0.42,"sound_vol":0.3},"tajo":{"wave_type":3,"p_base_freq":0.62,"p_freq_ramp":-0.18,"p_env_attack":0.08,"p_env_sustain":0.08,"p_env_decay":0.26,"p_hpf_freq":0.32,"p_lpf_freq":0.8,"p_lpf_ramp":-0.2,"sound_vol":0.27},"critico":{"wave_type":0,"p_duty":0.35,"p_base_freq":0.62,"p_env_sustain":0.08,"p_env_decay":0.44,"p_env_punch":0.7,"p_arp_speed":0.58,"p_arp_mod":0.5,"p_hpf_freq":0.12,"sound_vol":0.28},"alerta":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.64,"p_env_sustain":0.2,"p_env_decay":0.1,"p_hpf_freq":0.2,"sound_vol":0.2},"metal":{"wave_type":0,"p_duty":0.2,"p_base_freq":0.75,"p_freq_ramp":-0.1,"p_env_sustain":0.03,"p_env_decay":0.26,"p_env_punch":0.6,"p_pha_offset":0.15,"p_pha_ramp":-0.05,"p_hpf_freq":0.25,"p_vib_strength":0.2,"p_vib_speed":0.9,"sound_vol":0.22},"rugido":{"wave_type":3,"p_base_freq":0.12,"p_freq_ramp":-0.05,"p_env_attack":0.15,"p_env_sustain":0.45,"p_env_decay":0.5,"p_vib_strength":0.6,"p_vib_speed":0.35,"p_lpf_freq":0.35,"p_lpf_resonance":0.5,"sound_vol":0.12},"porton":{"wave_type":1,"p_duty":1,"p_base_freq":0.15,"p_freq_ramp":-0.08,"p_env_sustain":0.25,"p_env_decay":0.3,"p_env_punch":0.4,"p_repeat_speed":0.7,"p_lpf_freq":0.45,"sound_vol":0.17},"huesos":{"wave_type":0,"p_duty":0.7,"p_base_freq":0.55,"p_freq_ramp":-0.1,"p_env_sustain":0.2,"p_env_decay":0.18,"p_repeat_speed":0.75,"p_hpf_freq":0.35,"p_arp_mod":-0.3,"p_arp_speed":0.6,"sound_vol":0.24},"baba":{"wave_type":3,"p_base_freq":0.25,"p_freq_ramp":-0.2,"p_env_sustain":0.06,"p_env_decay":0.22,"p_env_punch":0.4,"p_lpf_freq":0.35,"p_lpf_resonance":0.6,"sound_vol":0.065},"posesion":{"wave_type":2,"p_base_freq":0.25,"p_freq_ramp":0.18,"p_env_attack":0.2,"p_env_sustain":0.3,"p_env_decay":0.35,"p_vib_strength":0.5,"p_vib_speed":0.55,"sound_vol":0.3},"dash":{"wave_type":3,"p_base_freq":0.32,"p_freq_ramp":0.32,"p_env_attack":0.03,"p_env_sustain":0.07,"p_env_decay":0.2,"p_hpf_freq":0.28,"p_lpf_freq":0.75,"sound_vol":0.2},"escudo":{"wave_type":0,"p_duty":0.3,"p_base_freq":0.36,"p_freq_ramp":0.16,"p_env_sustain":0.1,"p_env_decay":0.28,"p_vib_strength":0.4,"p_vib_speed":0.8,"p_pha_offset":0.2,"p_hpf_freq":0.1,"sound_vol":0.22},"cargado":{"wave_type":0,"p_duty":0.5,"p_base_freq":0.58,"p_env_sustain":0.05,"p_env_decay":0.3,"p_env_punch":0.5,"p_arp_speed":0.55,"p_arp_mod":0.45,"p_hpf_freq":0.15,"sound_vol":0.2},"poder":{"wave_type":1,"p_duty":0.8,"p_base_freq":0.5,"p_freq_ramp":-0.3,"p_env_sustain":0.12,"p_env_decay":0.36,"p_env_punch":0.6,"p_vib_strength":0.3,"p_vib_speed":0.6,"p_lpf_freq":0.7,"p_hpf_freq":0.05,"sound_vol":0.22}};
 const SFX_INFO = [
   ['salto', 'Salto', 'Cuando Pip salta. Onda cuadrada que sube.'],
   ['aterrizar', 'Aterrizaje', 'Golpe de ruido suave al caer de alto. Solo con juice.'],
@@ -1937,6 +1940,10 @@ const SFX_INFO = [
   ['huesos', 'Huesos', 'Traqueteo de esqueleto al recibir golpes y hachazos.'],
   ['baba', 'Baba', 'Salpicón grave cuando cae la baba de un slime.'],
   ['posesion', 'Posesión', 'Barrido etéreo cuando tomás otro cuerpo en modo villano.'],
+  ['dash', 'Dash', 'Ráfaga de ruido que sube: el dash intangible del arquero.'],
+  ['escudo', 'Escudo', 'Brillo con vibrato cuando el caballero levanta el escudo.'],
+  ['cargado', 'Carga lista', 'Arpegio corto: el ataque cargado está listo para soltar.'],
+  ['poder', 'Ataque cargado', 'Golpe grave con punch para el flechazo y el espadazo cargados.'],
   ['oleada', 'Fanfarria', 'Zona despejada y victoria.'],
   ['menu', 'Menú', 'Blip corto para botones y opciones.'],
   ['derrota', 'Derrota', 'Caída lenta con vibrato para el fin del juego.']
@@ -2717,18 +2724,18 @@ g.drawImage = function (img, a, b, c, d, e, f, h, i) {
   if (arguments.length === 5) return DRAW_IMAGE.call(g, img, a, b, c, d);
   return DRAW_IMAGE.call(g, img, a * r, b * r, c * r, d * r, e, f, h, i);
 };
-const input = { left: false, right: false, jump: false, down: false, attack: false, charge: false, rain: false, jumpPressed: false, attackPressed: false, chargePressed: false, rainPressed: false };
+const input = { left: false, right: false, jump: false, down: false, attack: false, charge: false, rain: false, special: false, jumpPressed: false, attackPressed: false, chargePressed: false, rainPressed: false, specialPressed: false };
 let G = null;
 let uid = 1;
 // estado del modo online (la lógica está en la sección "Online", más abajo)
-const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0 };
+const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0, killed: new Set(), kl: [], klSeq: 0, sentKl: 0, sentAc: 0 };
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind, C, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: C.hearts, maxHearts: C.hearts, z: 0, cam: 0, camV: 0,
-    p: { x: 40, y: GROUND - 11, w: 8, h: 11, vx: 0, vy: 0, onGround: true, face: 1, coyote: 0, buffer: 0, cut: false, inv: 0, stompInv: 0, sx: 1, sy: 1, runT: 0, dustT: 0, drop: 0, flash: 0, cool: 0, twang: 0, swingT: 9, swingId: 0 },
+    p: { x: 40, y: GROUND - 11, w: 8, h: 11, vx: 0, vy: 0, onGround: true, face: 1, coyote: 0, buffer: 0, cut: false, inv: 0, stompInv: 0, sx: 1, sy: 1, runT: 0, dustT: 0, drop: 0, flash: 0, cool: 0, twang: 0, swingT: 9, swingId: 0, ...skillFields() },
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0
@@ -2814,6 +2821,98 @@ const GRAV = 900;
 function overlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 const gateBlocks = (gt, y, h) => gt.open < 0.85 || y < DOOR_TOP;
 
+/* =========================================================
+   Habilidades: cada héroe tiene un medidor de energía aparte que se gasta con el
+   especial y se recarga solo. El arquero hace un dash intangible y el caballero
+   levanta un escudo. Mantener ataque carga un ataque más fuerte.
+   ========================================================= */
+const SK = { max: 100, regen: 15, delay: 0.7, dash: 34, dashT: 0.16, dashV: 330, ghost: 0.34, shMin: 12, shOn: 6, shDrain: 28, block: 12, chgOn: 0.2, chgFull: 0.75 };
+const skillFields = () => ({ en: SK.max, enT: 0, enFlash: 0, dashT: 0, ghostT: 0, airDash: false, shield: false, blockT: 0, chg: -1, atkBuf: 0, big: false });
+const charging = h => h.chg >= SK.chgOn, charged = h => h.chg >= SK.chgFull;
+// multiplicador de velocidad: el arquero no se mueve mientras carga, el caballero va más lento
+const skillSlow = (h, kind) => h.shield ? 0.5 : charging(h) ? (kind === 'archer' ? 0 : 0.6) : 1;
+function noEnergy(h) { if (h.enFlash > 0.25) return; h.enFlash = 0.45; play('menu', { rate: 0.55, vol: 0.5, vary: false }); }
+// especial y recarga. held/pressed: el botón especial; dir: hacia dónde apunta el control
+function skillStep(h, kind, dt, held, pressed, dir) {
+  h.enFlash = Math.max(0, h.enFlash - dt); h.blockT = Math.max(0, h.blockT - dt);
+  if (h.dashT > 0) { h.dashT -= dt; if (h.dashT <= 0) h.vx = Math.sign(h.vx) * Math.min(Math.abs(h.vx), CHARS[kind].speed); } // frena seco al terminar
+  if (h.ghostT > 0) h.ghostT -= dt;
+  if (h.onGround) h.airDash = false;
+  if (kind === 'archer') {
+    if (pressed && h.dashT <= 0) {
+      if (h.en < SK.dash || (h.airDash && !h.onGround)) noEnergy(h);
+      else {
+        h.en -= SK.dash; h.enT = SK.delay; h.chg = -1;
+        if (dir) h.face = dir;
+        h.dashT = SK.dashT; h.ghostT = SK.ghost; h.vx = h.face * SK.dashV; h.vy = 0; h.cut = true;
+        if (!h.onGround) h.airDash = true;
+        play('dash'); vib(15);
+        if (jOn()) { h.sx = 1.35; h.sy = 0.75; flashJ('squash'); burst(h.x + 4 - h.face * 4, h.y + 6, 6, [PAL.c, PAL.w, PAL.b], 50, 10, 0, 0.25); }
+      }
+    }
+  } else {
+    if (h.shield && (!held || h.en <= 0)) {
+      h.shield = false;
+      if (h.en <= 0) { h.enT = 1.4; play('metal', { rate: 0.5, vol: 0.7, vary: false }); if (jOn()) burst(h.x + 4, h.y + 5, 10, [PAL.c, PAL.b, PAL.w], 70, 20, 200, 0.4); }
+    } else if (!h.shield && held && pressed) {
+      if (h.en < SK.shMin) noEnergy(h);
+      else { h.shield = true; h.en -= SK.shOn; h.chg = -1; play('escudo'); vib(10); if (jOn()) { h.sx = 0.85; h.sy = 1.15; } }
+    }
+    if (h.shield) { h.en = Math.max(0, h.en - SK.shDrain * dt); h.enT = Math.max(h.enT, SK.delay); }
+  }
+  if (h.enT > 0) h.enT -= dt; else h.en = Math.min(SK.max, h.en + SK.regen * dt);
+}
+// ataque: al apretar sale el normal; si lo mantenés se carga, y al soltarlo con la carga llena sale el fuerte
+function chargeStep(h, dt, held, pressed, can) {
+  let out = null;
+  if (pressed) { h.atkBuf = 0.15; if (can) h.chg = 0; }
+  h.atkBuf -= dt;
+  if (h.atkBuf > 0 && h.cool <= 0 && can) { h.atkBuf = 0; out = 'tap'; }
+  if (h.chg >= 0 && !pressed) {
+    if (!can) h.chg = -1;
+    else if (!held) { if (charged(h)) out = 'big'; h.chg = -1; }
+    else {
+      const was = h.chg; h.chg += dt;
+      if (was < SK.chgOn && h.chg >= SK.chgOn) play('menu', { rate: 0.75, vol: 0.3, vary: false });
+      if (was < SK.chgFull && h.chg >= SK.chgFull) { play('cargado', { vary: false }); vib(12); }
+    }
+  }
+  return out;
+}
+// el escudo frena el golpe: un empujoncito, chispas y un poco de energía
+function shieldBlock(h, dir) {
+  if (h.blockT > 0) return;
+  h.blockT = 0.25; h.en = Math.max(0, h.en - SK.block); h.enT = Math.max(h.enT, SK.delay);
+  h.vx = dir * 120; h.vy = Math.min(h.vy, -60); h.onGround = false;
+  play('metal', { rate: 1.3, vol: 0.8 }); vib(20);
+  if (jOn()) { h.sx = 1.2; h.sy = 0.85; burst(h.x + 4 - dir * 6, h.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); }
+}
+// el flechazo cargado: más rápido, más daño y atraviesa a los enemigos
+function powerShot(h, list = G.arrows) {
+  h.twang = 0.22;
+  const a = { id: uid++, x: h.face > 0 ? h.x + 7 : h.x - 7, y: h.y + 4, vx: h.face * 380, vy: -4, face: h.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, power: true, hits: [] };
+  list.push(a);
+  play('poder'); play('disparo', { rate: 0.7, vol: 0.8 });
+  if (jOn()) { h.vx -= h.face * 90; h.sx = 0.7; h.sy = 1.2; shake(2, 0.12); burst(h.face > 0 ? h.x + 12 : h.x - 4, h.y + 5, 8, [PAL.c, PAL.w, PAL.b], 70, 0, 0, 0.25); }
+  return a;
+}
+// el espadazo cargado: más alcance, más daño y rompe proyectiles
+function bigSlash(h) {
+  h.swingT = 0; h.swingId++; h.big = true; h.hitSwing = false;
+  play('poder', { rate: 0.8 }); play('tajo', { rate: 0.7 });
+  if (jOn()) { h.vx += h.face * 90; h.sx = 1.35; h.sy = 0.8; shake(3, 0.15); burst(h.x + 4 + h.face * 14, h.y + 2, 10, [PAL.y, PAL.o, PAL.w], 90, 20, 160, 0.35); }
+}
+const slashTime = e => e.big ? 0.16 : 0.1;
+// proyectiles que rompe el espadazo cargado
+function slashClear(hb) {
+  let n = 0;
+  const pop = (x, y) => { n++; if (jOn()) burst(x, y, 6, [PAL.y, PAL.w, PAL.o], 70, 30, 220, 0.3); };
+  for (const w of G.waves) if (!w.dead && overlap(hb, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { w.dead = true; pop(w.x, GROUND - 4); }
+  for (const q of G.shots || []) if (!q.dead && overlap(hb, { x: q.x - 2, y: q.y - 2, w: 4, h: 4 })) { q.dead = true; pop(q.x, q.y); }
+  for (const a of G.arrows) if (a.mob && !a.stuck && !a.dead && overlap(hb, { x: a.x, y: a.y, w: 8, h: 3 })) { a.dead = true; pop(a.x + 4, a.y + 1); }
+  if (n) { play('clavar', { rate: 1.9, vary: false }); G.score += 5 * n; G.scoreBump = 1; }
+}
+
 function update(dt, real) {
   G.t += dt;
   for (const q of G.parts) { q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; if (q.y > GROUND - 1 && q.vy > 0 && q.g > 0) { q.y = GROUND - 1; q.vy *= -0.3; q.vx *= 0.6; } }
@@ -2834,24 +2933,32 @@ function update(dt, real) {
   updateGates(dt);
   if (G.kind === 'invade') updateCameraInvade(real); else if (G.kind !== 'boss') updateCamera(real);
 
-  if (G.freeze > 0) { G.freeze -= real; input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = false; return; }
+  if (G.freeze > 0) { G.freeze -= real; input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false; return; }
   if (G.state === 'win') { G.endT += dt; return; }
   if (G.kind === 'boss') { updateBossMode(dt); return; }
   if (G.kind === 'invade') { updateInvade(dt); return; }
-  if (G.state !== 'play') { input.jumpPressed = false; input.attackPressed = false; return; }
+  if (G.state !== 'play') { input.jumpPressed = false; input.attackPressed = false; input.specialPressed = false; return; }
 
   const p = G.p, C = G.C;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  skillStep(p, G.kind, dt, input.special, input.specialPressed, dir);
+  input.specialPressed = false;
+  // saltar corta la carga del arco y el dash
+  if (input.jumpPressed && p.coyote > 0) { if (G.kind === 'archer' && charging(p)) p.chg = -1; p.dashT = 0; }
+  const dash = p.dashT > 0, slow = skillSlow(p, G.kind), top = C.speed * slow;
   const acc = p.onGround ? 900 : 620;
-  if (dir) { p.vx += dir * acc * dt; p.face = dir; }
-  else { const f = (p.onGround ? 1100 : 300) * dt; p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f; }
-  p.vx = Math.max(-C.speed - 50, Math.min(C.speed + 50, p.vx));
-  if (Math.abs(p.vx) > C.speed) p.vx -= Math.sign(p.vx) * Math.min(Math.abs(p.vx) - C.speed, 500 * dt);
+  if (dash) { /* el dash mantiene su velocidad */ }
+  else if (dir && slow > 0) { p.vx += dir * acc * dt; p.face = dir; }
+  else { if (dir) p.face = dir; const f = (p.onGround ? 1100 : 300) * dt * (slow > 0 ? 1 : 2); p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f; }
+  if (!dash) {
+    p.vx = Math.max(-top - 50, Math.min(top + 50, p.vx));
+    if (Math.abs(p.vx) > top) p.vx -= Math.sign(p.vx) * Math.min(Math.abs(p.vx) - top, 500 * dt);
+  }
 
   p.coyote = p.onGround ? 0.09 : p.coyote - dt;
   p.buffer = input.jumpPressed ? 0.11 : p.buffer - dt;
   input.jumpPressed = false;
-  if (p.buffer > 0 && p.coyote > 0) {
+  if (p.buffer > 0 && p.coyote > 0 && !dash) {
     if (input.down && p.onGround && p.surf && !p.surf.ground) { p.drop = 0.22; p.onGround = false; p.buffer = 0; p.coyote = 0; }
     else {
       p.vy = -C.jump; p.onGround = false; p.coyote = 0; p.buffer = 0; p.cut = false;
@@ -2861,8 +2968,8 @@ function update(dt, real) {
   }
   if (!input.jump && p.vy < -60 && !p.cut) { p.vy *= 0.45; p.cut = true; }
   if (input.down && p.onGround && p.surf && !p.surf.ground && !input.jump) { p.drop = 0.22; p.onGround = false; }
-  p.vy += GRAV * (p.vy > 0 ? 1.25 : 1) * dt;
-  p.vy = Math.min(p.vy, 270);
+  if (dash) p.vy = 0;
+  else p.vy = Math.min(p.vy + GRAV * (p.vy > 0 ? 1.25 : 1) * dt, 270);
   p.drop -= dt;
 
   const prevBottom = p.y + p.h;
@@ -2896,12 +3003,13 @@ function update(dt, real) {
 
   // ataque
   p.cool -= dt; p.twang -= dt; p.swingT += dt;
-  const wantAttack = input.attackPressed || (input.attack && p.cool <= -0.07);
+  const act = chargeStep(p, dt, input.attack, input.attackPressed, !p.shield && !dash);
   input.attackPressed = false;
-  if (wantAttack && p.cool <= 0 && (G.kind === 'knight' || G.arrows.filter(a => !a.stuck).length < 4)) attack();
+  if (act === 'tap' && (G.kind === 'knight' || G.arrows.filter(a => !a.stuck).length < 4)) attack();
+  else if (act === 'big') { p.cool = G.C.cool; if (G.kind === 'archer') powerShot(p); else bigSlash(p); }
 
   updateArrows(dt);
-  if (G.kind === 'knight' && p.swingT < 0.1) updateSlash();
+  if (G.kind === 'knight' && p.swingT < slashTime(p)) updateSlash();
   updateHazards(dt);
   if (G.boss) updateBoss(dt, prevBottom);
   updateWaves(dt);
@@ -3025,22 +3133,24 @@ function attack() {
       burst(p.face > 0 ? p.x + 11 : p.x - 3, p.y + 5, 3, [PAL.w, PAL.s], 25, 0, 0, 0.16);
     }
   } else {
-    p.swingT = 0; p.swingId++;
+    p.swingT = 0; p.swingId++; p.big = false;
     play('tajo');
     if (jOn()) { p.vx += p.face * 48; p.sx = 1.2; p.sy = 0.86; flashJ('recoil'); flashJ('squash'); }
   }
 }
-const slashBoxOf = e => e.face > 0 ? { x: e.x + 6, y: e.y - 8, w: 18, h: e.h + 10 } : { x: e.x - 16, y: e.y - 8, w: 18, h: e.h + 10 };
+const slashBoxOf = e => e.big ? (e.face > 0 ? { x: e.x + 2, y: e.y - 16, w: 36, h: e.h + 22 } : { x: e.x - 30, y: e.y - 16, w: 36, h: e.h + 22 })
+  : e.face > 0 ? { x: e.x + 6, y: e.y - 8, w: 18, h: e.h + 10 } : { x: e.x - 16, y: e.y - 8, w: 18, h: e.h + 10 };
 function slashBox() { return slashBoxOf(G.p); }
 function updateSlash() {
-  const p = G.p, hb = slashBox();
+  const p = G.p, hb = slashBox(), dmg = p.big ? 4 : 2;
   for (const s of G.slimes) {
     if (s.dead || s.spawn > 0 || s.lastSwing === p.swingId || !overlap(hb, s)) continue;
     s.lastSwing = p.swingId;
-    hitSlime(s, 2, 'sword', p.face);
+    hitSlime(s, dmg, 'sword', p.face);
   }
   const B = G.boss;
-  if (B && B.hitSwing !== p.swingId && overlap(hb, bossBody(B))) { B.hitSwing = p.swingId; damageBoss(2, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4); }
+  if (B && B.hitSwing !== p.swingId && overlap(hb, bossBody(B))) { B.hitSwing = p.swingId; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4); }
+  if (p.big) slashClear(hb);
   for (const c of G.coins) if (!c.got && c.born >= 0 && overlap(hb, { x: c.x - 3, y: c.y - 4, w: 6, h: 8 })) collectCoin(c);
   for (const h of G.hazards) {
     if (h.phase !== 'fall' || !overlap(hb, hazBox(h))) continue;
@@ -3055,17 +3165,21 @@ function updateArrows(dt) {
   const camX = G.cam;
   for (const a of G.arrows) {
     if (a.stuck) { a.wob -= dt; a.life -= dt; if (a.life <= 0) a.dead = true; continue; }
-    a.vy += 40 * dt; a.x += a.vx * dt; a.y += a.vy * dt;
+    a.vy += (a.power ? 10 : 40) * dt; a.x += a.vx * dt; a.y += a.vy * dt;
     const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
-    if (jOn()) { a.trail -= dt; if (a.trail <= 0) { a.trail = 0.02; G.parts.push({ x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1, o: a.o }); } }
+    if (jOn()) { a.trail -= dt; if (a.trail <= 0) { a.trail = a.power ? 0.012 : 0.02; G.parts.push(a.power ? { x: a.x + 4 - a.face * 4, y: a.y + 1 + (Math.random() < 0.5 ? 0 : 1), vx: -a.face * 20, vy: (Math.random() - 0.5) * 16, g: 0, life: 0.22, max: 0.22, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1, o: a.o } : { x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1, o: a.o }); } }
     const invZ = G.kind === 'invade' && G.z < 3;
     if (invZ ? (tipX < ZONES[G.z].start - 12 || tipX > ZONES[G.z].end + 12) : (tipX < camX - 12 || tipX > camX + W + 12)) { a.dead = true; continue; }
     for (const c of G.coins) if (!c.got && c.born >= 0 && Math.abs(tipX - c.x) < 5 && Math.abs(tipY - c.y) < 5) collectCoin(c);
     if (invZ) {
-      if (a.hero) { const m = G.mobs.find(m => !m.dead && m.spawn <= 0 && tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 2 && tipY <= m.y + m.h + 1); if (m) { a.dead = true; hitMob(m, 1, a.face, 'arrow'); continue; } }
+      if (a.hero && a.power) { for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && !a.hits.includes(m) && tipX >= m.x - 2 && tipX <= m.x + m.w + 2 && tipY >= m.y - 3 && tipY <= m.y + m.h + 2) { a.hits.push(m); hitMob(m, 3, a.face, 'arrow'); } }
+      else if (a.hero) { const m = G.mobs.find(m => !m.dead && m.spawn <= 0 && tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 2 && tipY <= m.y + m.h + 1); if (m) { a.dead = true; hitMob(m, 1, a.face, 'arrow'); continue; } }
       else if (a.mob) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && tipX >= e.x - 1 && tipX <= e.x + e.w + 1 && tipY >= e.y - 1 && tipY <= e.y + e.h); if (e) { a.dead = true; hitHero(e, 1, a.face, a.player); continue; } }
     }
-    const target = G.slimes.find(s => !s.dead && s.spawn <= 0 && tipX >= s.x - 1 && tipX <= s.x + s.w + 1 && tipY >= s.y - 2 && tipY <= s.y + s.h);
+    if (a.power) {
+      for (const t of G.slimes) if (!t.dead && t.spawn <= 0 && !a.hits.includes(t) && tipX >= t.x - 2 && tipX <= t.x + t.w + 2 && tipY >= t.y - 3 && tipY <= t.y + t.h + 1) { a.hits.push(t); hitSlime(t, 3, 'arrow', a.face); if (jOn()) burst(tipX, tipY, 5, [PAL.c, PAL.w, PAL.o], 50, 20, 200, 0.3); }
+    }
+    const target = !a.power && G.slimes.find(s => !s.dead && s.spawn <= 0 && tipX >= s.x - 1 && tipX <= s.x + s.w + 1 && tipY >= s.y - 2 && tipY <= s.y + s.h);
     if (target) {
       a.dead = true; hitSlime(target, 1, 'arrow', a.face);
       if (jOn()) burst(tipX, tipY, 3, [PAL.o, PAL.s], 40, 20, 200, 0.3);
@@ -3074,7 +3188,11 @@ function updateArrows(dt) {
     const B = G.boss;
     if (B) {
       const bb = bossBody(B);
-      if (tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) {
+      if (a.power && !a.hitBoss && tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) {
+        a.hitBoss = true; // atraviesa la armadura
+        if (!(bossCtl() ? bossTakeHit(3, tipX, tipY) : damageBoss(3, tipX, tipY))) play('metal', { rate: 1.4, vol: 0.5 });
+        if (jOn()) burst(tipX, tipY, 8, [PAL.c, PAL.w, PAL.y], 70, 20, 200, 0.35);
+      } else if (!a.power && tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) {
         a.dead = true;
         if (!(bossCtl() ? bossTakeHit(1, tipX, tipY) : damageBoss(1, tipX, tipY))) { play('metal', { rate: 1.4, vol: 0.5 }); burst(tipX, tipY, 4, [PAL.s, PAL.w], 50, 20, 200, 0.3); }
         continue;
@@ -3125,7 +3243,7 @@ function updateHazards(dt) {
       if (jOn()) G.parts.push({ x: h.x, y: h.y, vx: 0, vy: 0, g: 0, life: 0.12, max: 0.12, c: h.big ? PAL.c : PAL.S, s: 1 });
       const box = hazBox(h);
       if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e) { h.phase = 'gone'; hitHero(e, 1, Math.sign(e.x + 4 - h.x) || 1); continue; } }
-      else if (G.state === 'play' && p.inv <= 0 && overlap(p, box)) { h.phase = 'gone'; hurt(Math.sign(p.x + 4 - h.x) || 1); continue; }
+      else if (G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) { h.phase = 'gone'; hurt(Math.sign(p.x + 4 - h.x) || 1); continue; }
       for (const s of G.slimes) if (!s.dead && s.spawn <= 0 && overlap(s, box)) killSlime(s, 'trap', 0, false);
       if (h.y + box.h >= h.landY + 2) {
         h.y = h.landY + 2 - box.h; h.phase = jOn() ? 'stuck' : 'gone'; h.life = h.big ? 0.8 : 1.4; h.wob = 0.3;
@@ -3178,8 +3296,9 @@ function killSlime(s, how, dir, isCrit) {
 }
 function hurt(dir) {
   const p = G.p;
-  if (G.state !== 'play') return;
-  G.hearts--; p.inv = 1.4; p.vx = dir * 140; p.vy = -170; p.onGround = false;
+  if (G.state !== 'play' || p.ghostT > 0) return;
+  if (p.shield) { shieldBlock(p, dir); return; }
+  G.hearts--; p.inv = 1.4; p.vx = dir * 140; p.vy = -170; p.onGround = false; p.chg = -1;
   play('dano'); vib(60);
   if (jOn()) { p.flash = 0.09; hitstop(0.09); shake(5, 0.28); G.flashRed = 0.18; flashJ('flash'); burst(p.x + 4, p.y + 5, 10, [PAL.r, PAL.o, PAL.w], 70, 40, 200, 0.5); p.sx = 1.3; p.sy = 0.75; }
   if (G.hearts <= 0) gameOver();
@@ -3407,7 +3526,7 @@ function updateWaves(dt) {
     if (w.x < ARENA.min - 4 || w.x > ARENA.max + 4) w.dead = true;
     const wb = { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 };
     if (bossCtl()) { for (const e of G.heroes) if (!e.dead && !e.net && e.inv <= 0 && overlap(e, wb)) hitHero(e, 1, w.dir); }
-    else if (G.state === 'play' && p.inv <= 0 && overlap(p, wb)) { hurt(w.dir); w.dead = true; }
+    else if (G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, wb)) { hurt(w.dir); w.dead = true; }
   }
   G.waves = G.waves.filter(w => !w.dead);
 }
@@ -3520,7 +3639,7 @@ function heroComp(n) {
 }
 function spawnHero(kind) {
   const C = CHARS[kind];
-  return { id: uid++, kind, x: 1541, y: GROUND - 11, w: 8, h: 11, vx: 40, vy: 0, onGround: true, face: 1, hp: C.hearts, max: C.hearts, inv: 0.6, cool: 0.9 + Math.random() * 0.8, swingT: 9, swingId: 0, twang: 0, flash: 0, sx: 1, sy: 1, dead: false, deadT: 0, popped: false, think: 0, move: 1, jumpNow: false, runT: 0, react: 0.14 + Math.random() * 0.14, skill: Math.min(0.88, 0.42 + G.wave * 0.07), seen: {}, hitSwing: true, lastSwing: -1, prevBottom: GROUND, surf: null };
+  return { id: uid++, kind, x: 1541, y: GROUND - 11, w: 8, h: 11, vx: 40, vy: 0, onGround: true, face: 1, hp: C.hearts, max: C.hearts, inv: 0.6, cool: 0.9 + Math.random() * 0.8, swingT: 9, swingId: 0, twang: 0, flash: 0, sx: 1, sy: 1, dead: false, deadT: 0, popped: false, think: 0, move: 1, jumpNow: false, runT: 0, react: 0.14 + Math.random() * 0.14, skill: Math.min(0.88, 0.42 + G.wave * 0.07), seen: {}, hitSwing: true, lastSwing: -1, prevBottom: GROUND, surf: null, ...skillFields() };
 }
 function updateBossMode(dt) {
   const B = G.boss;
@@ -3531,7 +3650,7 @@ function updateBossMode(dt) {
   updateWaves(dt);
   if (G.state === 'play' && B && B.state !== 'dying') updateWaveFlow(dt);
   if (G.closeT > 0) { G.closeT -= dt; if (G.closeT <= 0) GATES[2].want = 0; }
-  input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = false;
+  input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false;
 }
 function updateWaveFlow(dt) {
   const alive = G.heroes.filter(e => !e.dead).length;
@@ -3696,9 +3815,9 @@ function updateHeroes(dt) {
     }
     e.cool -= dt; e.twang -= dt; e.swingT += dt;
     if (!B || B.state === 'dying') continue;
-    if (e.kind === 'knight' && e.swingT < 0.1 && !e.hitSwing && overlap(slashBoxOf(e), bossBody(B))) {
+    if (e.kind === 'knight' && e.swingT < slashTime(e) && !e.hitSwing && overlap(slashBoxOf(e), bossBody(B))) {
       e.hitSwing = true;
-      bossTakeHit(2, e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
+      bossTakeHit(e.big ? 4 : 2, e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
     }
     if (e.net) continue; // pisotón y choque con el jefe los avisa la pantalla del jugador
     if (e.vy > 20 && e.prevBottom <= B.y + 2 && overlap(e, bossHead(B))) {
@@ -3742,11 +3861,11 @@ function heroDodge(e) {
 }
 function heroPhysics(e, dt) {
   const C = CHARS[e.kind];
-  const acc = (e.onGround ? 800 : 500) * dt;
-  if (e.inv < 0.45) e.vx += Math.max(-acc, Math.min(acc, e.move * C.speed * (e.net ? 1 : 0.78) - e.vx));
-  if (e.jumpNow && e.onGround) { e.vy = -C.jump; e.onGround = false; play('salto', { vol: e.own ? 1 : 0.3 }); if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
+  const acc = (e.onGround ? 800 : 500) * dt, dash = e.dashT > 0;
+  if (e.inv < 0.45 && !dash) e.vx += Math.max(-acc, Math.min(acc, e.move * C.speed * (e.net ? 1 : 0.78) * skillSlow(e, e.kind) - e.vx));
+  if (e.jumpNow && e.onGround && !dash) { e.vy = -C.jump; e.onGround = false; play('salto', { vol: e.own ? 1 : 0.3 }); if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
   e.jumpNow = false;
-  e.vy = Math.min(e.vy + GRAV * (e.vy > 0 ? 1.25 : 1) * dt, 270);
+  if (dash) e.vy = 0; else e.vy = Math.min(e.vy + GRAV * (e.vy > 0 ? 1.25 : 1) * dt, 270);
   e.prevBottom = e.y + e.h;
   e.x += e.vx * dt; e.y += e.vy * dt;
   let lo = 1540, hi = WW - e.w;
@@ -3778,16 +3897,19 @@ function heroShoot(e) {
   if (jOn()) { e.vx -= e.face * 30; e.sx = 0.85; e.sy = 1.1; }
 }
 function heroSlash(e) {
-  e.cool = 0.75 + Math.random() * 0.5; e.swingT = 0; e.swingId++; e.hitSwing = false;
+  e.cool = 0.75 + Math.random() * 0.5; e.swingT = 0; e.swingId++; e.hitSwing = false; e.big = false;
   play('tajo', { vol: 0.5 });
   if (jOn()) { e.vx += e.face * 40; e.sx = 1.2; e.sy = 0.86; }
 }
-function hitHero(e, dmg, dir, critOk = true) {
+// trusted: el golpe lo decidió la pantalla del jugador, que ya sabe si tenía el escudo o era intangible
+function hitHero(e, dmg, dir, critOk = true, trusted = false) {
   if (e.dead || e.inv > 0) return;
+  if (!trusted && e.ghostT > 0) return;
+  if (!trusted && e.shield) { if (e.blockT <= 0) { e.blockT = 0.25; play('metal', { rate: 1.3, vol: 0.8 }); if (jOn()) burst(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); } return; }
   const isCrit = critOk && rollCrit();
   const total = isCrit ? dmg * 3 : dmg;
   if (G.kind === 'invade') { G.score += 20 * total; G.scoreBump = 1; }
-  e.hp -= total; e.inv = 0.75; kick(e, dir * 170, -200, 1);
+  e.hp -= total; e.inv = 0.75; e.chg = -1; kick(e, dir * 170, -200, 1);
   play('dano', { rate: 1.3, vol: 0.8 });
   if (isCrit) crit(e.x + 4, e.y + 5);
   if (jOn()) { e.flash = 0.09; hitstop(0.05); shake(2.5, 0.15); flashJ('flash'); flashJ('squash'); burst(e.x + 4, e.y + 5, 10, [PAL.r, PAL.o, PAL.w], 80, 40, 220, 0.5); e.sx = 1.3; e.sy = 0.75; }
@@ -3932,7 +4054,7 @@ function updateInvade(dt) {
     if (!G.ctrl && G.possessT > 0) { G.possessT -= dt; if (G.possessT <= 0) possessNext(); }
   }
   if (G.soul) { G.soul.t += dt; if (jOn() && G.soul.t < 0.6) { const k = G.soul.t / 0.6; G.parts.push({ x: lerp(G.soul.x, G.soul.tx, k), y: lerp(G.soul.y, G.soul.ty, k) - Math.sin(k * Math.PI) * 30, vx: 0, vy: -10, g: 0, life: 0.3, max: 0.3, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 }); } if (G.soul.t > 0.6) G.soul = null; }
-  input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = false;
+  input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false;
 }
 function updateCameraInvade(real) {
   const z = G.z;
@@ -4140,9 +4262,9 @@ function updateBots(dt) {
       heroPhysics(e, dt);
     }
     e.cool -= dt; e.twang -= dt; e.swingT += dt;
-    if (e.kind === 'knight' && e.swingT < 0.1) {
+    if (e.kind === 'knight' && e.swingT < slashTime(e)) {
       const hb = slashBoxOf(e), sid = e.id * 1000 + e.swingId;
-      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; hitMob(m, 2, e.face, 'sword'); }
+      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; hitMob(m, e.big ? 4 : 2, e.face, 'sword'); }
     }
     // los héroes de jugadores avisan desde su pantalla qué pisaron y qué les pegó
     if (!e.net) for (const m of G.mobs) {
@@ -4295,14 +4417,15 @@ function pxCircle(cx, cy, r, color, step = 6) {
   for (let a = 0; a < 360; a += step) { const rad = a * Math.PI / 180; g.fillRect(Math.round(cx + Math.cos(rad) * r), Math.round(cy + Math.sin(rad) * r), 1, 1); }
 }
 // estela del tajo a medio píxel: blanco en el filo y degradé hacia adentro
-function drawArc(cx, cy, dir, rIn, rOut, a0, span, t, dur) {
+function drawArc(cx, cy, dir, rIn, rOut, a0, span, t, dur, cols) {
   const prog = Math.min(1, t / (dur * 0.45)), a1 = a0 + span * prog, fade = t > dur * 0.6;
   const hp = 1 / RS, step = Math.min(1.5, 26 / rOut);
   for (let a = a0; a <= a1; a += step) {
     const rad = a * Math.PI / 180, ca = Math.cos(rad) * dir, sa = Math.sin(rad), tail = (a1 - a) / span;
     for (let r = fade ? rOut - 1 : rIn; r <= rOut; r += hp) {
       if (r < rOut - 2 && tail > 0.45) continue;
-      g.fillStyle = r >= rOut - 0.5 ? PAL.w : r >= rOut - 1.5 ? PAL.c : r >= rOut - 3 ? PAL.b : PAL.B;
+      const ci = r >= rOut - 0.5 ? 0 : r >= rOut - 1.5 ? 1 : r >= rOut - 3 ? 2 : 3;
+      g.fillStyle = cols ? cols[ci] : ARC_BLUE[ci];
       g.fillRect(Math.round((cx + ca * r) * RS) / RS, Math.round((cy + sa * r) * RS) / RS, hp, hp);
     }
   }
@@ -4320,6 +4443,7 @@ function drawSword(B, fill) {
     if (!tip) { P(x + nx, y + ny, 'w'); P(x - nx, y - ny, B.glow ? 'c' : 'S'); }
   }
 }
+const ARC_BLUE = [PAL.w, PAL.c, PAL.b, PAL.B], ARC_FIRE = [PAL.w, PAL.y, PAL.o, RAMPS.r[0]];
 const BOSS_PAD = 44, BOSS_GW = BW + BOSS_PAD * 2, BOSS_GH = BH + BOSS_PAD + 40;
 let BOSS_K = null;
 function drawBoss(B, over, alpha) {
@@ -4368,18 +4492,50 @@ function drawPip(p, kind, isPlayer) {
   const H2 = HEROES[kind];
   let set = H2.idle;
   if (!p.onGround) set = H2.air; else if (p.runT > 0 && Math.floor(p.runT * 10) % 2) set = H2.run;
-  const swinging = kind === 'knight' && p.swingT < 0.16;
-  const twanging = kind === 'archer' && jOn() && p.twang > 0 && Math.floor(p.twang * 40) % 2 === 0;
+  const swinging = kind === 'knight' && p.swingT < (p.big ? 0.22 : 0.16);
+  const chg = !p.dead && charging(p), full = chg && charged(p);
+  const twanging = kind === 'archer' && jOn() && ((p.twang > 0 && Math.floor(p.twang * 40) % 2 === 0) || chg);
   const v = swinging || twanging ? set.alt : set.n;
-  const white = p.flash > 0 || (isPlayer && G.freeze > 0 && p.inv > 1.2);
+  const white = p.flash > 0 || (isPlayer && G.freeze > 0 && p.inv > 1.2) || (full && Math.floor(G.t * 14) % 3 === 0);
   const img = p.face < 0 ? (white ? v.wl : v.l) : (white ? v.wr : v.r);
   const bob = p.onGround && p.runT > 0 && Math.floor(p.runT * 10) % 2 ? -1 : 0;
+  // dash: dos sombras que quedan atrás
+  if (p.dashT > 0 && jOn()) {
+    const ghost = p.face < 0 ? v.wl : v.wr;
+    for (let k = 2; k >= 1; k--) { g.globalAlpha = 0.42 / k; drawScaled(ghost, p.x + 4 + p.face - p.face * 7 * k, p.y + p.h + bob, 1, 1); }
+    g.globalAlpha = 1;
+  }
+  // intangible: se ve medio transparente
+  if (p.ghostT > 0 && !p.dead) g.globalAlpha = Math.floor(G.t * 30) % 2 ? 0.45 : 0.75;
   if (jOn()) drawScaled(img, p.x + 4 + p.face, p.y + p.h + bob, p.sx, p.sy);
   else g.drawImage(img, Math.round(p.face > 0 ? p.x - 1 : p.x - 3), Math.round(p.y - 1 + bob));
+  g.globalAlpha = 1;
   if (swinging) {
+    g.fillStyle = p.big ? PAL.y : PAL.w;
+    g.fillRect(Math.round(p.face > 0 ? p.x + 10 : p.x - (p.big ? 15 : 11)), Math.round(p.y + 5 + bob), p.big ? 13 : 9, 1);
+    if (jOn() && p.big) drawArc(p.x + 4 + p.face * 2, p.y + 3, p.face, 15, 26, -100, 200, p.swingT, 0.22, ARC_FIRE);
+    else if (jOn() && p.swingT < 0.14) drawArc(p.x + 4 + p.face * 2, p.y + 5, p.face, 10, 15, -110, 190, p.swingT, 0.14);
+  }
+  // carga: un anillo que se cierra sobre el arco o la espada, y un destello cuando está lista
+  if (chg) {
+    const fx = p.x + 4 + p.face * (kind === 'archer' ? 6 : 7), fy = p.y + (kind === 'archer' ? 5 : 4);
+    const col = kind === 'archer' ? [PAL.c, PAL.w] : [PAL.o, PAL.y];
+    if (!full) for (let i = 0; i < 2; i++) { const k = (G.t * 3 + i / 2) % 1; pxCircle(fx, fy, 1 + 9 * (1 - k), col[i], 30); }
+    else {
+      const on = Math.floor(G.t * 12) % 2;
+      g.fillStyle = on ? col[1] : col[0];
+      g.fillRect(Math.round(fx) - 1, Math.round(fy), 3, 1); g.fillRect(Math.round(fx), Math.round(fy) - 1, 1, 3);
+      if (on) { g.fillRect(Math.round(fx) - 2, Math.round(fy), 5, 1); g.fillRect(Math.round(fx), Math.round(fy) - 2, 1, 5); }
+      pxCircle(fx, fy, 4 + Math.round(Math.sin(G.t * 20)), col[0], 45);
+    }
+  }
+  // escudo: una burbuja alrededor del caballero
+  if (p.shield && !p.dead) {
+    const cx = p.x + 4, cy = p.y + 5, hit = p.blockT > 0, r = 9 + (hit ? 1 : 0);
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = hit ? '#2a4a66' : '#0c1a2a'; glowDisc(cx, cy, r); g.globalCompositeOperation = 'source-over';
+    pxCircle(cx, cy, r, hit ? PAL.w : PAL.c, 9);
     g.fillStyle = PAL.w;
-    g.fillRect(Math.round(p.face > 0 ? p.x + 10 : p.x - 11), Math.round(p.y + 5 + bob), 9, 1);
-    if (jOn() && p.swingT < 0.14) drawArc(p.x + 4 + p.face * 2, p.y + 5, p.face, 10, 15, -110, 190, p.swingT, 0.14);
+    for (let i = 0; i < 2; i++) { const a = G.t * 5 + i * Math.PI; g.fillRect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), 1, 1); }
   }
   if (!isPlayer && !p.dead && p.hp < p.max) {
     const x = Math.round(p.x), y = Math.round(p.y) - 6;
@@ -4504,7 +4660,9 @@ function render() {
   for (const a of G.arrows) {
     if (a.stuck && a.life < 0.4 && Math.floor(a.life * 20) % 2) continue;
     const wy = a.stuck && a.wob > 0 ? (Math.floor(a.wob * 40) % 2 ? 1 : -1) : 0;
+    if (a.power && !a.stuck) { g.globalCompositeOperation = 'lighter'; g.fillStyle = '#123a4a'; glowDisc(a.x + 4 + a.face * 2, a.y + 1.5, 5); g.globalCompositeOperation = 'source-over'; }
     g.drawImage(a.face > 0 ? ARROW.r : ARROW.l, Math.round(a.x), Math.round(a.y) + wy);
+    if (a.power && !a.stuck) { g.fillStyle = Math.floor(G.t * 20) % 2 ? PAL.w : PAL.c; g.fillRect(Math.round(a.face > 0 ? a.x + 1 : a.x + 2), Math.round(a.y) + 1, 5, 1); g.fillStyle = PAL.w; g.fillRect(Math.round(a.face > 0 ? a.x + 8 : a.x - 1), Math.round(a.y) + 1, 1, 1); }
   }
   for (const h of G.hazards) {
     if (h.phase === 'warn') continue;
@@ -4555,6 +4713,7 @@ function render() {
   }
   // HUD
   for (let i = 0; i < G.maxHearts; i++) g.drawImage(i < G.hearts ? HEART : HEART0, 4 + i * 9, 4);
+  if (G.p && G.p.en !== undefined) drawEnergy(4, 13, 34, G.p, G.kind);
   const sc = String(Math.round(G.shownScore)).padStart(5, '0');
   const bump = jOn() && G.scoreBump > 0.5 ? -1 : 0;
   drawText(g, sc, W - 4, 4 + bump, G.scoreBump > 0.5 && jOn() ? PAL.w : PAL.y, 1, 'right');
@@ -4589,6 +4748,9 @@ function render() {
       drawText(g, e.kind === 'archer' ? 'ARQ' : 'CAB', 4, y, e.kind === 'archer' ? PAL.o : PAL.b, 1, 'left');
       g.fillStyle = PAL.k; g.fillRect(19, y - 1, 36, 7); g.fillStyle = PAL.d; g.fillRect(20, y, 34, 5);
       g.fillStyle = e.dead ? PAL.S : PAL.r; g.fillRect(20, y, Math.round(34 * Math.max(0, e.hp) / e.max), 5);
+      // mi energía, debajo de mi vida
+      const me = NET.role === 'guest' && NET.mine && NET.mine.id === e.id && !e.dead;
+      if (me) { drawEnergy(19, y + 7, 36, NET.mine, e.kind); y += 5; }
       y += 9;
     }
     if (G.z < 3 && G.state === 'play') {
@@ -4648,6 +4810,18 @@ function render() {
     }
   }
 }
+// medidor de energía con marcas de lo que cuesta cada especial
+function drawEnergy(x, y, w, h, kind) {
+  const cost = kind === 'archer' ? SK.dash : SK.shMin, k = Math.max(0, Math.min(1, h.en / SK.max));
+  const warn = h.enFlash > 0 && Math.floor(h.enFlash * 16) % 2;
+  g.fillStyle = warn ? PAL.r : PAL.k; g.fillRect(x - 1, y - 1, w + 2, 5);
+  g.fillStyle = PAL.d; g.fillRect(x, y, w, 3);
+  const ready = h.en >= cost || h.shield;
+  g.fillStyle = h.shield ? (Math.floor(G.t * 10) % 2 ? PAL.c : PAL.b) : ready ? PAL.c : PAL.B; g.fillRect(x, y, Math.round(w * k), 3);
+  g.fillStyle = ready ? PAL.w : PAL.b; g.fillRect(x, y, Math.round(w * k), 1);
+  g.fillStyle = PAL.k;
+  for (let c = cost; c < SK.max; c += kind === 'archer' ? cost : SK.max) g.fillRect(x + Math.round(w * c / SK.max), y, 1, 3);
+}
 function renderTitle() {
   const T = performance.now() / 1000;
   drawText(g, 'PIP Y LOS', W / 2, 22, PAL.w, 2, 'center');
@@ -4703,8 +4877,8 @@ document.addEventListener('visibilitychange', bgTickSync);
    Entrada
    ========================================================= */
 const BOSS_KEYS = { KeyZ: 'charge', KeyV: 'rain' };
-const PRESS = new Set(['jump', 'attack', 'charge', 'rain']);
-const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyS: 'down', KeyX: 'attack', KeyK: 'attack', KeyF: 'attack' };
+const PRESS = new Set(['jump', 'attack', 'charge', 'rain', 'special']);
+const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyS: 'down', KeyX: 'attack', KeyK: 'attack', KeyF: 'attack', ShiftLeft: 'special', ShiftRight: 'special', KeyV: 'special', KeyL: 'special', KeyG: 'special' };
 const isIdle = () => !G || G.state === 'over' || (G.state === 'win' && G.endT > 2.6);
 window.addEventListener('keydown', e => {
   if (e.code === 'Escape' && stage.classList.contains('immersive')) { exitImmersive(); return; }
@@ -4944,13 +5118,27 @@ stickZone.addEventListener('pointermove', e => {
 const btnsEl = document.getElementById('btns');
 const tbEls = {};
 let btnMode = '';
+// de qué héroe son los botones: el de la campaña o el mío en el online
+function myHeroKind() {
+  if (!G) return '';
+  if (NET.role === 'guest') return NET.mine ? NET.mine.kind : '';
+  return G.p ? G.kind : '';
+}
 function syncButtons() {
-  const mode = bossCtl() ? 'boss' : 'hero';
-  if (mode === btnMode) return;
-  btnMode = mode;
-  btnsEl.classList.toggle('boss', mode === 'boss');
-  tbEls.jump.firstChild.textContent = mode === 'boss' ? 'Salto' : 'Saltar';
-  tbEls.attack.firstChild.textContent = mode === 'boss' ? 'Tajo' : 'Atacar';
+  const kind = bossCtl() ? '' : myHeroKind();
+  const mode = bossCtl() ? 'boss' : 'hero' + kind;
+  if (mode !== btnMode) {
+    btnMode = mode;
+    btnsEl.classList.toggle('boss', mode === 'boss');
+    btnsEl.classList.toggle('special-on', !!kind);
+    tbEls.jump.firstChild.textContent = mode === 'boss' ? 'Salto' : 'Saltar';
+    tbEls.attack.firstChild.textContent = mode === 'boss' ? 'Tajo' : 'Atacar';
+    tbEls.special.firstChild.textContent = kind === 'knight' ? 'Escudo' : 'Dash';
+    if (mode !== 'boss') for (const k of ['jump', 'attack', 'charge', 'rain']) tbEls[k].style.setProperty('--cd', '0');
+  }
+  // el botón especial se oscurece según la energía que falta
+  const h = kind && (NET.role === 'guest' ? NET.mine : G.p);
+  if (h) tbEls.special.style.setProperty('--cd', (1 - Math.max(0, Math.min(1, h.en / SK.max))).toFixed(3));
 }
 btnsEl.querySelectorAll('.tb').forEach(btn => {
   const k = btn.dataset.key; tbEls[k] = btn;
@@ -5047,9 +5235,9 @@ function netPack(now) {
   if (G.critText) w.rec([C2(G.critText.t), H2(G.critText.x), H2(G.critText.y)], 'iii');
   if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), G.banner.long ? 1 : 0], 'ssii');
   if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
-  w.list(G.heroes.map(e => [e.id, e.kind === 'knight' ? 1 : 0, H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0]), SP.h);
+  w.list(G.heroes.map(e => [e.id, e.kind === 'knight' ? 1 : 0, H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0]), SP.h);
   w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
-  w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
+  w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0) | (a.power ? 8 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
   w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), q.red ? 1 : 0]), SP.sh);
   w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), h.big ? 1 : 0, C2(h.life), C2(h.wob)]), SP.hz);
   w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.dir]), SP.wv);
@@ -5108,9 +5296,9 @@ function netDecode(bytes) {
     critText: ct ? { t: P(ct[0]), x: L(ct[1]), y: L(ct[2]) } : null,
     banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!bn[3] }) : null,
     soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
-    heroes: h.map(q => ({ id: q[0], kind: q[1] ? 'knight' : 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19] })),
+    heroes: h.map(q => ({ id: q[0], kind: q[1] ? 'knight' : 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0 })),
     mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
-    arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
+    arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!q[3] })),
     hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!q[7], life: P(q[8]), wob: P(q[9]) })),
     waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: q[2] })),
@@ -5211,21 +5399,25 @@ function netGuestFrame(now, real) {
     if (Music.bpm !== bpm || Music.tr !== tr) setTempo(bpm, tr);
     if (on && opts.music && !Music.playing) musicStart(); else if (!on && Music.playing) musicStop();
   } else if (NET.playing) { NET.playing = false; G = null; NET.snaps = []; NET.offs = []; NET.fxq = []; NET.sndq = []; NET.parts = []; overlay.hidden = false; musicStop(); netUI(); }
-  if (!live) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = false; }
+  if (!live) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = input.specialPressed = false; }
   input.chargePressed = input.rainPressed = false;
+  if (!NET.mine) input.specialPressed = false;
 }
 /* Mi héroe se mueve acá mismo, sin esperar al villano: corre la misma física que el juego
    y le manda al villano dónde está. Además decide lo que le pega según lo que se ve en esta
    pantalla. Los golpes y rebotes que decide el villano llegan con un número (kb); se aplican
    una vez y se confirman, y recién ahí el villano vuelve a creerle a esta pantalla. */
 function netPredict(real) {
+  // lo que rompió mi espadazo o frenó mi escudo ya no está en mi pantalla
+  const K = NET.killed;
+  if (K.size) { G.shots = G.shots.filter(q => !K.has('s' + q.id)); G.arrows = G.arrows.filter(a => !K.has('a' + a.id)); G.waves = G.waves.filter(w => !K.has('w' + w.id)); G.hazards = G.hazards.filter(h => !K.has('h' + h.id)); }
   const latest = NET.snaps[NET.snaps.length - 1];
   const srv = latest && latest.heroes.find(e => e.net === NET.me);
-  if (!srv || srv.dead) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = false; netSendIn(null); return; }
+  if (!srv || srv.dead) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = input.specialPressed = false; netSendIn(null); return; }
   let m = NET.mine;
   if (!m || m.id !== srv.id) {
-    m = NET.mine = { id: srv.id, kind: srv.kind, x: srv.x, y: srv.y, w: 8, h: 11, vx: 0, vy: 0, onGround: srv.onGround, face: srv.face, surf: null, drop: 0, inv: 0, invL: 0, flash: 0, sx: 1, sy: 1, runT: 0, swingT: 9, twang: 0, cool: 0, ak: 0, kb: srv.kb, net: NET.me, own: true, move: 0, jumpBuf: 0, cut: true, bounceAt: -9999, knockAt: -9999, hurtAt: -9999, prevBottom: srv.y + 11 };
-    NET.myArrows = []; NET.hits = [];
+    m = NET.mine = { id: srv.id, kind: srv.kind, x: srv.x, y: srv.y, w: 8, h: 11, vx: 0, vy: 0, onGround: srv.onGround, face: srv.face, surf: null, drop: 0, inv: 0, invL: 0, flash: 0, sx: 1, sy: 1, runT: 0, swingT: 9, swingId: 0, twang: 0, cool: 0, ak: 0, ac: 0, kb: srv.kb, net: NET.me, own: true, move: 0, jumpBuf: 0, cut: true, bounceAt: -9999, knockAt: -9999, hurtAt: -9999, prevBottom: srv.y + 11, ...skillFields() };
+    NET.myArrows = []; NET.hits = []; NET.killed.clear(); NET.kl = [];
   }
   const dt = Math.min(real, 1 / 30), now = performance.now();
   if (srv.kb !== m.kb) {
@@ -5238,11 +5430,13 @@ function netPredict(real) {
   m.inv = Math.max(srv.inv, m.invL); m.flash = srv.flash;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   m.move = dir;
+  skillStep(m, m.kind, dt, input.special, input.specialPressed, dir);
+  input.specialPressed = false;
   if (dir && m.inv < 0.45) m.face = dir;
   if (input.jumpPressed) { m.jumpBuf = 0.12; input.jumpPressed = false; }
   m.jumpBuf -= dt;
   if (m.jumpBuf > 0 && m.onGround) {
-    if (input.down && m.surf && !m.surf.ground) m.dropNow = true; else { m.jumpNow = true; m.cut = false; }
+    if (input.down && m.surf && !m.surf.ground) m.dropNow = true; else { m.jumpNow = true; m.cut = false; if (m.kind === 'archer' && charging(m)) m.chg = -1; m.dashT = 0; }
     m.jumpBuf = 0;
   }
   if (input.down && !input.jump && m.onGround && m.surf && !m.surf.ground) m.dropNow = true;
@@ -5262,7 +5456,7 @@ function netPredict(real) {
     }
   }
   // lo que te pega en esta pantalla, te pega
-  if (m.inv <= 0 && now - m.hurtAt > 400) {
+  if (m.inv <= 0 && now - m.hurtAt > 400 && m.ghostT <= 0) {
     let hit = null;
     for (const o of G.mobs) {
       if (o.dead || o.spawn > 0) continue;
@@ -5284,29 +5478,42 @@ function netPredict(real) {
     }
     if (!hit) for (const w of G.waves) if (overlap(m, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { hit = [9, w.id, w.dir || 1, 1]; break; }
     if (!hit) for (const h of G.hazards) if (h.phase === 'fall' && overlap(m, hazBox(h))) { hit = [10, h.id, Math.sign(m.x + 4 - h.x) || 1, 1]; break; }
-    if (hit) {
+    if (hit && m.shield) {
+      // el escudo lo frena: no hay daño, y si era un proyectil se rompe
+      if (m.blockT <= 0) {
+        shieldBlock(m, hit[2]);
+        netHitReport(hit[0], hit[1], hit[2], 0);
+        const key = { 4: 's', 5: 'a', 9: 'w', 10: 'h' }[hit[0]];
+        if (key) K.add(key + hit[1]);
+      }
+    } else if (hit) {
       netHitReport(hit[0], hit[1], hit[2], hit[3] || 1);
-      m.hurtAt = now; m.knockAt = now; m.invL = 0.75;
+      m.hurtAt = now; m.knockAt = now; m.invL = 0.75; m.chg = -1;
       m.vx = hit[2] * 170; m.vy = -200; m.onGround = false; m.cut = true;
       play('dano', { rate: 1.3, vol: 0.8 });
       if (jOn()) { m.sx = 1.3; m.sy = 0.75; }
     }
   }
   m.cool -= dt; m.twang -= dt; m.swingT += dt;
-  const want = input.attackPressed || (input.attack && m.cool <= -0.07);
+  const act = chargeStep(m, dt, input.attack, input.attackPressed, !m.shield && m.dashT <= 0);
   input.attackPressed = false;
-  if (want && m.cool <= 0) {
+  if (act === 'tap') {
     m.ak++; m.cool = m.kind === 'archer' ? 0.32 : 0.34;
     if (m.kind === 'archer') {
       m.twang = 0.16; play('disparo', { vol: 0.5 });
       // la flecha sale ya en esta pantalla; la del villano (misma, con el mismo número) no se dibuja acá
       NET.myArrows.push({ id: 'L' + m.ak, n: m.ak, x: m.face > 0 ? m.x + 7 : m.x - 7, y: m.y + 4, vx: m.face * 230, vy: -12, face: m.face, stuck: false, wob: 0, life: 0 });
       if (jOn()) { m.vx -= m.face * 30; m.sx = 0.85; m.sy = 1.1; }
-    } else { m.swingT = 0; play('tajo', { vol: 0.5 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
+    } else { m.swingT = 0; m.big = false; play('tajo', { vol: 0.5 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
+  } else if (act === 'big') {
+    m.ac++; m.cool = 0.32;
+    if (m.kind === 'archer') { const a = powerShot(m, NET.myArrows); a.id = 'P' + m.ac; a.n = 1000 + m.ac; }
+    else bigSlash(m);
   }
+  if (m.kind === 'knight' && m.big && m.swingT < slashTime(m)) netSlashKill(slashBoxOf(m));
   netMyArrows(dt);
   const i = G.heroes.findIndex(e => e.id === m.id);
-  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy, inv: m.inv });
+  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy, inv: m.inv, shield: m.shield, ghostT: m.ghostT, dashT: m.dashT, chg: m.chg, big: m.big, blockT: m.blockT });
   G.arrows = G.arrows.filter(a => a.o !== m.id).concat(NET.myArrows);
   netSendIn(m);
 }
@@ -5315,17 +5522,34 @@ function netHitReport(kind, id, dir, dmg = 1) {
   NET.hits.push([NET.hitSeq, kind, id, dir, dmg]);
   if (NET.hits.length > 5) NET.hits.shift();
 }
+// mi espadazo cargado rompe los proyectiles que se ven en esta pantalla, y le avisa al villano cuáles
+function netSlashKill(hb) {
+  let n = 0;
+  const add = (key, x, y) => {
+    if (NET.killed.has(key)) return;
+    NET.killed.add(key); if (NET.killed.size > 200) NET.killed.delete(NET.killed.values().next().value);
+    NET.kl.push([key, performance.now()]); if (NET.kl.length > 10) NET.kl.shift();
+    NET.klSeq++; n++;
+    if (jOn()) burst(x, y, 6, [PAL.y, PAL.w, PAL.o], 70, 30, 220, 0.3);
+  };
+  for (const q of G.shots) if (overlap(hb, { x: q.x - 2, y: q.y - 2, w: 4, h: 4 })) add('s' + q.id, q.x, q.y);
+  for (const a of G.arrows) if (a.mob && !a.stuck && overlap(hb, { x: a.x, y: a.y, w: 8, h: 3 })) add('a' + a.id, a.x + 4, a.y + 1);
+  for (const w of G.waves) if (overlap(hb, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) add('w' + w.id, w.x, GROUND - 4);
+  for (const h of G.hazards) if (h.phase === 'fall' && overlap(hb, hazBox(h))) add('h' + h.id, h.x, h.y + 5);
+  if (n) play('clavar', { rate: 1.9, vary: false });
+}
 // mis flechas, con la misma física que las del juego; se clavan o desaparecen al tocar algo de esta pantalla
 function netMyArrows(dt) {
   const Z = ZONES[G.z] || ZONES[0], B = G.boss;
   for (const a of NET.myArrows) {
     if (a.stuck) { a.wob -= dt; a.life -= dt; if (a.life <= 0) a.dead = true; continue; }
-    a.vy += 40 * dt; a.x += a.vx * dt; a.y += a.vy * dt;
-    if (jOn()) { a.trail = (a.trail || 0) - dt; if (a.trail <= 0) { a.trail = 0.02; NET.parts.push({ x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1 }); } }
+    a.vy += (a.power ? 10 : 40) * dt; a.x += a.vx * dt; a.y += a.vy * dt;
+    if (jOn()) { a.trail = (a.trail || 0) - dt; if (a.trail <= 0) { a.trail = a.power ? 0.012 : 0.02; NET.parts.push(a.power ? { x: a.x + 4 - a.face * 4, y: a.y + 1 + (Math.random() < 0.5 ? 0 : 1), vx: -a.face * 20, vy: (Math.random() - 0.5) * 16, g: 0, life: 0.22, max: 0.22, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 } : { x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1 }); } }
     const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
     if (G.z < 3 ? (tipX < Z.start - 12 || tipX > Z.end + 12) : (tipX < NET.cam - 12 || tipX > NET.cam + W + 12)) { a.dead = true; continue; }
-    if (G.mobs.some(o => !o.dead && o.spawn <= 0 && tipX >= o.x - 1 && tipX <= o.x + o.w + 1 && tipY >= o.y - 2 && tipY <= o.y + o.h + 1)) { a.dead = true; continue; }
-    if (B && G.z === 3) { const bb = bossBody(B); if (tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) { a.dead = true; continue; } }
+    // la flecha cargada atraviesa a los enemigos (el daño lo cuenta el villano)
+    if (!a.power && G.mobs.some(o => !o.dead && o.spawn <= 0 && tipX >= o.x - 1 && tipX <= o.x + o.w + 1 && tipY >= o.y - 2 && tipY <= o.y + o.h + 1)) { a.dead = true; continue; }
+    if (!a.power && B && G.z === 3) { const bb = bossBody(B); if (tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) { a.dead = true; continue; } }
     let hit = false;
     for (const gt of GATES) if (tipX >= gt.x && tipX <= gt.x + 8 && (gt.open < 0.85 ? tipY < GROUND : tipY < DOOR_TOP)) hit = true;
     if (!hit) for (const s of SURFACES) { const bottom = s.ground ? H : s.y + 8; if (tipX >= s.x && tipX <= s.x + s.w && tipY >= s.y && tipY <= bottom) { hit = true; break; } }
@@ -5337,12 +5561,18 @@ function netMyArrows(dt) {
 function netSendIn(m) {
   const now = performance.now();
   const inp = { l: input.left ? 1 : 0, r: input.right ? 1 : 0, d: input.down ? 1 : 0, j: input.jump ? 1 : 0 };
-  if (m) Object.assign(inp, { hid: m.id, x: H2(m.x), y: H2(m.y), vx: Math.round(m.vx), vy: Math.round(m.vy), f: m.face, og: m.onGround ? 1 : 0, ak: m.ak, kb: m.kb, hits: NET.hits.slice() });
+  if (m) {
+    const fx = (m.shield ? 1 : 0) | (m.ghostT > 0 ? 2 : 0) | (charging(m) ? 4 : 0) | (charged(m) ? 8 : 0) | (m.dashT > 0 ? 16 : 0);
+    Object.assign(inp, { hid: m.id, x: H2(m.x), y: H2(m.y), vx: Math.round(m.vx), vy: Math.round(m.vy), f: m.face, og: m.onGround ? 1 : 0, ak: m.ak, ac: m.ac, fx, kb: m.kb, hits: NET.hits.slice() });
+    // los proyectiles rotos viajan un rato (por si se pierde un mensaje) y después no se mandan más
+    const kl = NET.kl.filter(q => now - q[1] < 1500).map(q => q[0]);
+    if (kl.length) inp.kl = kl;
+  }
   const key = JSON.stringify(inp);
   if (key === NET.sentIn) return;
-  const urgent = m && (m.ak !== NET.sentAk || NET.hitSeq !== NET.sentHit);
+  const urgent = m && (m.ak !== NET.sentAk || m.ac !== NET.sentAc || NET.hitSeq !== NET.sentHit || NET.klSeq !== NET.sentKl);
   if (now - NET.sentAt < (NET.room.binary ? 15 : 30) && !urgent) return;
-  NET.sentIn = key; NET.sentAt = now; NET.sentAk = m ? m.ak : 0; NET.sentHit = NET.hitSeq;
+  NET.sentIn = key; NET.sentAt = now; NET.sentAk = m ? m.ak : 0; NET.sentAc = m ? m.ac : 0; NET.sentHit = NET.hitSeq; NET.sentKl = NET.klSeq;
   NET.room.presence({ in: inp }).catch(() => {});
 }
 const heroFree = k => !NET.playing || !G || G.kind !== 'invade' || G.heroes.some(e => e.kind === k && !e.dead);
@@ -5367,7 +5597,7 @@ function netHostFrame(now) {
   for (const e of G.heroes) {
     if (e.dead) continue;
     const want = NET.slots[e.kind] || null;
-    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.hitSeen = undefined; e.lastIn = null; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
+    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.acSeen = undefined; e.hitSeen = undefined; e.lastIn = null; e.shield = false; e.ghostT = 0; e.dashT = 0; e.chg = -1; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
   }
   // con el servidor propio, 60 fotos por segundo; la sala de claude.ai tiene un límite de mensajes, ahí 30
   if (now - NET.sendT >= (r.binary ? 15 : 32)) {
@@ -5392,13 +5622,14 @@ function netHero(e, dt) {
       e.hitSeen = h[0] | 0;
       const kind = h[1], id = h[2], dir = Math.sign(h[3]) || 1;
       NET.sndOwner = e.net;
-      if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
-      else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false); if (s) splat(s); }
-      else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; hitHero(e, 1, dir, a ? a.player : false); }
-      else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir); }
+      if (kind !== 2 && kind !== 11 && (h[4] | 0) === 0) netBlocked(e, kind, id, dir); // lo frenó el escudo
+      else if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
+      else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false, true); if (s) splat(s); }
+      else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; hitHero(e, 1, dir, a ? a.player : false, true); }
+      else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir, true, true); }
       else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
-      else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir); // jefe: choque, tajo, salto aplastante u onda
-      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? 2 : 1, dir, m ? m.player : false); }
+      else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir, true, true); // jefe: choque, tajo, salto aplastante u onda
+      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? 2 : 1, dir, m ? m.player : false, true); }
       NET.sndOwner = null;
     }
   }
@@ -5416,6 +5647,26 @@ function netHero(e, dt) {
     }
     e.akSeen = inp.ak;
   }
+  if (mine) {
+    // estado de las habilidades según su pantalla
+    const fx = inp.fx | 0;
+    e.shield = !!(fx & 1); e.ghostT = fx & 2 ? 0.1 : 0; e.chg = fx & 8 ? SK.chgFull : fx & 4 ? SK.chgOn : -1; e.dashT = fx & 16 ? 0.05 : 0;
+    if (e.blockT > 0) e.blockT -= dt;
+    // ataque cargado
+    if (inp.ac !== undefined) {
+      if (e.acSeen === undefined) e.acSeen = 0;
+      if (inp.ac > e.acSeen) {
+        NET.sndOwner = e.net;
+        if (e.kind === 'archer') { const a = powerShot(e); a.hero = true; a.o = e.id; a.n = 1000 + inp.ac; }
+        else bigSlash(e);
+        NET.sndOwner = null;
+        e.cool = 0.3;
+      }
+      e.acSeen = inp.ac;
+    }
+    // proyectiles que rompió con el espadazo cargado en su pantalla
+    if (Array.isArray(inp.kl)) for (const k of inp.kl) netKill(String(k), e);
+  }
   const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
   e.move = dir;
   const fresh = inp !== e.lastIn;
@@ -5431,6 +5682,31 @@ function netHero(e, dt) {
   }
   if (dir && e.inv < 0.45) e.face = dir;
   return false;
+}
+// el escudo del héroe frenó algo en su pantalla: el proyectil se rompe acá también
+function netBlocked(e, kind, id, dir) {
+  if (kind === 4) { const q = (G.shots || []).find(o => o.id === id && !o.dead); if (q) splat(q); }
+  else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; }
+  else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; }
+  else if (kind === 9) { const w = G.waves.find(o => o.id === id); if (w) w.dead = true; }
+  play('metal', { rate: 1.3, vol: 0.8 });
+  sparks(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], e.id);
+}
+// chispas que la pantalla del dueño ya dibujó por su cuenta (no se las vuelve a mostrar)
+function sparks(x, y, n, cols, o) {
+  if (!jOn()) return;
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 30 + Math.random() * 50; G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 25, g: 220, life: 0.3, max: 0.3, c: cols[i % cols.length], s: 1, o }); }
+}
+function netKill(k, e) {
+  const t = k[0], id = +k.slice(1);
+  let x, y;
+  if (t === 's') { const q = (G.shots || []).find(o => o.id === id && !o.dead); if (q) { q.dead = true; x = q.x; y = q.y; } }
+  else if (t === 'a') { const a = G.arrows.find(o => o.id === id && o.mob && !o.dead && !o.stuck); if (a) { a.dead = true; x = a.x + 4; y = a.y + 1; } }
+  else if (t === 'w') { const w = G.waves.find(o => o.id === id && !o.dead); if (w) { w.dead = true; x = w.x; y = GROUND - 4; } }
+  else if (t === 'h') { const hz = G.hazards.find(o => o.id === id && o.phase === 'fall'); if (hz) { hz.phase = 'gone'; x = hz.x; y = hz.y + 5; } }
+  if (x === undefined) return;
+  NET.sndOwner = e.net; play('clavar', { rate: 1.9, vol: 0.7, vary: false }); NET.sndOwner = null;
+  sparks(x, y, 6, [PAL.y, PAL.w, PAL.o], e.id);
 }
 function drawNetTag(e) {
   const mine = NET.role === 'guest' && e.net === NET.me;
