@@ -23,6 +23,9 @@ Cómo se reparte el trabajo:
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
 ## Nivel 2 · El Bosque Oscuro
+En el menú hay un **selector de nivel** (*Nivel 1 · El Reino* / *Nivel 2 · El Bosque*, o la tecla `N`) que vale para
+todos los modos: la campaña arranca directo en el bosque, en **Jefe** sos el Campeón y en **Villano**/**Online** la
+partida empieza en el nivel 2. Se recuerda para la próxima vez.
 Al vencer al Mega Caballero la aventura sigue: una noche de luna roja en el bosque (Linde del bosque, Bosque oscuro,
 Ciénaga de raíces) y al final la cueva del **Campeón**, un lobo gigante todo negro. Al empezar el nivel se vuelve a
 elegir carta (se suman a las que ya tenías).

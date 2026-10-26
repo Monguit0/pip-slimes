@@ -103,6 +103,10 @@ html.imm-on, html.imm-on body { overflow: hidden; overscroll-behavior: none; }
 .stage.immersive .screen { padding: 0; border-radius: 0; box-shadow: none; background: transparent; }
 .stage.immersive .stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; }
 .px.tiny { font-size: 10px; padding: 9px 11px; }
+.lvl-pick { flex-basis: 100%; display: flex; justify-content: center; gap: 6px; }
+.lvl-pick .px { padding: 6px 9px; background: #1a1c2ceb; color: #f4f4f4; box-shadow: 0 2px 0 #000a; }
+.lvl-pick .px[aria-pressed="true"] { background: var(--coin); color: var(--ink); }
+.stage.net-guest .lvl-pick { display: none; }
 .rot-hint { font-family: var(--f-label); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; }
 .bar-sw { display: flex; gap: 6px; }
 .bar-sw .ico { display: none; font-size: 14px; }
@@ -243,6 +247,10 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         <canvas id="game" width="512" height="288" tabindex="0" aria-label="Pantalla del juego"></canvas>
         <img class="cover" id="cover" src="portada.jpg" alt="A Tale of Friends &amp; Foes" decoding="async">
         <div class="overlay" id="overlay">
+          <div class="lvl-pick" role="group" aria-label="Nivel">
+            <button class="px tiny" type="button" data-lvl="0" aria-pressed="true">Nivel 1 · El Reino</button>
+            <button class="px tiny" type="button" data-lvl="1" aria-pressed="false">Nivel 2 · El Bosque</button>
+          </div>
           <button class="px primary" id="start-archer" type="button">▶ Arquero</button>
           <button class="px primary alt" id="start-knight" type="button">▶ Caballero</button>
           <button class="px primary barb" id="start-barb" type="button">▶ Bárbaro</button>
@@ -3062,6 +3070,9 @@ const HERO_GORE = { knight: [PAL.B, PAL.s, PAL.w, PAL.y], archer: [PAL.r, PAL.G,
 const KIND_NAME = { archer: 'ARQUERO', knight: 'CABALLERO', barb: 'BÁRBARO' }, KIND_TAG = { archer: 'ARQ', knight: 'CAB', barb: 'BAR' };
 const KIND_COL = () => ({ archer: PAL.o, knight: PAL.b, barb: PAL.y });
 let lastKind = 'archer';
+// nivel con el que arranca la partida (selector del menú; N lo cambia)
+let startLvl = 0;
+try { startLvl = localStorage.getItem('pip-lvl') === '1' ? 1 : 0; } catch (e) {}
 try { const k = localStorage.getItem('pip-kind'); if (k === 'archer' || k === 'knight' || k === 'barb' || k === 'boss' || k === 'invade') lastKind = k; } catch (e) {}
 
 /* =========================================================
@@ -3088,20 +3099,23 @@ const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
-  setLevel(0);
+  setLevel(startLvl);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind, C, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: C.hearts, maxHearts: C.hearts, z: 0, cam: 0, camV: 0,
     p: { x: 40, y: GROUND - 11, w: 8, h: 11, vx: 0, vy: 0, onGround: true, face: 1, coyote: 0, buffer: 0, cut: false, inv: 0, stompInv: 0, sx: 1, sy: 1, runT: 0, dustT: 0, drop: 0, flash: 0, cool: 0, twang: 0, swingT: 9, swingId: 0, ...skillFields() },
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
-    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0, vcm: 0, pick: null, lvl: 0, nextT: 0, fadeIn: 0
+    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0, vcm: 0, pick: null, lvl: startLvl, nextT: 0, fadeIn: 0
   };
   setTempo(132, 0);
   if (atBoss) {
     G.z = 3; G.p.x = 1556; G.cam = ZONES[3].start;
     startBoss(); startPick();
-  } else enterZone(0, true);
+  } else {
+    enterZone(0, true);
+    if (startLvl) G.banner = { text: 'NIVEL 2', sub: 'EL BOSQUE OSCURO', t: 0, long: true };
+  }
 }
 function enterZone(n, first) {
   G.z = n; G.cleared = false;
@@ -4542,21 +4556,17 @@ const PBW = {
 const pbOf = B => isWolf(B) ? PBW : PB;
 const bossCdm = B => B.phase >= 3 ? 0.45 : B.phase >= 2 ? 0.6 : 1; // recargas en la furia y en la última furia
 function newBossMode() {
-  setLevel(0);
+  setLevel(startLvl);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind: 'boss', C: null, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: 0, maxHearts: 0, z: 3, cam: ZONES[3].start, p: null,
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [], heroes: [], queue: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 99, cleared: false, endT: 0,
-    wave: 0, waveT: 2, spawnT: 0, closeT: 0, kills: 0, waveDone: true, lvl: 0, nextT: 0, fadeIn: 0
+    wave: 0, waveT: 2, spawnT: 0, closeT: 0, kills: 0, waveDone: true, lvl: startLvl, nextT: 0, fadeIn: 0
   };
-  G.boss = {
-    x: 1690, y: GROUND - BH, vx: 0, vy: 0, face: -1, hp: PB_HP, maxHp: PB_HP, show: PB_HP, showT: 0, fill: 1, state: 'idle', t: 0, phase: 1,
-    flash: 0, sx: 1, sy: 1, angle: 65, crouch: 0, atk: '', rep: 0, trail: [], trailT: 0, barShake: 0, hitSwing: -1, targetX: 0, landed: true,
-    stompT: 0, glow: false, swing: null, cd: { sweep: 0, slam: 0, charge: 0, rain: 0 }, attackId: 0, swingId: 0, hurtInv: 0, walking: false, walkT: 0, player: true
-  };
-  G.banner = { text: 'VOS SOS EL JEFE', sub: 'DEFENDÉ EL TRONO', t: 0, long: true };
+  G.boss = makePlayerBoss(startLvl ? 'wolf' : 'knight');
+  G.banner = { text: 'VOS SOS EL JEFE', sub: startLvl ? 'SOS EL CAMPEÓN · DEFENDÉ LA GUARIDA' : 'DEFENDÉ EL TRONO', t: 0, long: true };
   setTempo(148, -2);
 }
 function heroComp(n) {
@@ -4573,7 +4583,7 @@ function updateBossMode(dt) {
   updateHeroes(dt);
   updateArrows(dt);
   updateHazards(dt);
-  updateWaves(dt);
+  updateWaves(dt); updateFires(dt); updateArena(dt);
   if (G.state === 'play' && B && B.state !== 'dying') updateWaveFlow(dt);
   if (G.closeT > 0) { G.closeT -= dt; if (G.closeT <= 0) GATES[2].want = 0; }
   input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false;
@@ -4929,14 +4939,14 @@ function makePlayerBoss(type = 'knight') {
   };
 }
 function newInvadeMode() {
-  setLevel(0);
+  setLevel(startLvl);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind: 'invade', C: null, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: 0, maxHearts: 0, z: 0, cam: 0, p: null,
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [], heroes: [], queue: [], mobs: [], shots: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 99, cleared: false, endT: 0,
-    boss: null, ctrl: null, possessT: 0, soul: null, soulFrom: null, zoneLost: false, wave: 0, kills: 0, lvl: 0, nextT: 0, fadeIn: 0, heroKeep: {}
+    boss: null, ctrl: null, possessT: 0, soul: null, soulFrom: null, zoneLost: false, wave: 0, kills: 0, lvl: startLvl, nextT: 0, fadeIn: 0, heroKeep: {}
   };
   const a = spawnHero('archer'), k = spawnHero('knight'), b = spawnHero('barb');
   a.x = 16; k.x = 34; b.x = 52; a.hp = a.max = 8; k.hp = k.max = 10; b.hp = b.max = 9;
@@ -4945,7 +4955,7 @@ function newInvadeMode() {
   G.vcm = 0; G.pick = null;
   setTempo(132, 0);
   spawnMobs(0); possessNext(true);
-  G.banner = { text: 'MODO VILLANO', sub: 'FRENÁ A LOS HÉROES', t: 0, long: true };
+  G.banner = { text: 'MODO VILLANO', sub: startLvl ? 'NIVEL 2 · EL BOSQUE OSCURO' : 'FRENÁ A LOS HÉROES', t: 0, long: true };
   startPick();
 }
 // nivel 2 en campaña: mismo héroe y cartas, vida llena y se vuelve a elegir carta
@@ -6214,6 +6224,7 @@ window.addEventListener('keydown', e => {
   if (free && e.code === 'KeyC') { toggle('crit'); return; }
   const DIG = { Digit1: 'archer', Digit2: 'knight', Digit3: 'boss', Digit4: 'invade', Digit5: 'barb' };
   if (free && isIdle() && DIG[e.code]) { startGame(DIG[e.code]); return; }
+  if (free && isIdle() && e.code === 'KeyN' && NET.role !== 'guest') { pickLevel(1 - startLvl); play('menu', { rate: 1.2, vary: false }); return; }
   if (!k) return;
   if (G && G.state === 'play' && (free || !(ae instanceof HTMLButtonElement || ae instanceof HTMLInputElement))) {
     e.preventDefault();
@@ -6254,6 +6265,14 @@ function startGame(kind) {
   musicStop();
   if (opts.music && (kind === 'boss' || kind === 'invade' || !opts.boss)) musicStart();
 }
+const lvlBtns = [...document.querySelectorAll('.lvl-pick [data-lvl]')];
+function pickLevel(n) {
+  startLvl = n ? 1 : 0;
+  try { localStorage.setItem('pip-lvl', String(startLvl)); } catch (e) {}
+  lvlBtns.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.lvl === startLvl)));
+}
+lvlBtns.forEach(b => b.addEventListener('click', () => { pickLevel(+b.dataset.lvl); initAudio(); play('menu', { rate: 1.2, vary: false }); }));
+pickLevel(startLvl);
 document.getElementById('start-boss').addEventListener('click', () => startGame('boss'));
 document.getElementById('start-villain').addEventListener('click', () => startGame('invade'));
 document.getElementById('start-archer').addEventListener('click', () => startGame('archer'));
