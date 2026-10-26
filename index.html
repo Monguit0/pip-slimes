@@ -2788,11 +2788,11 @@ function enterZone(n, first) {
     G.coins = []; G.slimes = G.slimes.filter(s => s.zone === n); G.hazards = [];
   }
   G.p.cureUsed = false;
-  if (ZONES[n].boss) { startBoss(); startPick(); return; }
+  if (ZONES[n].boss) { startBoss(); return; }
   spawnCoins(n); spawnSlimes(n);
   G.banner = { text: 'ZONA ' + (n + 1), sub: ZONES[n].name, t: 0 };
   G.hazT = 3 + Math.random() * 2;
-  startPick();
+  if (first) startPick();
 }
 function spawnCoins(n) {
   const spots = COIN_SPOTS[n].slice().sort(() => Math.random() - 0.5).slice(0, 8);
@@ -2887,7 +2887,7 @@ function skillStep(h, kind, dt, held, pressed, dir) {
       if (h.en < SK.rage) noEnergy(h);
       else {
         h.en -= SK.rage; h.enT = SK.delay;
-        h.rageMul = Math.round((1.25 + 1.5 * (1 - lifeFrac(h))) * 100) / 100;
+        h.rageMul = Math.round((1.15 + 0.6 * (1 - lifeFrac(h))) * 100) / 100;
         h.rageT = SK.rageT * (hasC(h, 'ira') ? 2 : 1);
         play('rugido', { rate: 1.6, vol: 0.9, vary: false }); play('escudo', { rate: 0.6 }); vib(25);
         popup(h.x + 4, h.y - 8, 'FURIA X' + h.rageMul.toFixed(1), PAL.r);
@@ -2974,7 +2974,7 @@ function slashActive(e) {
   return e.swingT < (e.big ? 0.16 : 0.1);
 }
 const swingKey = e => e.swingId * 4 + (e.spin ? spinIdx(e) : 0);
-const slashBase = e => e.spin ? 3 : e.big ? 4 : e.kind === 'barb' || (e === G.p && G.kind === 'barb') ? 3 : 2;
+const slashBase = e => e.spin ? 2 : e.big ? 4 : e.kind === 'barb' || (e === G.p && G.kind === 'barb') ? 3 : 2;
 // proyectiles que rompe el espadazo cargado
 function slashClear(hb) {
   let n = 0;
@@ -2990,29 +2990,52 @@ function slashClear(hb) {
    eligen una de tres. Se van sumando hasta el final de la partida.
    ========================================================= */
 const HERO_CARDS = [
-  { id: 'vida', name: 'CORAZÓN EXTRA', desc: 'MÁS VIDA MÁXIMA Y TE CURA AL ELEGIRLA', col: 'r' },
-  { id: 'dmg', name: { archer: 'ARCO REFORZADO', knight: 'ESPADA AFILADA', barb: 'HACHA PESADA' }, desc: '+1 DE DAÑO EN TODOS TUS GOLPES', col: 'o' },
-  { id: 'cura', name: 'POCIÓN DE EMERGENCIA', desc: 'SI TE QUEDA MENOS DE LA MITAD DE VIDA, TE CURA. UNA VEZ POR ZONA', col: 'l' },
-  { id: 'energia', name: 'CRISTAL DE MANÁ', desc: 'LA ENERGÍA SE RECARGA 60% MÁS RÁPIDO', col: 'c' },
+  { id: 'vida', name: 'CORAZÓN EXTRA', desc: 'MÁS VIDA MÁXIMA', col: 'r' },
+  { id: 'dmg', name: { archer: 'ARCO REFORZADO', knight: 'ESPADA AFILADA', barb: 'HACHA PESADA' }, desc: '+1 DE DAÑO EN CADA GOLPE', col: 'o' },
+  { id: 'cura', name: 'POCIÓN DE EMERGENCIA', desc: 'TE CURA A MITAD DE VIDA, 1 VEZ POR ZONA', col: 'l' },
+  { id: 'energia', name: 'CRISTAL DE MANÁ', desc: 'ENERGÍA 60% MÁS RÁPIDA', col: 'c' },
   { id: 'veloz', name: 'BOTAS LIGERAS', desc: 'CORRÉS 15% MÁS RÁPIDO', col: 'y' },
-  { id: 'carga', name: 'CONCENTRACIÓN', desc: 'LOS ATAQUES CARGADOS SE CARGAN EL DOBLE DE RÁPIDO', col: 'p' },
-  { id: 'triple', only: 'archer', name: 'FLECHA TRIPLE', desc: 'EL FLECHAZO CARGADO SALE DE A TRES', col: 'c' },
-  { id: 'fantasma', only: 'archer', name: 'PASO FANTASMA', desc: 'EL DASH GASTA LA MITAD DE ENERGÍA', col: 'b' },
-  { id: 'muralla', only: 'knight', name: 'ESCUDO LIVIANO', desc: 'EL ESCUDO GASTA LA MITAD DE ENERGÍA', col: 'b' },
+  { id: 'carga', name: 'CONCENTRACIÓN', desc: 'CARGÁS EL DOBLE DE RÁPIDO', col: 'p' },
+  { id: 'triple', only: 'archer', name: 'FLECHA TRIPLE', desc: 'EL FLECHAZO SALE DE A TRES', col: 'c' },
+  { id: 'fantasma', only: 'archer', name: 'PASO FANTASMA', desc: 'EL DASH CUESTA LA MITAD', col: 'b' },
+  { id: 'muralla', only: 'knight', name: 'ESCUDO LIVIANO', desc: 'EL ESCUDO GASTA LA MITAD', col: 'b' },
   { id: 'ira', only: 'barb', name: 'SANGRE CALIENTE', desc: 'LA FURIA DURA EL DOBLE', col: 'r' },
-  { id: 'remolino', only: 'barb', name: 'REMOLINO', desc: 'EL HACHAZO CIRCULAR GOLPEA TRES VECES', col: 'o' }
+  { id: 'remolino', only: 'barb', name: 'REMOLINO', desc: 'EL GIRO PEGA TRES VECES', col: 'o' }
 ];
 const VILLAIN_CARDS = [
-  { id: 'gordos', mobs: true, name: 'SLIMES ROBUSTOS', desc: 'LOS SLIMES TIENEN +2 DE VIDA', col: 'g' },
-  { id: 'veneno', mobs: true, name: 'FLECHAS VENENOSAS', desc: 'LAS FLECHAS DE ESQUELETO ENVENENAN: 1 DE DAÑO MÁS AL RATO', col: 'l' },
-  { id: 'hachas', mobs: true, name: 'HACHAS DOBLES', desc: 'LOS HACHAZOS DE ESQUELETO HACEN +1 DE DAÑO', col: 's' },
-  { id: 'rapidos', mobs: true, name: 'ENEMIGOS VELOCES', desc: 'TODOS TUS ENEMIGOS SE MUEVEN 25% MÁS RÁPIDO', col: 'y' },
-  { id: 'acida', mobs: true, name: 'BABA ÁCIDA', desc: 'LAS BABAS SALPICAN EL DOBLE DE LEJOS', col: 'g' },
-  { id: 'refuerzos', mobs: true, name: 'REFUERZOS', desc: 'LLEGAN DOS ENEMIGOS MÁS A ESTA ZONA', col: 'r' },
-  { id: 'regen', name: 'REGENERACIÓN', desc: 'TUS ENEMIGOS Y EL JEFE SE CURAN DE A POCO', col: 'l' },
-  { id: 'armadura', name: 'ARMADURA DEL JEFE', desc: 'EL MEGA CABALLERO TIENE +20 DE VIDA', col: 's' },
-  { id: 'jfuria', name: 'JEFE FURIOSO', desc: 'LOS ATAQUES DEL JEFE RECARGAN 30% MÁS RÁPIDO', col: 'o' }
+  { id: 'gordos', mobs: true, name: 'SLIMES ROBUSTOS', desc: 'SLIMES CON +2 DE VIDA', col: 'g' },
+  { id: 'veneno', mobs: true, name: 'FLECHAS VENENOSAS', desc: 'LAS FLECHAS ENVENENAN: 1 MÁS AL RATO', col: 'l' },
+  { id: 'hachas', mobs: true, name: 'HACHAS DOBLES', desc: 'HACHAZOS CON +1 DE DAÑO', col: 's' },
+  { id: 'rapidos', mobs: true, name: 'ENEMIGOS VELOCES', desc: 'ENEMIGOS 25% MÁS RÁPIDOS', col: 'y' },
+  { id: 'acida', mobs: true, name: 'BABA ÁCIDA', desc: 'LAS BABAS SALPICAN EL DOBLE', col: 'g' },
+  { id: 'refuerzos', mobs: true, name: 'REFUERZOS', desc: '2 ENEMIGOS MÁS POR ZONA', col: 'r' },
+  { id: 'regen', name: 'REGENERACIÓN', desc: 'ENEMIGOS Y JEFE SE CURAN', col: 'l' },
+  { id: 'armadura', name: 'ARMADURA DEL JEFE', desc: 'EL JEFE TIENE +20 DE VIDA', col: 's' },
+  { id: 'jfuria', name: 'JEFE FURIOSO', desc: 'EL JEFE RECARGA 30% MÁS RÁPIDO', col: 'o' }
 ];
+// dibujitos de las cartas (12x12, pasan por el mismo remaster que los personajes)
+const CARD_ICON = {
+  vida: sprite(['............', '..kk....kk..', '.krrk..krrk.', 'krwrrkkrrrrk', 'krrrrrrrrrrk', 'krrrrrrrrrrk', '.krrrrrrrrk.', '..krrrrrrk..', '...krrrrk...', '....krrk....', '.....kk.....', '............']),
+  dmg: sprite(['..........kk', '.........kwk', '........kwsk', '.......kwsk.', '......kwsk..', '.k...kwsk...', '.kk.kwsk....', '..kkwsk.....', '...kyk......', '..kykkk.....', '.kyk..k.....', '.kk.........']),
+  cura: sprite(['....kkkk....', '....kook....', '.....kk.....', '....kwwk....', '...kwllgk...', '..kwlllllk..', '..klllllgk..', '..klllllgk..', '..kgllllgk..', '...kggggk...', '....kkkk....', '............']),
+  energia: sprite(['.....kk.....', '....kcck....', '...kcwcck...', '..kcwccbbk..', '..kcccbbbk..', '..kccbbbBk..', '...kcbbBk...', '...kcbbBk...', '....kbBk....', '....kbBk....', '.....kk.....', '............']),
+  veloz: sprite(['............', '.w.kkkk.....', 'ww.koook....', '.ww.kook....', '..w.kook....', '....kook....', '....koook...', '....kooookk.', '...kooooooyk', '...kkkkkkkkk', '............', '............']),
+  carga: sprite(['......kkk...', '.....kyyk...', '....kyyk....', '...kyyk.....', '..kyyykkk...', '..kkkyyyk...', '....kyyk....', '...kyyk.....', '...kyk......', '..kyk.......', '..kk........', '............']),
+  triple: sprite(['............', '.rr.....w...', '..sssssww...', '.rr.....w...', '............', '.rr.....w...', '..sssssww...', '.rr.....w...', '............', '.rr.....w...', '..sssssww...', '.rr.....w...']),
+  fantasma: sprite(['....kkkk....', '...kwwwwk...', '..kwwwwwwk..', '..kwkwwkwk..', '..kwkwwkwk..', '..kwwwwwwk..', '..kwwccwwk..', '..kwwwwwwk..', '..kwwwwwwk..', '..kwkwwkwk..', '..kk.kk.kk..', '............']),
+  muralla: sprite(['..kkkkkkkk..', '.kbbbbbbbbk.', '.kbwbbybbbk.', '.kbbbyyybbk.', '.kbbbbybbbk.', '.kbbbbybbbk.', '..kbbbbbbk..', '..kbbbbbbk..', '...kbbbbk...', '....kbbk....', '.....kk.....', '............']),
+  ira: sprite(['.....k......', '....kok.....', '....kok..k..', '...kooyk.kk.', '..kooyyokok.', '..koyyyyook.', '.kooywwyyok.', '.koyywwwyok.', '.koyywwwyok.', '..koyyyyok..', '...kkkkkk...', '............']),
+  remolino: sprite(['............', '...kkkkkk...', '.kkoooooookk', 'ko........ok', 'ko...ss...ok', '.ko..sk..ok.', '..kkoooookk.', '.....pk.....', '.....pk.....', '.....pk.....', '.....kk.....', '............']),
+  gordos: sprite(['............', '....kkkk....', '..kkggggkk..', '.kgglggggk..', '.kgggggggGk.', 'kggkggkgggGk', 'kggkggkgggGk', 'kgggggggggGk', 'kGGGGGGGGGGk', '.kkkkkkkkkk.', '............', '............']),
+  veneno: sprite(['.....kk.....', '....kllk....', '....kllk....', '...klllgk...', '..kllwlggk..', '..klwllggk..', '.kllllllggk.', '.klllllgggk.', '.kgllllgggk.', '..kggggggk..', '...kkkkkk...', '............']),
+  hachas: sprite(['..kkk.......', '.ksssk......', 'ksswssk.....', 'ksssskpk....', '.ksskpk.....', '..kkpk......', '...kpk......', '..kpk.......', '.kpk........', 'kpk.........', 'kk..........', '............']),
+  rapidos: sprite(['............', 'ww....kkkk..', '.....kwwwwk.', 'www..kwkwkwk', '.....kwwwwk.', 'ww....kwwk..', '.....kwkwk..', 'www..kkkkk..', '............', '............', '............', '............']),
+  acida: sprite(['............', '...l....l...', '..l..ll..l..', '....kllk....', '...kllllk...', '..kllggllk..', '..klgggglk..', '...kllllk...', '.l..kkkk..l.', '............', '.gggggggggg.', '............']),
+  refuerzos: sprite(['............', '.kkkk.......', 'kwwwwk.kkkk.', 'kwkwkkkwwwwk', 'kwwwwkkwkwkk', '.kwwk.kwwwwk', '.kwkk..kwwk.', '.kkk...kwkk.', '.......kkk..', '............', '............', '............']),
+  regen: sprite(['............', '....kkkk....', '....kllk....', '....kllk....', '.kkkkllkkkk.', '.kllllllllk.', '.kllllllllk.', '.kkkkllkkkk.', '....kllk....', '....kllk....', '....kkkk....', '............']),
+  armadura: sprite(['............', '...kkkkkk...', '..kssssssk..', '.ksswsssssk.', '.kssssssssk.', '.kkkkkkkkkk.', '.kSkkSSkkSk.', '.kssssssssk.', '.kssssssssk.', '..kssssssk..', '...kkkkkk...', '............']),
+  jfuria: sprite(['............', '.kkkkkkkkkk.', '.kSSSSSSSSk.', '.kSrrSSrrSk.', '.kSSrSSrSSk.', '.kSSSSSSSSk.', '.kkkkkkkkkk.', '..kpkpkpk...', '..k.k.k.k...', '............', '............', '............'])
+};
 const HBIT = {}, VBIT = {};
 HERO_CARDS.forEach((c, i) => { HBIT[c.id] = 1 << i; });
 VILLAIN_CARDS.forEach((c, i) => { VBIT[c.id] = 1 << i; });
@@ -3021,9 +3044,9 @@ const cardName = (c, kind) => typeof c.name === 'string' ? c.name : c.name[kind]
 function hasC(h, id) { return !!(h && (h.cm & HBIT[id])); }
 function hasV(id) { return !!(G && (G.vcm & VBIT[id])); }
 // reparte hasta 3 cartas que todavía no tenga
-function offerFor(key, cm) {
+function offerFor(key, cm, skip = []) {
   const pool = key === 'v'
-    ? VILLAIN_CARDS.filter(c => !(cm & VBIT[c.id]) && !(G.z >= 3 && c.mobs))
+    ? VILLAIN_CARDS.filter(c => !(cm & VBIT[c.id]) && !skip.includes(c.id) && !(G.z >= 3 && c.mobs))
     : HERO_CARDS.filter(c => !(cm & HBIT[c.id]) && (!c.only || c.only === key));
   return shuffle(pool.slice()).slice(0, 3).map(c => c.id);
 }
@@ -3032,12 +3055,14 @@ let pickRound = 0;
 function startPick() {
   const o = {};
   if (G.p) { const ids = offerFor(G.kind, G.p.cm); if (ids.length) o[G.kind] = ids; }
+  let vn = 0;
   if (G.kind === 'invade') {
-    const ids = offerFor('v', G.vcm || 0); if (ids.length) o.v = ids;
+    vn = G.heroes.filter(e => !e.dead).length; // el villano elige una carta por cada héroe
+    const ids = offerFor('v', G.vcm || 0); if (ids.length && vn) o.v = ids;
     for (const e of G.heroes) if (!e.dead && !o[e.kind]) { const h = offerFor(e.kind, e.cm); if (h.length) o[e.kind] = h; }
   }
   if (!Object.keys(o).length) return;
-  G.pick = { r: ++pickRound, t: 0, mx: G.kind === 'invade' ? 20 : 0, o, c: {} };
+  G.pick = { r: ++pickRound, t: 0, mx: G.kind === 'invade' ? 30 : 0, o, c: {}, vn, vgot: [] };
   play('posesion', { rate: 1.3, vary: false });
 }
 // qué elección me toca en esta pantalla
@@ -3051,8 +3076,8 @@ function myPickKey() {
 const PICK = { r: -1, sel: 1, done: false, l: false, rt: false, tap: -1 };
 // flechas para moverse entre cartas; ataque o salto (o tocarla) para elegir. Devuelve el número elegido.
 function pickInput(pk, key) {
-  const n = pk.o[key].length;
-  if (PICK.r !== pk.r) { PICK.r = pk.r; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; input.leftPressed = input.rightPressed = false; }
+  const n = pk.o[key].length, rid = pk.r * 10 + (key === 'v' ? (pk.vgot || []).length : 0);
+  if (PICK.r !== rid) { PICK.r = rid; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; input.leftPressed = input.rightPressed = false; }
   if (PICK.done) return null;
   if (input.leftPressed || (input.left && !PICK.l)) { PICK.sel = (PICK.sel + n - 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
   else if (input.rightPressed || (input.right && !PICK.rt)) { PICK.sel = (PICK.sel + 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
@@ -3070,7 +3095,15 @@ function updatePick(dt) {
   const pk = G.pick;
   pk.t += dt;
   const key = myPickKey();
-  if (key && pk.o[key] && pk.c[key] === undefined) { const i = pickInput(pk, key); if (i !== null) pk.c[key] = i; }
+  if (key && pk.o[key] && pk.c[key] === undefined) {
+    const i = pickInput(pk, key);
+    if (i !== null && key === 'v') {
+      // el villano junta una carta por héroe: después de cada una, se reparten tres nuevas
+      pk.vgot.push(pk.o.v[i]);
+      if (pk.vgot.length >= pk.vn) pk.c.v = -1;
+      else { const ids = offerFor('v', G.vcm || 0, pk.vgot); if (ids.length) pk.o.v = ids; else pk.c.v = -1; }
+    } else if (i !== null) pk.c[key] = i;
+  }
   for (const e of G.heroes || []) {
     if (!pk.o[e.kind] || pk.c[e.kind] !== undefined) continue;
     if (e.net && !e.dead) {
@@ -3085,10 +3118,13 @@ function finishPick() {
   G.pick = null;
   for (const key in pk.o) {
     let i = pk.c[key];
-    if (i === undefined) i = key === myPickKey() ? PICK.sel : Math.floor(Math.random() * pk.o[key].length);
+    if (i === undefined || i < 0) i = key === myPickKey() ? PICK.sel : Math.floor(Math.random() * pk.o[key].length);
     const id = pk.o[key][Math.max(0, Math.min(pk.o[key].length - 1, i))], c = cardOf(key, id);
-    if (key === 'v') { G.vcm = (G.vcm || 0) | VBIT[id]; applyVillainCard(id); if (!NET.playing || NET.role === 'host') popup(G.cam + W / 2, 40, cardName(c), PAL.p); }
-    else {
+    if (key === 'v') {
+      const got = pk.vgot.slice();
+      if (pk.c.v === undefined) { got.push(id); while (got.length < pk.vn) { const more = offerFor('v', G.vcm || 0, got); if (!more.length) break; got.push(more[0]); } }
+      got.forEach((vid, j) => { G.vcm = (G.vcm || 0) | VBIT[vid]; applyVillainCard(vid); popup(G.cam + W / 2, 40 + j * 9, cardName(cardOf('v', vid)), PAL.p); });
+    } else {
       const hs = G.p ? [G.p] : G.heroes.filter(e => e.kind === key && !e.dead);
       for (const h of hs) { h.cm |= HBIT[id]; applyHeroCard(h, id); popup((h.x || 0) + 4, (h.y || 60) - 12, cardName(c, key), PAL.y); }
     }
@@ -3355,7 +3391,7 @@ function attack() {
     if (jOn()) { p.vx += p.face * 48; p.sx = 1.2; p.sy = 0.86; flashJ('recoil'); flashJ('squash'); }
   }
 }
-const slashBoxOf = e => e.spin ? { x: e.x - 20, y: e.y - 14, w: 48, h: e.h + 20 }
+const slashBoxOf = e => e.spin ? { x: e.x - 22, y: e.y - 2, w: 52, h: e.h + 4 }
   : e.big ? (e.face > 0 ? { x: e.x + 2, y: e.y - 16, w: 36, h: e.h + 22 } : { x: e.x - 30, y: e.y - 16, w: 36, h: e.h + 22 })
   : e.face > 0 ? { x: e.x + 6, y: e.y - 8, w: 18, h: e.h + 10 } : { x: e.x - 16, y: e.y - 8, w: 18, h: e.h + 10 };
 function slashBox() { return slashBoxOf(G.p); }
@@ -4206,7 +4242,10 @@ function newInvadeMode() {
   G.banner = { text: 'MODO VILLANO', sub: 'FRENÁ A LOS HÉROES', t: 0, long: true };
   startPick();
 }
-function spawnMobs(z) { INVADE_MOBS[z].forEach((type, i) => spawnMob(z, type, i)); }
+function spawnMobs(z) {
+  INVADE_MOBS[z].forEach((type, i) => spawnMob(z, type, i));
+  if (hasV('refuerzos')) for (let i = 0; i < 2; i++) spawnMob(z, INVADE_MOBS[z][Math.floor(Math.random() * INVADE_MOBS[z].length)], 6 + i);
+}
 function spawnMob(z, type, i, late) {
   const Z = ZONES[z], plats = PLATS.filter(p => p.zone === z);
   const ground = { x: Z.start + 120, y: GROUND, w: Z.end - Z.start - 140, ground: true };
@@ -4230,7 +4269,6 @@ function enterInvadeZone(n) {
     G.ctrl = null;
     G.boss = makePlayerBoss();
     if (hasV('armadura')) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
-    startPick();
     for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = 1; }
     G.banner = { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
     play('rugido', { vary: false });
@@ -4239,7 +4277,6 @@ function enterInvadeZone(n) {
   }
   spawnMobs(n); possessNext(true);
   G.banner = { text: 'ZONA ' + (n + 1), sub: ZONES[n].name + ' · SOS ' + MOB[G.ctrl.type].name, t: 0 };
-  startPick();
 }
 function possessNext(first) {
   const alive = G.mobs.filter(m => !m.dead && m.zone === G.z);
@@ -4724,6 +4761,24 @@ function drawBoss(B, over, alpha) {
   if (!over) blitGrid(BOSS_K, BOSS_GW, BOSS_GH, gx, gy, white ? WHITE_RGB : null);
   g.restore();
 }
+// hachazo circular: el hacha gira alrededor de la cintura como un hula hula (atrás se dibuja antes que el bárbaro)
+function drawHoop(p, front) {
+  const cx = p.x + 4, cy = p.y + 7, rx = 21, ry = 5, rev = p.swingT / SK.spinGap, cols = [PAL.w, PAL.y, PAL.o, PAL.r, RAMPS.r[1]];
+  const pt = a => [Math.round((cx + Math.cos(a) * rx * p.face) * RS) / RS, Math.round((cy + Math.sin(a) * ry) * RS) / RS];
+  // el aro tenue
+  g.fillStyle = front ? RAMPS.o[2] : RAMPS.r[1];
+  for (let a = 0; a < Math.PI * 2; a += 0.12) if ((Math.sin(a) >= 0) === front) { const [x, y] = pt(a); g.fillRect(x, y, 1 / RS, 1 / RS); }
+  // el filo y su estela
+  const head = rev * Math.PI * 2 + Math.PI / 2;
+  for (let k = 22; k >= 0; k--) {
+    const a = head - k * 0.09;
+    if ((Math.sin(a) >= 0) !== front) continue;
+    const [x, y] = pt(a), sz = k < 3 ? 2 : 1;
+    g.fillStyle = cols[Math.min(cols.length - 1, Math.floor(k / 5))];
+    g.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+  }
+  if (front || Math.sin(head) < 0) { const [x, y] = pt(head); g.fillStyle = PAL.s; g.fillRect(x - 1.5, y - 2, 3, 3); g.fillStyle = PAL.w; g.fillRect(x - 1, y - 1.5, 1, 1); }
+}
 function drawPip(p, kind, isPlayer) {
   if (p.inv > 0 && !p.dead && (!isPlayer || p.inv < 1.3) && Math.floor(p.inv * 16) % 2) return;
   const H2 = HEROES[kind];
@@ -4743,6 +4798,8 @@ function drawPip(p, kind, isPlayer) {
     for (let k = 2; k >= 1; k--) { g.globalAlpha = 0.42 / k; drawScaled(ghost, p.x + 4 + p.face - p.face * 7 * k, p.y + p.h + bob, 1, 1); }
     g.globalAlpha = 1;
   }
+  const hoop = MELEE(kind) && p.spin && p.swingT < (p.spinN || 2) * SK.spinGap && jOn();
+  if (hoop) drawHoop(p, false);
   // intangible: se ve medio transparente
   if (p.ghostT > 0 && !p.dead) g.globalAlpha = Math.floor(G.t * 30) % 2 ? 0.45 : 0.75;
   if (jOn()) drawScaled(img, p.x + 4 + p.face, p.y + p.h + bob, p.sx, p.sy);
@@ -4755,9 +4812,7 @@ function drawPip(p, kind, isPlayer) {
     for (let i = 0; i < 3; i++) { const k = (G.t * 2.3 + i / 3) % 1; g.fillStyle = k < 0.5 ? PAL.y : PAL.r; g.fillRect(Math.round(p.x + 1 + ((i * 37 + Math.floor(G.t * 3)) % 7)), Math.round(p.y + 10 - k * 14), 1, 1); }
   }
   if (swinging && p.spin) {
-    // hachazo circular: un anillo de fuego por cada vuelta
-    const k = Math.min((p.spinN || 2) - 1, spinIdx(p)), t = p.swingT - k * SK.spinGap;
-    if (jOn()) drawArc(p.x + 4, p.y + 5, k % 2 ? -p.face : p.face, 13, 22, -90, 360, t, SK.spinGap, ARC_FIRE);
+    if (hoop) drawHoop(p, true);
   } else if (swinging && kind === 'barb') {
     if (jOn() && p.swingT < 0.16) drawArc(p.x + 4 + p.face * 2, p.y + 5, p.face, 10, 17, -120, 200, p.swingT, 0.16, ARC_FIRE);
   } else if (swinging) {
@@ -5073,32 +5128,54 @@ function wrapText(str, n) {
   return out;
 }
 const PICK_X = n => Array.from({ length: n }, (_, i) => Math.round(W / 2 - (n * 80 + (n - 1) * 5) / 2 + i * 85));
+// una carta: marco, cinta con el tipo, dibujito, nombre y efecto
+function drawCard(c, key, x, on, dim, picked) {
+  if (!c) return;
+  const villain = key === 'v', w = 80, h = 98, y = 25 - (on ? 3 : 0);
+  const frame = villain ? RAMPS.r : RAMPS.g, ramp = RAMPS[c.col] || RAMPS.s;
+  // sombra y marco doble
+  g.fillStyle = PAL.k; g.fillRect(x + 2, y + 2, w, h);
+  g.fillStyle = on ? (picked || Math.floor(G.t * 6) % 2 ? PAL.y : PAL.o) : frame[1]; g.fillRect(x - 1, y - 1, w + 2, h + 2);
+  g.fillStyle = PAL.k; g.fillRect(x, y, w, h);
+  g.fillStyle = frame[2]; g.fillRect(x + 2, y + 2, w - 4, h - 4);
+  g.fillStyle = '#10121e'; g.fillRect(x + 3, y + 3, w - 6, h - 6);
+  // cinta de arriba
+  const tag = villain ? 'VILLANO' : c.only ? KIND_NAME[c.only] : 'HÉROE';
+  g.fillStyle = frame[1]; g.fillRect(x + 8, y + 1, w - 16, 9); g.fillStyle = frame[3]; g.fillRect(x + 8, y + 1, w - 16, 1);
+  drawText(g, tag, x + w / 2, y + 2, PAL.w, 1, 'center');
+  // ventana del dibujo con el color de la carta
+  g.fillStyle = ramp[0]; g.fillRect(x + 12, y + 13, w - 24, 38);
+  g.fillStyle = ramp[1]; g.fillRect(x + 12, y + 13, w - 24, 2); g.fillRect(x + 12, y + 47, w - 24, 4);
+  g.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = 0; k < 5; k++) g.fillRect(x + 14 + k * 11, y + 15, 1, 32);
+  const icon = CARD_ICON[c.id], bob = on && !picked ? Math.round(Math.sin(G.t * 5)) : 0;
+  if (icon) g.drawImage(icon, x + w / 2 - 12, y + 19 + bob, 24, 24);
+  // nombre y efecto
+  const name = wrapText(norm(cardName(c, key)), 12).slice(0, 2);
+  name.forEach((ln, j) => drawText(g, ln, x + w / 2, y + 55 + j * 8 + (name.length === 1 ? 4 : 0), PAL.w, 1, 'center'));
+  g.fillStyle = frame[1]; g.fillRect(x + 10, y + 72, w - 20, 1);
+  wrapText(norm(c.desc), 12).slice(0, 3).forEach((ln, j) => drawText(g, ln, x + w / 2, y + 75 + j * 7, PAL.s, 1, 'center', null));
+  // marquita en la esquina: corazón del héroe o cruz del villano
+  g.fillStyle = villain ? PAL.r : PAL.l;
+  if (villain) { g.fillRect(x + w - 8, y + h - 8, 1, 1); g.fillRect(x + w - 6, y + h - 8, 1, 1); g.fillRect(x + w - 7, y + h - 7, 1, 1); g.fillRect(x + w - 8, y + h - 6, 1, 1); g.fillRect(x + w - 6, y + h - 6, 1, 1); }
+  else { g.fillRect(x + w - 8, y + h - 8, 1, 1); g.fillRect(x + w - 6, y + h - 8, 1, 1); g.fillRect(x + w - 8, y + h - 7, 3, 1); g.fillRect(x + w - 7, y + h - 6, 1, 1); }
+  if (dim) { g.fillStyle = 'rgba(10,10,24,0.6)'; g.fillRect(x - 1, y - 1, w + 4, h + 4); }
+  if (picked) drawText(g, '¡ELEGIDA!', x + w / 2, y + h - 1, PAL.y, 1, 'center');
+}
 // la elección de cartas, dibujada encima del juego congelado
 function drawPicker() {
   const pk = G.pick, key = myPickKey(), done = Array.isArray(pk.c) ? pk.c : Object.keys(pk.c);
   g.fillStyle = 'rgba(10,10,24,0.78)'; g.fillRect(0, 0, W, H);
   const mine = key && pk.o[key], chose = mine && (done.includes(key) || (PICK.r === pk.r && PICK.done));
-  drawText(g, mine ? (chose ? '¡LISTO!' : 'ELEGÍ UNA CARTA') : 'ELIGIENDO CARTAS...', W / 2, 5, PAL.y, 2, 'center');
-  drawText(g, mine ? (key === 'v' ? 'PARA TUS ENEMIGOS' : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO', W / 2, 19, PAL.s, 1, 'center');
+  drawText(g, mine ? (chose ? '¡LISTO!' : 'ELEGÍ UNA CARTA') : 'ELIGIENDO CARTAS...', W / 2, 3, PAL.y, 2, 'center');
+  drawText(g, mine ? (key === 'v' ? 'PARA TUS ENEMIGOS · ' + Math.min(pk.vn, (pk.vgot || []).length + 1) + ' DE ' + pk.vn : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO', W / 2, 16, PAL.s, 1, 'center');
   if (mine) {
     const ids = pk.o[key], xs = PICK_X(ids.length), sel = PICK.r === pk.r ? PICK.sel : 1;
-    ids.forEach((id, i) => {
-      const c = cardOf(key, id); if (!c) return;
-      const on = i === sel, x = xs[i], y = 30 - (on ? 3 : 0), w = 80, h = 88, dim = chose && !on;
-      const ramp = RAMPS[c.col] || RAMPS.s;
-      g.fillStyle = on ? (Math.floor(G.t * 6) % 2 || chose ? PAL.y : PAL.o) : PAL.S; g.fillRect(x - 1, y - 1, w + 2, h + 2);
-      g.fillStyle = PAL.k; g.fillRect(x, y, w, h);
-      g.fillStyle = ramp[1]; g.fillRect(x + 1, y + 1, w - 2, 22);
-      g.fillStyle = ramp[2]; g.fillRect(x + 1, y + 1, w - 2, 1);
-      wrapText(norm(cardName(c, key)), 12).slice(0, 2).forEach((ln, j) => drawText(g, ln, x + w / 2, y + 4 + j * 9, PAL.w, 1, 'center'));
-      wrapText(norm(c.desc), 12).slice(0, 7).forEach((ln, j) => drawText(g, ln, x + w / 2, y + 28 + j * 8, dim ? PAL.S : PAL.s, 1, 'center', null));
-      if (dim) { g.fillStyle = 'rgba(10,10,24,0.55)'; g.fillRect(x, y, w, h); }
-    });
+    ids.forEach((id, i) => drawCard(cardOf(key, id), key, xs[i], i === sel, chose && i !== sel, chose && i === sel));
   }
   const wait = Object.keys(pk.o).filter(k => !done.includes(k) && k !== key).map(k => k === 'v' ? 'VILLANO' : KIND_NAME[k]);
-  if (wait.length) drawText(g, 'ESPERANDO: ' + wait.join(' · '), W / 2, 124, PAL.c, 1, 'center');
-  if (mine && !chose) drawText(g, '< > ELEGIR · ATAQUE O SALTO CONFIRMA', W / 2, 134, PAL.y, 1, 'center');
-  else if (pk.mx) drawText(g, 'SIGUE EN ' + Math.max(0, Math.ceil(pk.mx - pk.t)), W / 2, 134, PAL.s, 1, 'center');
+  if (wait.length) drawText(g, 'ESPERANDO: ' + wait.join(' · '), W / 2, 127, PAL.c, 1, 'center');
+  if (mine && !chose) drawText(g, '< > ELEGIR · ATAQUE O SALTO CONFIRMA', W / 2, 136, PAL.y, 1, 'center');
+  else if (pk.mx) drawText(g, 'SIGUE EN ' + Math.max(0, Math.ceil(pk.mx - pk.t)), W / 2, 136, PAL.s, 1, 'center');
 }
 // medidor de energía con marcas de lo que cuesta cada especial
 function drawEnergy(x, y, w, h, kind) {
@@ -5210,7 +5287,7 @@ cv.addEventListener('pointerdown', e => {
     if (key && G.pick.o[key]) {
       const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) / r.width * W, ly = (e.clientY - r.top) / r.height * H;
       const xs = PICK_X(G.pick.o[key].length), i = xs.findIndex(x => lx >= x && lx <= x + 80);
-      if (i >= 0 && ly >= 24 && ly <= 122) PICK.tap = i;
+      if (i >= 0 && ly >= 22 && ly <= 124) PICK.tap = i;
     }
     return;
   }

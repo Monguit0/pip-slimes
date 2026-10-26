@@ -32,13 +32,13 @@ Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con s
 
 - **Bárbaro** (`5` o el botón *Bárbaro*): más rápido que el caballero, hachazos lentos pero fuertes.
   Su especial es la **furia**: unos segundos de más daño, y cuanto menos vida tenga al activarla, más fuerte
-  (de x1,25 con la vida llena a más de x2 casi muerto). Su ataque cargado es un **hachazo circular** que golpea
-  alrededor (adelante y atrás) dos veces.
+  (de x1,15 con la vida llena a x1,6 casi muerto). Su ataque cargado es un **hachazo circular**: el hacha gira
+  alrededor de la cintura como un hula hula y golpea adelante y atrás dos veces.
 
 ## Cartas
-Al empezar cada zona y antes del jefe, cada héroe y el villano eligen 1 carta entre 3 (con las flechas y ataque o salto,
-o tocándola). Se van sumando hasta el final. En la campaña también las elige tu héroe; en el online el juego espera
-a que todos elijan (como mucho 20 segundos) y los bots eligen solos.
+Al empezar la partida cada héroe elige 1 carta entre 3 (con las flechas y ataque o salto, o tocándola) y el villano
+elige una por cada héroe. Duran toda la partida. En la campaña también elige tu héroe; en el online el juego espera
+a que todos elijan (como mucho 30 segundos) y los bots eligen solos.
 - Héroes: más vida, +1 de daño (arco reforzado, espada afilada, hacha pesada), poción que te cura al bajar de la mitad,
   energía más rápida, botas ligeras, carga rápida, y cartas propias: flecha triple y paso fantasma (arquero),
   escudo liviano (caballero), sangre caliente y remolino (bárbaro).
