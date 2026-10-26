@@ -5111,6 +5111,13 @@ function updateMobs(dt) {
   G.mobs = G.mobs.filter(m => !(m.dead && m.deadT <= 0));
 }
 // vuelo del murciélago: va hacia (ax, ay) con suavidad
+// la superficie más cercana debajo del murciélago; el borde de abajo del bicho queda a lo sumo 40 px arriba (un salto llega a ~49)
+function batCeiling(m) {
+  const cx = m.x + m.w / 2, foot = m.y + m.h;
+  let floor = GROUND;
+  for (const s of SURFACES) if (cx >= s.x && cx <= s.x + s.w && s.y >= foot - 2 && s.y < floor) floor = s.y;
+  return floor - 40 - m.h;
+}
 function batFly(m, dt, ax, ay, speed) {
   const Z = ZONES[m.zone], cx = m.x + m.w / 2, cy = m.y + m.h / 2, dx = ax - cx, dy = ay - cy, d = Math.hypot(dx, dy) || 1;
   const sp = speed * (hasV('rapidos') ? 1.25 : 1);
@@ -5120,6 +5127,9 @@ function batFly(m, dt, ax, ay, speed) {
   m.x += m.vx * dt; m.y += m.vy * dt;
   const lo = Z.start + 4, hi = (m.zone < 3 ? GATES[m.zone].x : Z.end) - m.w;
   m.x = Math.max(lo, Math.min(hi, m.x)); m.y = Math.max(8, Math.min(GROUND - m.h - 1, m.y));
+  // techo: no puede volar más alto que lo que un héroe alcanza saltando desde el piso o la plataforma de abajo
+  const ceil = batCeiling(m);
+  if (m.y < ceil) { m.y = Math.min(ceil, m.y + 140 * dt); m.vy = Math.max(m.vy, 0); }
   m.onGround = false; m.runT = 0;
   if (m.inv > 0) m.inv -= dt;
 }
