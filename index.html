@@ -3124,7 +3124,7 @@ function updateHazards(dt) {
       h.vy += 700 * dt; h.y += h.vy * dt;
       if (jOn()) G.parts.push({ x: h.x, y: h.y, vx: 0, vy: 0, g: 0, life: 0.12, max: 0.12, c: h.big ? PAL.c : PAL.S, s: 1 });
       const box = hazBox(h);
-      if (bossCtl()) { const e = G.heroes.find(e => !e.dead && e.inv <= 0 && overlap(e, box)); if (e) { h.phase = 'gone'; hitHero(e, 1, Math.sign(e.x + 4 - h.x) || 1); continue; } }
+      if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e) { h.phase = 'gone'; hitHero(e, 1, Math.sign(e.x + 4 - h.x) || 1); continue; } }
       else if (G.state === 'play' && p.inv <= 0 && overlap(p, box)) { h.phase = 'gone'; hurt(Math.sign(p.x + 4 - h.x) || 1); continue; }
       for (const s of G.slimes) if (!s.dead && s.spawn <= 0 && overlap(s, box)) killSlime(s, 'trap', 0, false);
       if (h.y + box.h >= h.landY + 2) {
@@ -3406,7 +3406,7 @@ function updateWaves(dt) {
     if (jOn() && Math.random() < 0.5) G.parts.push({ x: w.x, y: GROUND - 2, vx: -w.dir * 20, vy: -30, g: 200, life: 0.3, max: 0.3, c: Math.random() < 0.5 ? PAL.s : PAL.c, s: 1 });
     if (w.x < ARENA.min - 4 || w.x > ARENA.max + 4) w.dead = true;
     const wb = { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 };
-    if (bossCtl()) { for (const e of G.heroes) if (!e.dead && e.inv <= 0 && overlap(e, wb)) hitHero(e, 1, w.dir); }
+    if (bossCtl()) { for (const e of G.heroes) if (!e.dead && !e.net && e.inv <= 0 && overlap(e, wb)) hitHero(e, 1, w.dir); }
     else if (G.state === 'play' && p.inv <= 0 && overlap(p, wb)) { hurt(w.dir); w.dead = true; }
   }
   G.waves = G.waves.filter(w => !w.dead);
@@ -3635,7 +3635,7 @@ function playerBossAct(B, dt) {
     }
     if (B.t > 0.04 && B.t < 0.17) {
       const hb = B.face > 0 ? { x: B.x + 12, y: GROUND - 44, w: 50, h: 44 } : { x: B.x + 10 - 50, y: GROUND - 44, w: 50, h: 44 };
-      for (const e of G.heroes) if (!e.dead && e.lastSwing !== B.swingId && overlap(e, hb)) { e.lastSwing = B.swingId; hitHero(e, 2, B.face); }
+      for (const e of G.heroes) if (!e.dead && !e.net && e.lastSwing !== B.swingId && overlap(e, hb)) { e.lastSwing = B.swingId; hitHero(e, 2, B.face); }
       for (const a of G.arrows) if (!a.stuck && !a.dead && overlap({ x: a.x, y: a.y, w: 8, h: 3 }, hb)) { a.dead = true; play('clavar', { rate: 1.9, vol: 0.5 }); burst(a.x + 4, a.y + 1, 6, [PAL.y, PAL.w], 70, 30, 220, 0.3); }
     }
     if (B.t > 0.26) { setState(B, 'rec'); B.recDur = 0.12; }
@@ -3645,7 +3645,7 @@ function playerBossAct(B, dt) {
       if (B.vy > 0 && B.y >= GROUND - BH) {
         B.y = GROUND - BH; B.landed = true; B.vx = 0; B.angle = 75; B.crouch = 3; B.sx = 1.4; B.sy = 0.65;
         slamFX(B.x + BW / 2, 6, true);
-        for (const e of G.heroes) if (!e.dead && overlap(e, { x: B.x - 4, y: B.y, w: BW + 8, h: BH })) hitHero(e, 2, Math.sign(e.x + 4 - (B.x + BW / 2)) || 1);
+        for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, { x: B.x - 4, y: B.y, w: BW + 8, h: BH })) hitHero(e, 2, Math.sign(e.x + 4 - (B.x + BW / 2)) || 1);
         setState(B, 'rec'); B.recDur = 0.3;
       }
     }
@@ -3700,6 +3700,7 @@ function updateHeroes(dt) {
       e.hitSwing = true;
       bossTakeHit(2, e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
     }
+    if (e.net) continue; // pisotón y choque con el jefe los avisa la pantalla del jugador
     if (e.vy > 20 && e.prevBottom <= B.y + 2 && overlap(e, bossHead(B))) {
       kick(e, e.vx, -250, 2);
       play('pisoton', { rate: 0.8 });
@@ -5062,8 +5063,8 @@ function netPack(now) {
   const fresh = [];
   for (const q of G.parts) if (!q._n) { q._n = 1; fresh.push(q); }
   w.list(fresh.slice(-90).map(q => [H2(q.x), H2(q.y), q.vx, q.vy, (q.g || 0) / 10, cIdx(q.c), (q.s || 1) | (q.star ? 8 : 0), C2(Math.max(0, q.life)), C2(q.max), q.o || 0]), SP.p);
-  // sonidos de los últimos 300 ms (si se pierde una foto, viajan en la siguiente)
-  w.list(NET.sq.filter(q => now - q[7] < 300).slice(-10).map(q => [q[0], enumOf(SND_LIST, q[1]), q[2], q[3], q[4], q[5], q[6]]), SP.snd);
+  // sonidos de los últimos 160 ms (si se pierde una foto, viajan en las siguientes)
+  w.list(NET.sq.filter(q => now - q[7] < 160).slice(-10).map(q => [q[0], enumOf(SND_LIST, q[1]), q[2], q[3], q[4], q[5], q[6]]), SP.snd);
   return { T: Math.round(now), bin: w.out() };
 }
 const b64e = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
@@ -5126,7 +5127,7 @@ function netView(now, real) {
   if (!S.length) return null;
   let mn = Infinity, sum = 0;
   for (const o of NET.offs) { if (o < mn) mn = o; sum += o; }
-  const want = Math.max(50, Math.min(150, 45 + 2 * (sum / NET.offs.length - mn)));
+  const want = Math.max(35, Math.min(150, 30 + 2 * (sum / NET.offs.length - mn)));
   NET.buf = NET.buf ? NET.buf + (want - NET.buf) * 0.05 : want;
   const tgt = now - mn - NET.buf;
   NET.tgt = tgt;
@@ -5249,6 +5250,7 @@ function netPredict(real) {
   heroPhysics(m, dt);
   const B = G.boss, bossOn = B && G.z === 3 && B.state !== 'dying' && B.state !== 'gone';
   // pisotón: rebota ya y le avisa al villano a quién pisó
+  let onHead = false;
   if (m.vy > 20) {
     const mob = G.mobs.find(o => !o.dead && o.spawn <= 0 && overlap(m, o) && m.prevBottom <= o.y + 3);
     const head = !mob && bossOn && m.prevBottom <= B.y + 2 && overlap(m, bossHead(B));
@@ -5256,6 +5258,7 @@ function netPredict(real) {
       m.vy = head ? -250 : -230; m.onGround = false; m.cut = true; m.bounceAt = now;
       if (jOn()) { m.sx = 0.8; m.sy = 1.25; }
       if (mob) { netHitReport(2, mob.id, 0); play('pisoton'); }
+      else { onHead = true; netHitReport(11, 0, 0); play('pisoton', { rate: 0.8 }); }
     }
   }
   // lo que te pega en esta pantalla, te pega
@@ -5272,8 +5275,17 @@ function netPredict(real) {
       const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
       if (tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 1 && tipY <= m.y + m.h) { hit = [5, a.id, a.face || 1]; break; }
     }
+    // el jefe: tajo, salto aplastante, choque (más fuerte en la embestida), ondas y espadas que caen
+    if (!hit && bossOn) {
+      const dirB = Math.sign((m.x + 4) - (B.x + BW / 2)) || 1;
+      if (B.state === 'act' && B.atk === 'sweep' && B.t > 0.04 && B.t < 0.17 && overlap(m, B.face > 0 ? { x: B.x + 12, y: GROUND - 44, w: 50, h: 44 } : { x: B.x + 10 - 50, y: GROUND - 44, w: 50, h: 44 })) hit = [7, 0, B.face || 1, 2];
+      else if (B.atk === 'slam' && B.state === 'rec' && B.landed && B.t < 0.12 && overlap(m, { x: B.x - 4, y: B.y, w: BW + 8, h: BH })) hit = [8, 0, dirB, 2];
+      else if (!onHead && overlap(m, bossBody(B))) hit = [6, 0, dirB, B.state === 'act' && B.atk === 'charge' ? 2 : 1];
+    }
+    if (!hit) for (const w of G.waves) if (overlap(m, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { hit = [9, w.id, w.dir || 1, 1]; break; }
+    if (!hit) for (const h of G.hazards) if (h.phase === 'fall' && overlap(m, hazBox(h))) { hit = [10, h.id, Math.sign(m.x + 4 - h.x) || 1, 1]; break; }
     if (hit) {
-      netHitReport(hit[0], hit[1], hit[2]);
+      netHitReport(hit[0], hit[1], hit[2], hit[3] || 1);
       m.hurtAt = now; m.knockAt = now; m.invL = 0.75;
       m.vx = hit[2] * 170; m.vy = -200; m.onGround = false; m.cut = true;
       play('dano', { rate: 1.3, vol: 0.8 });
@@ -5298,9 +5310,9 @@ function netPredict(real) {
   G.arrows = G.arrows.filter(a => a.o !== m.id).concat(NET.myArrows);
   netSendIn(m);
 }
-function netHitReport(kind, id, dir) {
+function netHitReport(kind, id, dir, dmg = 1) {
   NET.hitSeq++;
-  NET.hits.push([NET.hitSeq, kind, id, dir]);
+  NET.hits.push([NET.hitSeq, kind, id, dir, dmg]);
   if (NET.hits.length > 5) NET.hits.shift();
 }
 // mis flechas, con la misma física que las del juego; se clavan o desaparecen al tocar algo de esta pantalla
@@ -5329,7 +5341,7 @@ function netSendIn(m) {
   const key = JSON.stringify(inp);
   if (key === NET.sentIn) return;
   const urgent = m && (m.ak !== NET.sentAk || NET.hitSeq !== NET.sentHit);
-  if (now - NET.sentAt < 30 && !urgent) return;
+  if (now - NET.sentAt < (NET.room.binary ? 15 : 30) && !urgent) return;
   NET.sentIn = key; NET.sentAt = now; NET.sentAk = m ? m.ak : 0; NET.sentHit = NET.hitSeq;
   NET.room.presence({ in: inp }).catch(() => {});
 }
@@ -5357,7 +5369,8 @@ function netHostFrame(now) {
     const want = NET.slots[e.kind] || null;
     if (e.net !== want) { e.net = want; e.akSeen = undefined; e.hitSeen = undefined; e.lastIn = null; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
   }
-  if (now - NET.sendT >= 33) {
+  // con el servidor propio, 60 fotos por segundo; la sala de claude.ai tiene un límite de mensajes, ahí 30
+  if (now - NET.sendT >= (r.binary ? 15 : 32)) {
     NET.sendT = now;
     const s = netPack(now);
     r.presence({ s: r.binary ? s : netText(s) }).catch(() => {});
@@ -5382,6 +5395,9 @@ function netHero(e, dt) {
       if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
       else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false); if (s) splat(s); }
       else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; hitHero(e, 1, dir, a ? a.player : false); }
+      else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir); }
+      else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
+      else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir); // jefe: choque, tajo, salto aplastante u onda
       else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? 2 : 1, dir, m ? m.player : false); }
       NET.sndOwner = null;
     }

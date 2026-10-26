@@ -9,12 +9,13 @@ el servidor lleva todo por WebSocket, así que siempre conecta. Los héroes ven 
 `DIR` = directo, `RLY` = por el relé de Cloudflare (ver abajo), `SRV` = por el servidor.
 
 Cómo se reparte el trabajo:
-- El villano corre la partida y manda una foto del mundo 30 veces por segundo, en binario: unos 250 bytes
+- El villano corre la partida y manda una foto del mundo 60 veces por segundo, en binario: unos 250 bytes
   (hasta ~900 en la pelea con el jefe), así entra en un solo paquete. Partículas y sonidos viajan como eventos:
   cada pantalla los genera y los reproduce cuando su imagen llega a ese momento.
 - Cada héroe se mueve, salta, dispara y rebota **al instante en su propia pantalla** y le avisa al villano dónde está.
-- **Lo que te pega en tu pantalla, te pega**: contacto con enemigos, hachazos, babas y flechas los detecta la pantalla
-  del héroe y se los avisa al villano. El jefe y la lluvia de espadas los sigue decidiendo el villano.
+- **Lo que te pega en tu pantalla, te pega**: enemigos, hachazos, babas, flechas y todos los ataques del Mega Caballero
+  (choque, embestida, tajo, salto aplastante, ondas y lluvia de espadas) los detecta la pantalla del héroe y se los
+  avisa al villano. Los pisotones, también.
 - Si el villano cambia de pestaña, la partida sigue corriendo. Si su navegador se congela (por ejemplo, salió de la app
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
@@ -29,9 +30,11 @@ Cómo se reparte el trabajo:
 El plan gratuito duerme el servicio después de un rato sin visitas: la primera vez que alguien entra
 puede tardar cerca de un minuto en despertar. Después anda normal.
 
-### Relé gratis de Cloudflare (recomendado)
+### Relé de Cloudflare (opcional, cobra por uso)
 Algunas redes (sobre todo datos móviles) no dejan conectar directo. Con un relé TURN cercano esos jugadores no tienen
-que pasar por el servidor de EE.UU. Cloudflare da 1.000 GB por mes gratis, que alcanza para cientos de horas de juego.
+que pasar por el servidor de EE.UU. Cloudflare da 1.000 GB por mes gratis (este juego usa como mucho ~115 MB por hora
+por jugador relayado), pero **cobra lo que pase de ahí y no tiene tope**. Si no querés ese riesgo, no lo actives:
+el juego funciona igual, solo que esos jugadores van por el servidor.
 1. Entrá a dash.cloudflare.com (cuenta gratis) → **Realtime** (antes "Calls") → **TURN** → crear una clave.
 2. Copiá el **Token ID** y el **API Token**.
 3. En Render, en el servicio → **Environment**, agregá `CF_TURN_KEY_ID` (el Token ID) y `CF_TURN_API_TOKEN` (el API Token) y guardá.
