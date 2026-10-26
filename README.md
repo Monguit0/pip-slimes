@@ -16,16 +16,28 @@ Cómo se reparte el trabajo:
   (hasta ~900 en la pelea con el jefe), así entra en un solo paquete. Partículas y sonidos viajan como eventos:
   cada pantalla los genera y los reproduce cuando su imagen llega a ese momento.
 - Cada héroe se mueve, salta, dispara y rebota **al instante en su propia pantalla** y le avisa al villano dónde está.
-- **Lo que te pega en tu pantalla, te pega**: enemigos, hachazos, babas, flechas y todos los ataques del Mega Caballero
-  (choque, embestida, tajo, salto aplastante, ondas y lluvia de espadas) los detecta la pantalla del héroe y se los
+- **Lo que te pega en tu pantalla, te pega**: enemigos, hachazos, babas, flechas y todos los ataques de los jefes
+  (choque, embestida, tajo o zarpazo, salto aplastante, ondas, lluvia de espadas o de rocas, pinchos) los detecta la pantalla del héroe y se los
   avisa al villano. Los pisotones, también.
 - Si el villano cambia de pestaña, la partida sigue corriendo. Si su navegador se congela (por ejemplo, salió de la app
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
+## Nivel 2 · El Bosque Oscuro
+Al vencer al Mega Caballero la aventura sigue: una noche de luna roja en el bosque (Linde del bosque, Bosque oscuro,
+Ciénaga de raíces) y al final la cueva del **Campeón**, un lobo gigante todo negro. Al empezar el nivel se vuelve a
+elegir carta (se suman a las que ya tenías).
+- **Enemigos nuevos**: **slimes tóxicos** (si te tocan o te escupen, te envenenan: perdés vida de a poco hasta que se
+  pasa), **murciélagos** que vuelan y se tiran en picada, y **lobeznos** que corren y te muerden de un salto.
+- **Trampas**: pinchos en el suelo que asoman (aviso) y salen cada pocos segundos. Del cielo caen ramas en vez de flechas.
+- **El Campeón**: zarpazo, salto aplastante con ondas, **embestida** rapidísima de pared a pared (en la furia, ida y
+  vuelta) y un **aullido** que hace caer rocas del techo de la cueva. Se le pega pisándole el lomo.
+- **Villano y online**: si los héroes vencen al Mega Caballero, el villano tiene revancha en el bosque: maneja a los
+  bichos nuevos y, en la guarida, al Campeón. Los héroes caídos vuelven con media vida y todos eligen carta de nuevo.
+
 ## Música
 Es una sola canción que cambia de ánimo según lo que pasa: tranquila y sin batería en el título, sin melodía mientras
 se eligen cartas, un poco más rápida y en otro tono en cada zona, solo tambores cuando entra el jefe, a toda velocidad
-cuando se enfurece, lenta y apagada en la derrota, y como bajo el agua cuando estás en peligro (te queda poca vida).
+cuando se enfurece, más grave y apagada en el bosque, todavía más rápida contra el Campeón, lenta y apagada en la derrota, y como bajo el agua cuando estás en peligro (te queda poca vida).
 Los cambios entran a tiempo, cada medio compás. Si tocás los controles de la placa de música, mandás vos hasta la
 próxima partida.
 
