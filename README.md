@@ -1,7 +1,8 @@
 # Pip y los Slimes · online con servidor propio
 
 Plataformas pixel art de 16 bits con juice, un jefe gigante y modo online: quien crea la sala es el
-**villano** y hasta dos amigos juegan de **arquero** y **caballero** (si falta alguno, lo maneja un bot).
+**villano** y hasta tres amigos juegan de **arquero**, **caballero** y **bárbaro** (si falta alguno, lo maneja un bot,
+y cualquiera puede tomarlo desde el panel de la sala con **Jugar con este** / **Cambiar a este**, incluso en plena partida).
 
 Una sola app de Node: sirve el juego (`index.html`) y reparte los mensajes del online por WebSocket (`/ws`).
 Los jugadores intentan conectarse directo entre sí (WebRTC, el camino más rápido) y, si la red no lo permite,
@@ -28,6 +29,21 @@ Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con s
 - **Ataques cargados** (mantené `X` y soltá cuando brille): el arquero tira un flechazo que atraviesa a todos los enemigos
   y pega más fuerte (mientras carga no se puede mover; saltar cancela la carga). El caballero hace un espadazo con más
   alcance y daño que además rompe babas, flechas, espadas que caen y ondas del jefe.
+
+- **Bárbaro** (`5` o el botón *Bárbaro*): más rápido que el caballero, hachazos lentos pero fuertes.
+  Su especial es la **furia**: unos segundos de más daño, y cuanto menos vida tenga al activarla, más fuerte
+  (de x1,25 con la vida llena a más de x2 casi muerto). Su ataque cargado es un **hachazo circular** que golpea
+  alrededor (adelante y atrás) dos veces.
+
+## Cartas
+Al empezar cada zona y antes del jefe, cada héroe y el villano eligen 1 carta entre 3 (con las flechas y ataque o salto,
+o tocándola). Se van sumando hasta el final. En la campaña también las elige tu héroe; en el online el juego espera
+a que todos elijan (como mucho 20 segundos) y los bots eligen solos.
+- Héroes: más vida, +1 de daño (arco reforzado, espada afilada, hacha pesada), poción que te cura al bajar de la mitad,
+  energía más rápida, botas ligeras, carga rápida, y cartas propias: flecha triple y paso fantasma (arquero),
+  escudo liviano (caballero), sangre caliente y remolino (bárbaro).
+- Villano: slimes con más vida, flechas venenosas, hachas dobles, enemigos veloces, baba ácida, refuerzos,
+  regeneración, armadura del jefe y jefe furioso.
 
 En el online todo esto se decide en la pantalla de cada héroe, igual que los golpes: si en tu pantalla el escudo frenó
 la flecha o tu espadazo rompió la baba, para el villano también.
