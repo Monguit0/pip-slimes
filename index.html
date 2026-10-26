@@ -3075,8 +3075,10 @@ function myPickKey() {
 }
 const PICK = { r: -1, sel: 1, done: false, l: false, rt: false, tap: -1 };
 // flechas para moverse entre cartas; ataque o salto (o tocarla) para elegir. Devuelve el número elegido.
+// número de cada elección (el villano tiene una por héroe)
+const pickRid = (pk, key) => pk.r * 10 + (key === 'v' ? (pk.vgot || []).length : 0);
 function pickInput(pk, key) {
-  const n = pk.o[key].length, rid = pk.r * 10 + (key === 'v' ? (pk.vgot || []).length : 0);
+  const n = pk.o[key].length, rid = pickRid(pk, key);
   if (PICK.r !== rid) { PICK.r = rid; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; input.leftPressed = input.rightPressed = false; }
   if (PICK.done) return null;
   if (input.leftPressed || (input.left && !PICK.l)) { PICK.sel = (PICK.sel + n - 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
@@ -5159,17 +5161,20 @@ function drawCard(c, key, x, on, dim, picked) {
   if (villain) { g.fillRect(x + w - 8, y + h - 8, 1, 1); g.fillRect(x + w - 6, y + h - 8, 1, 1); g.fillRect(x + w - 7, y + h - 7, 1, 1); g.fillRect(x + w - 8, y + h - 6, 1, 1); g.fillRect(x + w - 6, y + h - 6, 1, 1); }
   else { g.fillRect(x + w - 8, y + h - 8, 1, 1); g.fillRect(x + w - 6, y + h - 8, 1, 1); g.fillRect(x + w - 8, y + h - 7, 3, 1); g.fillRect(x + w - 7, y + h - 6, 1, 1); }
   if (dim) { g.fillStyle = 'rgba(10,10,24,0.6)'; g.fillRect(x - 1, y - 1, w + 4, h + 4); }
+  // flechita que salta sobre la carta marcada
+  if (on && !picked) { const ay = y + h + 3 + (Math.floor(G.t * 4) % 2); g.fillStyle = PAL.y; for (let k = 0; k < 4; k++) g.fillRect(x + w / 2 - 3 + k, ay + k, 7 - k * 2, 1); }
   if (picked) drawText(g, '¡ELEGIDA!', x + w / 2, y + h - 1, PAL.y, 1, 'center');
 }
 // la elección de cartas, dibujada encima del juego congelado
 function drawPicker() {
   const pk = G.pick, key = myPickKey(), done = Array.isArray(pk.c) ? pk.c : Object.keys(pk.c);
   g.fillStyle = 'rgba(10,10,24,0.78)'; g.fillRect(0, 0, W, H);
-  const mine = key && pk.o[key], chose = mine && (done.includes(key) || (PICK.r === pk.r && PICK.done));
+  const rid = key ? pickRid(pk, key) : -1;
+  const mine = key && pk.o[key], chose = mine && (done.includes(key) || (PICK.r === rid && PICK.done));
   drawText(g, mine ? (chose ? '¡LISTO!' : 'ELEGÍ UNA CARTA') : 'ELIGIENDO CARTAS...', W / 2, 3, PAL.y, 2, 'center');
   drawText(g, mine ? (key === 'v' ? 'PARA TUS ENEMIGOS · ' + Math.min(pk.vn, (pk.vgot || []).length + 1) + ' DE ' + pk.vn : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO', W / 2, 16, PAL.s, 1, 'center');
   if (mine) {
-    const ids = pk.o[key], xs = PICK_X(ids.length), sel = PICK.r === pk.r ? PICK.sel : 1;
+    const ids = pk.o[key], xs = PICK_X(ids.length), sel = PICK.r === rid ? PICK.sel : Math.min(1, ids.length - 1);
     ids.forEach((id, i) => drawCard(cardOf(key, id), key, xs[i], i === sel, chose && i !== sel, chose && i === sel));
   }
   const wait = Object.keys(pk.o).filter(k => !done.includes(k) && k !== key).map(k => k === 'v' ? 'VILLANO' : KIND_NAME[k]);
