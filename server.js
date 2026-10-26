@@ -13,9 +13,35 @@ const MAX_ROOMS = 500, MAX_GUESTS = 8, MAX_MSG_PER_SEC = 150;
 const INDEX = path.join(__dirname, 'index.html');
 const rooms = new Map(); // codigo -> { host, hostPres, guests: Map(id -> { ws, pres }) }
 
+// Relé (TURN) de Cloudflare para cuando dos jugadores no se pueden conectar directo.
+// Se activa poniendo CF_TURN_KEY_ID y CF_TURN_API_TOKEN en las variables de entorno (ver README).
+const CF_KEY = process.env.CF_TURN_KEY_ID || '', CF_TOKEN = process.env.CF_TURN_API_TOKEN || '';
+const STUN_ONLY = { iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }], turn: false };
+let iceCache = null, iceAt = 0;
+async function iceServers() {
+  if (!CF_KEY || !CF_TOKEN) return STUN_ONLY;
+  if (iceCache && Date.now() - iceAt < 60 * 60 * 1000) return iceCache;
+  const r = await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/' + encodeURIComponent(CF_KEY) + '/credentials/generate-ice-servers', {
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + CF_TOKEN, 'content-type': 'application/json' },
+    body: JSON.stringify({ ttl: 6 * 3600 }),
+    signal: AbortSignal.timeout(4000)
+  });
+  if (!r.ok) throw new Error('cloudflare ' + r.status);
+  const j = await r.json();
+  if (!Array.isArray(j.iceServers)) throw new Error('respuesta rara');
+  iceCache = { iceServers: j.iceServers, turn: true }; iceAt = Date.now();
+  return iceCache;
+}
+
 const server = http.createServer((req, res) => {
   const url = (req.url || '/').split('?')[0];
   if (url === '/health') { res.writeHead(200, { 'content-type': 'text/plain', 'access-control-allow-origin': '*' }); res.end('ok'); return; }
+  if (url === '/ice') {
+    const reply = j => { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(j)); };
+    iceServers().then(reply, e => { console.error('TURN:', e.message); reply(STUN_ONLY); });
+    return;
+  }
   if (url === '/' || url === '/index.html') {
     fs.readFile(INDEX, (e, buf) => {
       if (e) { res.writeHead(500); res.end('falta index.html'); return; }
