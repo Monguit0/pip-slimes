@@ -3,9 +3,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
+// Para probar cómo se siente con mala conexión: LAG_MS=120 npm start (solo afecta lo que pasa por el servidor).
+const LAG = Math.max(0, +process.env.LAG_MS || 0);
 const MAX_ROOMS = 500, MAX_GUESTS = 8, MAX_MSG_PER_SEC = 150;
 const INDEX = path.join(__dirname, 'index.html');
 const rooms = new Map(); // codigo -> { host, hostPres, guests: Map(id -> { ws, pres }) }
@@ -16,7 +19,14 @@ const server = http.createServer((req, res) => {
   if (url === '/' || url === '/index.html') {
     fs.readFile(INDEX, (e, buf) => {
       if (e) { res.writeHead(500); res.end('falta index.html'); return; }
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(buf);
+      const head = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', 'vary': 'accept-encoding' };
+      // comprimida pesa unas 4 veces menos: el juego carga más rápido en el celu
+      if (/\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+        zlib.gzip(buf, (err, gz) => {
+          if (err) { res.writeHead(200, head); res.end(buf); return; }
+          res.writeHead(200, Object.assign(head, { 'content-encoding': 'gzip' })); res.end(gz);
+        });
+      } else { res.writeHead(200, head); res.end(buf); }
     });
     return;
   }
@@ -24,7 +34,8 @@ const server = http.createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
-const send = (ws, o) => { if (ws.readyState === 1) ws.send(JSON.stringify(o)); };
+const sendNow = (ws, o) => { if (ws.readyState === 1) ws.send(JSON.stringify(o)); };
+const send = LAG ? (ws, o) => setTimeout(sendNow, LAG / 2, ws, o) : sendNow;
 const merge = (obj, patch) => { for (const k in patch) { if (patch[k] === null || patch[k] === undefined) delete obj[k]; else obj[k] = patch[k]; } };
 const newId = () => 'g' + Math.random().toString(36).slice(2, 8);
 

@@ -1,0 +1,10 @@
+# Render lee este archivo para crear el servicio solo (botón "Deploy to Render" del README).
+services:
+  - type: web
+    name: pip-slimes
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
