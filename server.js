@@ -1,0 +1,91 @@
+// Servidor de salas de "Pip y los Slimes": sirve el juego y reenvía mensajes entre el villano (host) y los héroes (guests).
+// No simula nada: solo mantiene el estado de "presence" de cada jugador y lo reparte.
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { WebSocketServer } = require('ws');
+
+const PORT = process.env.PORT || 3000;
+const MAX_ROOMS = 500, MAX_GUESTS = 8, MAX_MSG_PER_SEC = 150;
+const INDEX = path.join(__dirname, 'index.html');
+const rooms = new Map(); // codigo -> { host, hostPres, guests: Map(id -> { ws, pres }) }
+
+const server = http.createServer((req, res) => {
+  const url = (req.url || '/').split('?')[0];
+  if (url === '/health') { res.writeHead(200, { 'content-type': 'text/plain', 'access-control-allow-origin': '*' }); res.end('ok'); return; }
+  if (url === '/' || url === '/index.html') {
+    fs.readFile(INDEX, (e, buf) => {
+      if (e) { res.writeHead(500); res.end('falta index.html'); return; }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(buf);
+    });
+    return;
+  }
+  res.writeHead(404); res.end('no encontrado');
+});
+
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
+const send = (ws, o) => { if (ws.readyState === 1) ws.send(JSON.stringify(o)); };
+const merge = (obj, patch) => { for (const k in patch) { if (patch[k] === null || patch[k] === undefined) delete obj[k]; else obj[k] = patch[k]; } };
+const newId = () => 'g' + Math.random().toString(36).slice(2, 8);
+
+wss.on('connection', (ws, req) => {
+  let q;
+  try { q = new URL(req.url, 'http://x').searchParams; } catch (e) { ws.close(); return; }
+  const code = String(q.get('room') || '').toLowerCase(), role = q.get('role');
+  if (!/^[a-z]{4}$/.test(code) || (role !== 'host' && role !== 'guest')) { send(ws, { t: 'err', code: 'bad' }); ws.close(); return; }
+
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  let room = rooms.get(code), me = null, count = 0;
+  const tick = setInterval(() => { count = 0; }, 1000);
+
+  if (role === 'host') {
+    if (room) { send(ws, { t: 'err', code: 'taken' }); ws.close(); clearInterval(tick); return; }
+    if (rooms.size >= MAX_ROOMS) { send(ws, { t: 'err', code: 'busy' }); ws.close(); clearInterval(tick); return; }
+    room = { host: ws, hostPres: {}, guests: new Map() };
+    rooms.set(code, room);
+    send(ws, { t: 'hello', id: 'host' });
+  } else {
+    if (!room) { send(ws, { t: 'err', code: 'nohost' }); ws.close(); clearInterval(tick); return; }
+    if (room.guests.size >= MAX_GUESTS) { send(ws, { t: 'err', code: 'full' }); ws.close(); clearInterval(tick); return; }
+    me = { id: newId(), ws, pres: {} };
+    room.guests.set(me.id, me);
+    send(ws, { t: 'hello', id: me.id, host: 'host', full: room.hostPres });
+    send(room.host, { t: 'join', id: me.id });
+  }
+
+  ws.on('message', (data) => {
+    if (++count > MAX_MSG_PER_SEC) { ws.close(); return; }
+    let m; try { m = JSON.parse(data); } catch (e) { return; }
+    if (!m || m.t !== 'p' || !m.p || typeof m.p !== 'object') return;
+    if (role === 'host') {
+      merge(room.hostPres, m.p);
+      const onlySnap = Object.keys(m.p).every(k => k === 's');
+      for (const g of room.guests.values()) {
+        if (onlySnap && g.ws.bufferedAmount > 64 * 1024) continue; // el cuadro viejo no sirve: se descarta si el cliente va atrasado
+        send(g.ws, { t: 'p', id: 'host', p: m.p });
+      }
+    } else {
+      merge(me.pres, m.p);
+      send(room.host, { t: 'p', id: me.id, p: m.p });
+    }
+  });
+
+  ws.on('close', () => {
+    clearInterval(tick);
+    if (role === 'host') {
+      for (const g of room.guests.values()) { send(g.ws, { t: 'leave', id: 'host' }); g.ws.close(); }
+      if (rooms.get(code) === room) rooms.delete(code);
+    } else if (room.guests.delete(me.id)) {
+      send(room.host, { t: 'leave', id: me.id });
+    }
+  });
+  ws.on('error', () => {});
+});
+
+// Latido: los proxies de los hostings cortan conexiones calladas, y esto limpia las que quedaron muertas.
+setInterval(() => {
+  for (const ws of wss.clients) { if (!ws.isAlive) { ws.terminate(); continue; } ws.isAlive = false; try { ws.ping(); } catch (e) {} }
+}, 25000);
+
+server.listen(PORT, () => console.log('Pip y los Slimes en el puerto ' + PORT));
