@@ -35,6 +35,20 @@ elegir carta (se suman a las que ya tenías).
 - **Villano y online**: si los héroes vencen al Mega Caballero, el villano tiene revancha en el bosque: maneja a los
   bichos nuevos y, en la guarida, al Campeón. Los héroes caídos vuelven con media vida y todos eligen carta de nuevo.
 
+## Jefes
+- **Presentación**: franjas de cine y una placa con el nombre cuando entran. El Campeón primero se asoma: dos ojos
+  rojos en la oscuridad de la cueva, y después salta.
+- **Tres fases**: a la mitad de vida se enfurecen y al 25% viene la **última furia**. El Mega Caballero pierde el casco
+  y pelea más rápido; el Campeón llama a dos lobeznos y su embestida deja fuego en el piso.
+- **Combos**: enfurecidos, encadenan ataques sin descanso (por ejemplo embestida → lluvia de espadas, o embestida →
+  bola de fuego, salto → tajo).
+- **La arena cambia**: algunas rocas del aullido quedan en el piso como obstáculos (se pueden pisar, frenan al que
+  camina y se rompen a golpes o solas al rato). Si el lobo embiste contra una, se la pega y queda aturdido. Las bolas
+  de fuego que tocan el piso lo dejan ardiendo un rato.
+- **Muertes**: el Mega Caballero explota y su espada queda clavada en el piso; el Campeón se desploma y se deshace en humo.
+- En modo villano/online, el jefe que maneja el villano también tiene su última furia (recargas aún más rápidas; el
+  lobo deja fuego al embestir).
+
 ## Música
 Es una sola canción que cambia de ánimo según lo que pasa: tranquila y sin batería en el título, sin melodía mientras
 se eligen cartas, un poco más rápida y en otro tono en cada zona, solo tambores cuando entra el jefe, a toda velocidad

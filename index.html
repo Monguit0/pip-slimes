@@ -2261,7 +2261,10 @@ const MOODS = {
   b2: { bpm: 134, tr: -4, mutes: { arp: true }, lp: 7200 },
   intro2: { bpm: 108, tr: -7, mutes: { lead: true, arp: true }, lp: 4200 },
   lobo: { bpm: 158, tr: -7 },
-  aullido: { bpm: 178, tr: -7 }
+  aullido: { bpm: 178, tr: -7 },
+  // última furia (25% de vida)
+  final: { bpm: 186, tr: 0 },
+  final2: { bpm: 192, tr: -5 }
 };
 function moodNow() {
   if (!G) return { name: 'titulo' };
@@ -2281,7 +2284,8 @@ function moodNow() {
     if (B.state === 'dying') return villain ? lost : won;
     const wolf = isWolf(B);
     if (['wait', 'drop', 'roar'].includes(B.state)) return { name: wolf ? 'intro2' : 'intro', danger };
-    const mad = B.phase === 2 || B.state === 'rage';
+    const mad = B.phase >= 2 || B.state === 'rage';
+    if (B.phase >= 3) return { name: wolf ? 'final2' : 'final', danger };
     return { name: wolf ? (mad ? 'aullido' : 'lobo') : mad ? 'furia' : 'jefe', danger };
   }
   return { name: (G.lvl ? 'b' : 'z') + Math.min(2, G.z || 0), danger };
@@ -2544,6 +2548,8 @@ function wolfRows(pose) {
 const WOLF = {};
 for (const pose of ['stand', 'run1', 'run2', 'crouch', 'leap', 'howl']) WOLF[pose] = variants(wolfRows(pose));
 const BRANCH_DOWN = sprite(['g.g', 'gpg', '.p.', '.p.', 'gp.', '.p.', '.pg', '.k.']);
+const BOULDER_ROWS = ['...kkkkkk...', '..kSSssssk..', '.kSSsssssdk.', 'kSSssssssddk', 'kSsssssssddk', 'ksssssssdddk', 'ksssssdddddk', '.kdddddddddk', '..kkkkkkkkk.'];
+const BOULDER = sprite(BOULDER_ROWS), BOULDER_W = variants(BOULDER_ROWS).wr;
 const ROCK = sprite(['..kkkkk..', '.kSSsssk.', 'kSSssssdk', 'kSsssdsdk', 'ksssssddk', '.kdsddddk', '..kkkkkk.']);
 const COIN = sprite(['.kkkk.', 'kyywyk', 'kywyyk', 'kyyyyk', 'kyyyok', 'kyyook', '.kkkk.']);
 const HEART = sprite(['.kk.kk.', 'krwkrrk', 'krrrrrk', '.krrrk.', '..krk..', '...k...']);
@@ -3643,6 +3649,7 @@ function update(dt, real) {
     if (!s.ground && p.drop > 0) continue;
     if (p.vy >= 0 && prevBottom <= s.y + 0.5 && p.y + p.h >= s.y && p.x + p.w > s.x + 1 && p.x < s.x + s.w - 1) { p.y = s.y - p.h; p.vy = 0; p.onGround = true; p.surf = s; }
   }
+  boulderCollide(p, p.x - p.vx * dt, prevBottom);
   if (p.onGround && !wasGround && fallV > 140 && jOn()) {
     const k = Math.min(1, (fallV - 140) / 130);
     p.sx = 1.1 + 0.4 * k; p.sy = 0.92 - 0.32 * k; flashJ('squash');
@@ -3670,7 +3677,7 @@ function update(dt, real) {
   if (MELEE(G.kind) && slashActive(p)) updateSlash();
   updateHazards(dt);
   if (G.boss) updateBoss(dt, prevBottom);
-  updateWaves(dt); updateFires(dt);
+  updateWaves(dt); updateFires(dt); updateArena(dt);
   if (G.state !== 'play') return;
 
   // monedas
@@ -3823,6 +3830,7 @@ function updateSlash() {
   const B = G.boss;
   if (B && B.hitSwing !== key && overlap(hb, bossBody(B))) { B.hitSwing = key; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4, G.kind === 'knight' && B.state === 'stun' && B.parried); }
   if (p.big) slashClear(hb);
+  hitBoulders(hb, p.big || p.spin ? 2 : 1, 'p' + key);
   for (const c of G.coins) if (!c.got && c.born >= 0 && overlap(hb, { x: c.x - 3, y: c.y - 4, w: 6, h: 8 })) collectCoin(c);
   for (const h of G.hazards) {
     if (h.phase !== 'fall' || !overlap(hb, hazBox(h))) continue;
@@ -3857,6 +3865,8 @@ function updateArrows(dt) {
       if (jOn()) burst(tipX, tipY, 3, [PAL.o, PAL.s], 40, 20, 200, 0.3);
       continue;
     }
+    const rk = (G.boulders || []).find(r => !r.dead && tipX >= r.x - 6 && tipX <= r.x + 6 && tipY >= GROUND - 9);
+    if (rk) { hitBoulder(rk, a.power ? 2 : 1); a.dead = true; continue; }
     const B = G.boss;
     if (B) {
       const bb = bossBody(B);
@@ -3919,7 +3929,10 @@ function updateHazards(dt) {
       for (const s of G.slimes) if (!s.dead && s.spawn <= 0 && overlap(s, box)) killSlime(s, 'trap', 0, false);
       if (h.y + box.h >= h.landY + 2) {
         h.y = h.landY + 2 - box.h; h.phase = jOn() && !h.rock ? 'stuck' : 'gone'; h.life = h.big ? 0.8 : 1.4; h.wob = 0.3;
-        if (h.rock) { play('pisoton', { vol: 0.8, rate: 0.7 }); if (jOn()) { shake(2, 0.1); burst(h.x, h.landY - 3, 10, [PAL.S, PAL.s, PAL.d], 70, 50, 300, 0.45); } } // la roca se parte
+        if (h.rock) { // la roca se parte, o queda en el piso como obstáculo
+          const stays = h.landY >= GROUND && Math.random() < 0.5 && addBoulder(h.x);
+          play('pisoton', { vol: 0.8, rate: stays ? 0.5 : 0.7 }); if (jOn()) { shake(stays ? 3 : 2, 0.1); burst(h.x, h.landY - 3, 10, [PAL.S, PAL.s, PAL.d], 70, 50, 300, 0.45); }
+        }
         else {
           play('clavar', { vol: 0.9, rate: h.big ? 0.7 : 1 });
           if (jOn()) { shake(h.big ? 2 : 1.5, 0.1); burst(h.x, h.landY, 6, [PAL.S, PAL.s, h.big ? PAL.c : PAL.o], 45, 25, 220, 0.35); }
@@ -4039,6 +4052,20 @@ function startBoss() {
   musicStop();
   G.banner = null;
 }
+const KNIGHT_COMBO = { charge: 'rain', slam: 'sweep', sweep: 'slam', rain: 'charge' };
+const WOLF_COMBO = { charge: 'fire', slam: 'sweep', sweep: 'charge', rain: 'fire', fire: 'charge' };
+function comboNext(B) {
+  B.atk = B.last = B.next; B.next = null; B.rep = 1; B.quick = true;
+  facePlayer(B); B.targetX = G.p.x + 4; setState(B, 'tele');
+  play('alerta', { rate: 0.95, vary: false }); play('alerta', { rate: 1.2, delay: 0.08, vary: false });
+  if (jOn()) { B.flash = 0.06; G.rings.push({ x: B.x + BW / 2, y: B.y + 14, t: 0.15, c: PAL.y }); }
+}
+// si lo cortaron en pleno salto (furia, aturdido...), cae solo al piso
+function bossGravity(B, dt) {
+  if (B.y >= GROUND - BH || B.state === 'wait' || B.state === 'drop' || (B.state === 'act' && B.atk === 'slam' && !B.landed)) return;
+  B.vy = Math.max(0, B.vy || 0) + 1400 * dt; B.y = Math.min(GROUND - BH, B.y + B.vy * dt);
+  if (B.y >= GROUND - BH) { B.vy = 0; B.landed = true; B.vx = B.state === 'act' ? B.vx : 0; }
+}
 function facePlayer(B) { B.face = (G.p.x + 4) < (B.x + BW / 2) ? -1 : 1; }
 function setState(B, s) { B.state = s; B.t = 0; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -4049,7 +4076,9 @@ function chooseAttack(B) {
   if (dist < 46 && B.last !== 'sweep' && Math.random() < 0.6) atk = 'sweep';
   else if (isWolf(B) && dist > 110 && B.last !== 'fire' && Math.random() < 0.3) atk = 'fire';
   else { atk = B.bag.pop(); if (atk === B.last && B.bag.length) { const other = B.bag.pop(); B.bag.unshift(atk); atk = other; } }
-  B.last = atk; B.atk = atk; B.rep = B.phase === 2 ? 2 : 1;
+  B.last = atk; B.atk = atk; B.rep = B.phase >= 2 ? 2 : 1;
+  // en la furia encadena: al terminar un ataque sigue otro sin descanso
+  B.next = B.phase >= 2 && Math.random() < (B.phase >= 3 ? 0.6 : 0.4) ? (isWolf(B) ? WOLF_COMBO : KNIGHT_COMBO)[atk] || null : null;
   facePlayer(B); setState(B, 'tele');
   B.targetX = p.x + 4;
   play('alerta', { rate: 0.7, vary: false });
@@ -4059,7 +4088,7 @@ const lerp = (a, b, t) => a + (b - a) * Math.max(0, Math.min(1, t));
 const easeOut = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
 
 function updateBoss(dt, prevBottom) {
-  const B = G.boss, p = G.p, ph2 = B.phase === 2, tm = ph2 ? 0.72 : 1;
+  const B = G.boss, p = G.p, ph2 = B.phase >= 2, tm = B.phase >= 3 ? 0.6 : ph2 ? 0.72 : 1;
   B.t += dt; B.walking = false;
   if (B.flash > 0) B.flash -= dt;
   if (B.barShake > 0) B.barShake -= dt;
@@ -4075,7 +4104,7 @@ function updateBoss(dt, prevBottom) {
 
   switch (B.state) {
     case 'wait':
-      if (B.t > 0.8) { setState(B, 'drop'); B.vy = 0; }
+      if (B.t > (isWolf(B) ? 1.8 : 0.8)) { setState(B, 'drop'); B.vy = 0; if (isWolf(B)) play('rugido', { rate: 0.6, vol: 0.7, vary: false }); }
       break;
     case 'drop':
       B.vy += 1400 * dt; B.y += B.vy * dt;
@@ -4084,7 +4113,7 @@ function updateBoss(dt, prevBottom) {
         slamFX(B.x + BW / 2, 7, false);
         setState(B, 'roar');
         play('rugido', { vary: false, rate: isWolf(B) ? 0.75 : 1 });
-        G.banner = isWolf(B) ? { text: 'CAMPEÓN', sub: 'EL LOBO DE LA GUARIDA', t: 0, long: true } : { text: 'MEGA CABALLERO', sub: 'GUARDIÁN DEL TRONO', t: 0, long: true };
+        G.banner = isWolf(B) ? { text: 'CAMPEÓN', sub: 'EL LOBO DE LA GUARIDA', t: 0, long: true, card: true } : { text: 'MEGA CABALLERO', sub: 'GUARDIÁN DEL TRONO', t: 0, long: true, card: true };
       }
       break;
     case 'roar':
@@ -4108,6 +4137,7 @@ function updateBoss(dt, prevBottom) {
       B.angle = lerp(B.angle, 65, dt * 4); B.crouch = lerp(B.crouch, 0, dt * 8);
       if (B.t > B.recDur) {
         if (B.rep > 1) { B.rep--; facePlayer(B); B.targetX = p.x + 4; setState(B, 'tele'); B.quick = true; play('alerta', { rate: 0.75, vary: false }); }
+        else if (B.next) comboNext(B);
         else { B.quick = false; setState(B, 'idle'); B.idleDur = ph2 ? 0.35 + Math.random() * 0.3 : 0.6 + Math.random() * 0.4; }
       }
       break;
@@ -4119,10 +4149,12 @@ function updateBoss(dt, prevBottom) {
     case 'rage':
       B.angle = lerp(B.angle, -90, dt * 6); B.crouch = 0;
       if (jOn()) { G.shake = Math.max(G.shake, 0.05); G.shakeMag = Math.max(G.shakeMag, 3); G.shakeMax = 0.05; }
+      if (B.summon && B.t > 0.6) { B.summon = false; summonPups(); }
       if (B.t > 1.4) { setState(B, 'idle'); B.idleDur = 0.2; B.bag = []; setTempo(168, -2); }
       break;
     case 'dying': bossDying(B, dt); break;
   }
+  bossGravity(B, dt);
   B.x = Math.max(ARENA.min, Math.min(ARENA.max - BW, B.x));
 
   // daño del jugador al jefe pisándole el yelmo, y daño por contacto
@@ -4163,7 +4195,7 @@ function bossTele(B, dt, tm) {
       const T = 0.72; B.vy = -500; B.vx = (B.targetX - (B.x + BW / 2)) / T; B.landed = false;
       play('salto', { rate: 0.5, vary: false }); if (jOn()) { B.sx = 0.75; B.sy = 1.3; burst(B.x + BW / 2, GROUND, 10, [PAL.S, PAL.s], 70, 20, 220, 0.4); }
     }
-    if (B.atk === 'charge') { B.vx = B.face * (isWolf(B) ? (B.phase === 2 ? 470 : 420) : (B.phase === 2 ? 285 : 240)); play('tajo', { rate: 0.5, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.4, vol: 0.6, vary: false }); }
+    if (B.atk === 'charge') { B.vx = B.face * (isWolf(B) ? (B.phase >= 2 ? 470 : 420) : (B.phase >= 2 ? 285 : 240)); play('tajo', { rate: 0.5, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.4, vol: 0.6, vary: false }); }
     if (B.atk === 'rain') rainSwords(B);
     if (B.atk === 'sweep') B.swing = { t: 0 };
   }
@@ -4183,7 +4215,7 @@ function bossAct(B, dt, tm) {
       const hb = B.face > 0 ? { x: B.x + 14, y: GROUND - 24, w: 46, h: 24 } : { x: B.x + 8 - 46, y: GROUND - 24, w: 46, h: 24 };
       if (p.inv <= 0 && overlap(p, hb)) hurt(B.face, { boss: true });
     }
-    if (B.t > 0.3) { setState(B, 'rec'); B.recDur = B.phase === 2 ? 0.4 : 0.6; }
+    if (B.t > 0.3) { setState(B, 'rec'); B.recDur = B.phase >= 2 ? 0.4 : 0.6; }
   } else if (B.atk === 'slam') {
     if (!B.landed) {
       B.vy += 1400 * dt; B.x += B.vx * dt; B.y += B.vy * dt;
@@ -4192,11 +4224,11 @@ function bossAct(B, dt, tm) {
         B.y = GROUND - BH; B.landed = true; B.vx = 0; B.angle = 75; B.crouch = 3;
         B.sx = 1.4; B.sy = 0.65;
         slamFX(B.x + BW / 2, 6, true);
-        setState(B, 'rec'); B.recDur = B.phase === 2 ? 0.45 : 0.75;
+        setState(B, 'rec'); B.recDur = B.phase >= 2 ? 0.45 : 0.75;
       }
     }
   } else if (B.atk === 'charge') {
-    B.x += B.vx * dt;
+    B.x += B.vx * dt; chargeFlames(B, dt);
     B.angle = 0; B.crouch = 1;
     if (jOn() && Math.random() < 0.6) G.parts.push({ x: B.x + BW / 2 - B.face * 10, y: GROUND - 1, vx: -B.face * 30, vy: -20, g: 100, life: 0.3, max: 0.3, c: PAL.S, s: 1 });
     const hitWall = (B.face < 0 && B.x <= ARENA.min + 0.5) || (B.face > 0 && B.x >= ARENA.max - BW - 0.5);
@@ -4205,10 +4237,11 @@ function bossAct(B, dt, tm) {
       play(isWolf(B) ? 'pisoton' : 'metal', { rate: 0.4, vary: false }); play('clavar', { rate: 0.5, vary: false }); boom(0.8);
       if (jOn()) { shake(5, 0.3); hitstop(0.06); burst(B.face > 0 ? ARENA.max : ARENA.min, GROUND - 16, 16, [PAL.S, PAL.s, PAL.d, PAL.w], 90, 40, 260, 0.6); B.sx = 0.7; B.sy = 1.1; }
       if (B.rep > 1) { B.rep--; B.face = -B.face; setState(B, 'tele'); B.quick = true; play('alerta', { rate: 0.75, vary: false }); }
+      else if (B.next) comboNext(B);
       else { B.quick = false; setState(B, 'stun'); }
     }
   } else if (B.atk === 'fire') {
-    if (B.t > 0.35) { setState(B, 'rec'); B.recDur = B.phase === 2 ? 0.45 : 0.6; }
+    if (B.t > 0.35) { setState(B, 'rec'); B.recDur = B.phase >= 2 ? 0.45 : 0.6; }
   } else if (B.atk === 'rain') {
     B.angle = -90;
     if (B.t > 0.9) {
@@ -4232,9 +4265,9 @@ function slamFX(x, mag, waves) {
     G.rings.push({ x, y: GROUND, t: 0, c: PAL.s });
   }
   if (waves) {
-    const spd = G.boss.phase === 2 ? 190 : 150;
+    const spd = G.boss.phase >= 2 ? 190 : 150;
     G.waves.push({ id: uid++, x: x - 10, dir: -1, spd }, { id: uid++, x: x + 10, dir: 1, spd });
-    if (G.boss.phase === 2) G.waves.push({ id: uid++, x: x - 10, dir: -1, spd: spd * 0.62 }, { id: uid++, x: x + 10, dir: 1, spd: spd * 0.62 });
+    if (G.boss.phase >= 2) G.waves.push({ id: uid++, x: x - 10, dir: -1, spd: spd * 0.62 }, { id: uid++, x: x + 10, dir: 1, spd: spd * 0.62 });
   }
 }
 /* ---- bolas de fuego del Campeón ----
@@ -4259,7 +4292,7 @@ function wolfFire(B) {
   else tg = G.p;
   let ang = B.face > 0 ? 0 : Math.PI;
   if (tg) { const a = Math.atan2(tg.y + 5 - m.y, tg.x + 4 - m.x); if (Math.cos(a) * B.face > 0.4) ang = a; }
-  const n = B.phase === 2 ? 3 : 1, spd = B.phase === 2 ? 175 : 150;
+  const n = B.phase >= 2 ? 3 : 1, spd = B.phase >= 2 ? 175 : 150;
   for (let i = 0; i < n; i++) spawnFire(m.x, m.y, ang + ((i - (n - 1) / 2) * 0.3 - (n > 1 ? 0.15 : 0)) * B.face, spd); // el abanico se abre hacia arriba
   play('explotar', { rate: 1.9, vol: 0.5 }); play('rugido', { rate: 1.6, vol: 0.45, vary: false });
   if (jOn()) { B.sx = 1.12; B.sy = 0.9; shake(1.5, 0.1); burst(m.x, m.y, 10, [PAL.y, PAL.o, PAL.r], 80, 20, 0, 0.3); }
@@ -4280,9 +4313,76 @@ function updateFires(dt) {
     } else if (p && G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) {
       hurt(Math.sign(f.vx) || 1, { fire: f }); if (!f.hero) fireBurst(f); continue;
     }
+    if (f.y >= GROUND - 2 && !f.hero) { fireBurst(f); addFlame(f.x); continue; }
     if (f.y >= GROUND - 2 || f.x < ARENA.min - 4 || f.x > ARENA.max + 4 || f.y < -20 || f.t > 4) fireBurst(f);
   }
   G.fires = G.fires.filter(f => !f.dead);
+}
+/* ---- la arena cambia: rocas que quedan en el piso y fuego que arde un rato ---- */
+const boulderBox = r => ({ x: r.x - 6, y: GROUND - 9, w: 12, h: 9 });
+const flameBox = f => ({ x: f.x - f.w / 2, y: GROUND - 6, w: f.w, h: 6 });
+function addBoulder(x) {
+  const L = G.boulders || (G.boulders = []);
+  if (L.some(r => Math.abs(r.x - x) < 16) || x < ARENA.min + 14 || x > ARENA.max - 14) return false;
+  if (L.length >= 4) L.shift();
+  L.push({ id: uid++, x: Math.round(x), hp: 3, t: 0, life: 9, flash: 0, hit: [] });
+  return true;
+}
+function breakBoulder(r, x, y) {
+  r.dead = true; play('pisoton', { rate: 0.9 }); play('clavar', { rate: 0.7, vol: 0.6 });
+  if (jOn()) { burst(r.x, GROUND - 5, 16, [PAL.S, PAL.s, PAL.d, PAL.w], 110, 60, 320, 0.55); shake(2, 0.12); }
+}
+function hitBoulder(r, dmg, key) {
+  if (r.dead || (key && r.hit.includes(key))) return;
+  if (key) { r.hit.push(key); if (r.hit.length > 12) r.hit.shift(); }
+  r.hp -= dmg; r.flash = 0.08;
+  if (r.hp <= 0) breakBoulder(r); else { play('clavar', { rate: 1.6, vol: 0.5 }); if (jOn()) burst(r.x, GROUND - 6, 5, [PAL.S, PAL.s], 60, 30, 260, 0.3); }
+}
+function hitBoulders(hb, dmg, key) { for (const r of G.boulders || []) if (!r.dead && overlap(hb, boulderBox(r))) hitBoulder(r, dmg, key); }
+// rocas sólidas: se pueden pisar y frenan al que camina contra ellas
+function boulderCollide(e, prevX, prevBottom) {
+  for (const r of G.boulders || []) {
+    if (r.dead) continue;
+    const b = boulderBox(r);
+    if (!overlap(e, b)) continue;
+    if (prevBottom <= b.y + 1 && e.vy >= 0) { e.y = b.y - e.h; e.vy = 0; e.onGround = true; e.surf = { x: b.x, y: b.y, w: b.w, ground: true }; }
+    else { e.x = prevX + e.w / 2 < r.x ? b.x - e.w : b.x + b.w; e.vx = 0; }
+  }
+}
+function addFlame(x, w = 16, life = 2.6) {
+  const L = G.flames || (G.flames = []);
+  if (L.length >= 10) L.shift();
+  L.push({ id: uid++, x: Math.max(ARENA.min + 4, Math.min(ARENA.max - 4, x)), w, life, max: life });
+}
+function updateArena(dt) {
+  const p = G.p;
+  for (const r of G.boulders || []) {
+    r.t += dt; r.flash -= dt;
+    if (r.t > r.life) breakBoulder(r);
+    const B = G.boss; // la embestida o el salto del jefe la parten (y el jefe se la pega)
+    const ahead = B && (B.atk !== 'charge' || (r.x - (B.x + BW / 2)) * B.face > 0); // solo la que tiene adelante
+    if (!r.dead && B && ahead && overlap(bossBody(B), boulderBox(r)) && ((B.state === 'act' && B.atk === 'charge') || (B.atk === 'slam' && B.state === 'act'))) {
+      const charging = B.atk === 'charge';
+      breakBoulder(r);
+      if (charging && !B.player) { B.vx = 0; B.next = null; B.rep = 0; B.quick = false; setState(B, 'stun'); B.stunDur = 1.6; boom(0.6); if (jOn()) { hitstop(0.08); shake(5, 0.3); } popup(B.x + BW / 2, B.y + 4, '¡PUM!', PAL.y); }
+      else if (charging) { B.vx = 0; setState(B, 'rec'); B.recDur = 0.5; }
+    }
+  }
+  if (G.boulders) G.boulders = G.boulders.filter(r => !r.dead);
+  for (const f of G.flames || []) {
+    f.life -= dt;
+    if (jOn() && Math.random() < 0.5) G.parts.push({ x: f.x + (Math.random() - 0.5) * f.w, y: GROUND - 2 - Math.random() * 4, vx: 0, vy: -25 - Math.random() * 20, g: -10, life: 0.35, max: 0.35, c: Math.random() < 0.5 ? PAL.o : PAL.y, s: 1 });
+    const box = flameBox(f);
+    if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e) hitHero(e, 1, Math.sign(e.x + 4 - f.x) || 1); }
+    else if (p && G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) { hurt(Math.sign(p.x + 4 - f.x) || 1, {}); if (!p.shield) p.vy = -200; }
+  }
+  if (G.flames) G.flames = G.flames.filter(f => f.life > 0);
+}
+// el Campeón en la última furia deja fuego al embestir
+function chargeFlames(B, dt) {
+  if (!isWolf(B) || B.phase < 3) return;
+  B.fireT = (B.fireT || 0) - Math.abs(B.vx) * dt;
+  if (B.fireT <= 0) { B.fireT = 34; addFlame(B.x + BW / 2 - B.face * 12, 14, 2.2); }
 }
 function updateWaves(dt) {
   const p = G.p;
@@ -4312,18 +4412,41 @@ function damageBoss(dmg, x, y, force) {
   popup(x, y - 6, '-' + total, isCrit ? PAL.y : PAL.w);
   if (B.hp <= 0) bossDie(B);
   else if (B.phase === 1 && B.hp <= (B.maxHp || BOSS_HP) / 2) enrage(B);
+  else if (B.phase === 2 && B.hp <= (B.maxHp || BOSS_HP) * 0.25) finalRage(B);
   return true;
 }
 function enrage(B) {
   B.phase = 2; setState(B, 'rage'); B.vx = 0; B.crouch = 0;
-  G.waves = []; G.hazards = []; G.fires = [];
+  G.waves = []; G.hazards = []; G.fires = []; G.flames = [];
   play('rugido', { rate: 1.15, vary: false }); duck();
   G.banner = { text: '¡FURIA!', sub: isWolf(B) ? 'EL CAMPEÓN SE ENFURECE' : 'EL MEGA CABALLERO SE ENOJA', t: 0 };
   if (jOn()) { hitstop(0.25); G.flashRed = 0.3; shake(4, 0.5); burst(B.x + BW / 2, B.y + 10, 30, [PAL.r, PAL.o, PAL.y], 140, 40, 120, 0.8); G.rings.push({ x: B.x + BW / 2, y: B.y + 12, t: 0, c: PAL.r }); }
 }
+// tercera fase (25% de vida): el Mega Caballero pierde el casco; el Campeón llama a sus crías
+function finalRage(B) {
+  B.phase = 3; setState(B, 'rage'); B.vx = 0; B.crouch = 0; B.next = null; B.rep = 0; B.swing = null;
+  G.waves = []; G.hazards = []; G.fires = []; G.flames = [];
+  if (isWolf(B)) { B.summon = !B.player; G.banner = { text: '¡LA MANADA!', sub: B.player ? 'TU EMBESTIDA DEJA FUEGO' : 'EL CAMPEÓN LLAMA A SUS CRÍAS', t: 0 }; play('rugido', { rate: 0.85, vary: false }); }
+  else { G.banner = { text: '¡SIN CASCO!', sub: B.player ? 'RECARGAS AÚN MÁS RÁPIDAS' : 'EL MEGA CABALLERO PELEA CON TODO', t: 0 }; play('rugido', { rate: 1.3, vary: false }); helmetFx(B); }
+  duck();
+  if (jOn()) { hitstop(0.3); G.flashRed = 0.35; shake(5, 0.6); burst(B.x + BW / 2, B.y + 10, 36, [PAL.r, PAL.o, PAL.y, PAL.w], 160, 40, 120, 0.9); G.rings.push({ x: B.x + BW / 2, y: B.y + 12, t: 0, c: PAL.r }, { x: B.x + BW / 2, y: B.y + 12, t: -0.1, c: PAL.y }); }
+}
+// el casco sale volando en pedazos
+function helmetFx(B) {
+  play('metal', { rate: 0.7, vary: false }); play('clavar', { rate: 0.6, vary: false });
+  if (!jOn()) return;
+  const hx = B.x + BW / 2, hy = B.y + 4;
+  for (let i = 0; i < 18; i++) G.parts.push({ x: hx + (Math.random() - 0.5) * 10, y: hy + (Math.random() - 0.5) * 6, vx: (Math.random() - 0.5) * 160 - B.face * 40, vy: -120 - Math.random() * 120, g: 420, life: 0.9, max: 0.9, c: [PAL.S, PAL.s, PAL.w, PAL.d][i % 4], s: i % 3 ? 1 : 2 });
+}
+// crías del Campeón: dos lobeznos que entran por los costados de la cueva
+function summonPups() {
+  const ground = { x: ARENA.min, y: GROUND, w: ARENA.max - ARENA.min, ground: true };
+  [ARENA.min + 6, ARENA.max - 18].forEach((x, i) => G.slimes.push({ x, y: GROUND - 8, w: 12, h: 8, vx: 0, vy: -150, surf: ground, onGround: false, red: false, kind: 'pup', hp: 2, stun: 0, jumpT: 0.6, spawn: 0.4 + i * 0.2, hopT: 1, sx: 1, sy: 1, dead: false, deadT: 0, flash: 0, lastSwing: -1, zone: 3, cool: 1 + i * 0.4, dive: 0, t2: 0 }));
+  play('rugido', { rate: 1.8, vol: 0.6, vary: false }); play('rugido', { rate: 1.9, vol: 0.5, delay: 0.15, vary: false });
+}
 function bossDie(B) {
   setState(B, 'dying'); B.vx = 0; B.boomT = 0;
-  G.waves = []; G.hazards = []; G.fires = [];
+  G.waves = []; G.hazards = []; G.fires = []; G.flames = [];
   musicStop();
   crit(B.x + BW / 2, B.y + 12);
   if (jOn()) { G.slowmo = 1.2; }
@@ -4331,7 +4454,13 @@ function bossDie(B) {
 function bossDying(B, dt) {
   B.crouch = Math.min(6, B.t * 3); B.angle = lerp(B.angle, 100, dt * 2);
   B.boomT -= dt;
-  if (B.t < 2.3 && B.boomT <= 0) {
+  if (isWolf(B)) {
+    if (!B.howled) { B.howled = true; play('rugido', { rate: 0.55, vary: false }); }
+    if (B.t > 0.7 && B.t < 2.4 && B.boomT <= 0 && jOn()) {
+      B.boomT = 0.03;
+      for (let i = 0; i < 3; i++) G.parts.push({ x: B.x + BW / 2 + (Math.random() - 0.5) * 34, y: B.y + 14 + Math.random() * 14, vx: (Math.random() - 0.5) * 14, vy: -18 - Math.random() * 26, g: -12, life: 1, max: 1, c: [PAL.d, PAL.S, PAL.k, PAL.s][Math.floor(Math.random() * 4)], s: 2 });
+    }
+  } else if (B.t < 2.3 && B.boomT <= 0) {
     B.boomT = jOn() ? 0.16 : 0.5;
     const x = B.x + 2 + Math.random() * (BW - 4), y = B.y + Math.random() * BH;
     play('explotar', { rate: 0.6 + Math.random() * 0.5 });
@@ -4339,8 +4468,15 @@ function bossDying(B, dt) {
   }
   if (B.t > 2.4 && B.state === 'dying') {
     setState(B, 'gone');
-    boom(); play('explotar', { rate: 0.4, vary: false }); play('critico', { rate: 0.8, vary: false });
-    if (jOn()) {
+    if (isWolf(B)) { // se deshace en humo
+      play('critico', { rate: 0.6, vary: false }); boom(0.6);
+      if (jOn()) { burst(B.x + BW / 2, B.y + 18, 40, [PAL.d, PAL.S, PAL.s, PAL.k], 90, 40, -30, 1.4, 2); G.rings.push({ x: B.x + BW / 2, y: B.y + 18, t: 0, c: PAL.S }, { x: B.x + BW / 2, y: B.y + 18, t: -0.12, c: PAL.r }); shake(3, 0.4); }
+    } else {
+      // la espada queda clavada en el piso
+      G.hazards.push({ id: uid++, x: Math.round(B.x + BW / 2 + B.face * 10), landY: GROUND, phase: 'stuck', warn: 0, warnMax: 1, y: GROUND - 9, vy: 0, life: 6, wob: 0.4, big: true, rock: false });
+      boom(); play('explotar', { rate: 0.4, vary: false }); play('critico', { rate: 0.8, vary: false });
+    }
+    if (jOn() && !isWolf(B)) {
       shake(7, 0.6); hitstop(0.1);
       if (!RM) G.impact = { x: B.x + BW / 2, y: B.y + 14, t: 0.1, seed: Math.random() * 6 };
       burst(B.x + BW / 2, B.y + 14, 50, [PAL.y, PAL.o, PAL.r, PAL.w, PAL.s], 180, 50, 160, 1, 1);
@@ -4349,7 +4485,7 @@ function bossDying(B, dt) {
     }
     if (G.kind === 'invade' && !G.lvl) {
       // los héroes ganaron el nivel 1: siguen al bosque y el villano tiene revancha con el Campeón
-      G.boss = null; G.nextT = 3.4; G.waves = []; G.hazards = []; G.fires = [];
+      G.boss = null; G.nextT = 3.4; G.waves = []; G.hazards = []; G.fires = []; G.flames = [];
       G.banner = { text: '¡CAYÓ TU JEFE!', sub: 'LOS HÉROES ENTRAN AL BOSQUE', t: 0, long: true };
       return;
     }
@@ -4404,6 +4540,7 @@ const PBW = {
   fire: { key: 'special', cd: 2.2, tele: 0.3, label: 'SHIFT FUEGO' }
 };
 const pbOf = B => isWolf(B) ? PBW : PB;
+const bossCdm = B => B.phase >= 3 ? 0.45 : B.phase >= 2 ? 0.6 : 1; // recargas en la furia y en la última furia
 function newBossMode() {
   setLevel(0);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
@@ -4469,7 +4606,7 @@ function updateWaveFlow(dt) {
 }
 
 function updatePlayerBoss(B, dt) {
-  const ph2 = B.phase === 2, cdm = ph2 ? 0.6 : 1;
+  const ph2 = B.phase >= 2, cdm = bossCdm(B);
   B.t += dt;
   if (B.flash > 0) B.flash -= dt;
   if (B.barShake > 0) B.barShake -= dt;
@@ -4539,6 +4676,7 @@ function updatePlayerBoss(B, dt) {
       break;
     case 'dying': bossDying(B, dt); break;
   }
+  if (G.boss) bossGravity(G.boss, dt);
   if (G.boss) G.boss.x = Math.max(ARENA.min, Math.min(ARENA.max - BW, G.boss.x));
 }
 function playerBossAct(B, dt) {
@@ -4567,7 +4705,7 @@ function playerBossAct(B, dt) {
       }
     }
   } else if (B.atk === 'charge') {
-    B.x += B.vx * dt; B.angle = 0; B.crouch = 1;
+    B.x += B.vx * dt; B.angle = 0; B.crouch = 1; chargeFlames(B, dt);
     if (jOn() && Math.random() < 0.6) G.parts.push({ x: B.x + BW / 2 - B.face * 10, y: GROUND - 1, vx: -B.face * 30, vy: -20, g: 100, life: 0.3, max: 0.3, c: PAL.S, s: 1 });
     const hitWall = (B.face < 0 && B.x <= ARENA.min + 0.5) || (B.face > 0 && B.x >= ARENA.max - BW - 0.5);
     if (hitWall || B.t > 1.2) {
@@ -4615,6 +4753,7 @@ function updateHeroes(dt) {
     }
     e.cool -= dt; e.twang -= dt; e.swingT += dt;
     poisonStep(e, dt);
+    if (MELEE(e.kind) && slashActive(e) && G.boulders && G.boulders.length) hitBoulders(slashBoxOf(e), e.big || e.spin ? 2 : 1, e.id + ':' + swingKey(e));
     if (e.dead || !B || B.state === 'dying') continue;
     if (MELEE(e.kind) && slashActive(e) && e.hitKey !== swingKey(e) && overlap(slashBoxOf(e), bossBody(B))) {
       e.hitKey = swingKey(e);
@@ -4669,6 +4808,7 @@ function heroPhysics(e, dt) {
   e.jumpNow = false;
   if (dash) e.vy = 0; else e.vy = Math.min(e.vy + GRAV * (e.vy > 0 ? 1.25 : 1) * dt, 270);
   e.prevBottom = e.y + e.h;
+  const px0 = e.x;
   e.x += e.vx * dt; e.y += e.vy * dt;
   let lo = 1540, hi = WW - e.w;
   if (G.kind === 'invade' && G.z < 3) { lo = G.z > 0 ? GATES[G.z - 1].x + 8 : 0; hi = gateBlocks(GATES[G.z], e.y, e.h) ? GATES[G.z].x - e.w : WW - e.w; }
@@ -4678,6 +4818,7 @@ function heroPhysics(e, dt) {
   const was = e.onGround, fv = e.vy;
   e.onGround = false;
   for (const s of SURFACES) if (!(e.drop > 0 && !s.ground) && e.vy >= 0 && e.prevBottom <= s.y + 0.5 && e.y + e.h >= s.y && e.x + e.w > s.x + 1 && e.x < s.x + s.w - 1) { e.y = s.y - e.h; e.vy = 0; e.onGround = true; e.surf = s; }
+  if (G.boulders && G.boulders.length) boulderCollide(e, px0, e.prevBottom);
   if (e.onGround && !was && fv > 160 && jOn()) { e.sx = 1.3; e.sy = 0.75; }
   e.sx += (1 - e.sx) * Math.min(1, dt * 14); e.sy += (1 - e.sy) * Math.min(1, dt * 14);
   if (e.inv > 0) e.inv -= dt;
@@ -4743,6 +4884,12 @@ function bossTakeHit(dmg, x, y, force) {
     B.phase = 2; play('rugido', { rate: 1.15, vary: false }); duck(); setTempo(168, -2);
     G.banner = { text: '¡FURIA!', sub: 'RECARGAS MÁS RÁPIDAS', t: 0 };
     if (jOn()) { hitstop(0.2); G.flashRed = 0.3; shake(4, 0.4); burst(B.x + BW / 2, B.y + 10, 30, [PAL.r, PAL.o, PAL.y], 140, 40, 120, 0.8); }
+  } else if (B.phase === 2 && B.hp <= B.maxHp * 0.25) {
+    B.phase = 3; setTempo(184, -2);
+    if (isWolf(B)) G.banner = { text: '¡ÚLTIMA FURIA!', sub: 'TU EMBESTIDA DEJA FUEGO', t: 0 };
+    else { G.banner = { text: '¡SIN CASCO!', sub: 'RECARGAS AÚN MÁS RÁPIDAS', t: 0 }; helmetFx(B); }
+    play('rugido', { rate: isWolf(B) ? 0.85 : 1.3, vary: false }); duck();
+    if (jOn()) { hitstop(0.25); G.flashRed = 0.35; shake(5, 0.5); burst(B.x + BW / 2, B.y + 10, 36, [PAL.r, PAL.o, PAL.y, PAL.w], 160, 40, 120, 0.9); }
   }
   return true;
 }
@@ -4805,7 +4952,7 @@ function newInvadeMode() {
 function campaignNextLevel() {
   setLevel(1); G.lvl = 1;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], fires: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
   Object.assign(G.p, { x: 40, y: GROUND - 11, vx: 0, vy: 0, onGround: true, face: 1, inv: 1, stompInv: 0, poisonT: 0, drop: 0, surf: null, chg: -1, dashT: 0 });
   G.hearts = G.maxHearts;
   enterZone(0, true);
@@ -4815,7 +4962,7 @@ function campaignNextLevel() {
 function invadeNextLevel() {
   setLevel(1); G.lvl = 1;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], fires: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
   const old = new Map(G.heroes.map(e => [e.kind, e])), base = { archer: 8, knight: 10, barb: 9 };
   G.heroes = ['archer', 'knight', 'barb'].map((kind, i) => {
     const prev = old.get(kind), src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
@@ -4898,7 +5045,7 @@ function updateInvade(dt) {
     const Bv = G.boss;
     if (Bv && hasV('regen') && Bv.hp < Bv.maxHp && Bv.state !== 'dying') { Bv.regT = (Bv.regT || 0) + dt; if (Bv.regT > 2.5) { Bv.regT = 0; Bv.hp++; Bv.show = Math.max(Bv.show, Bv.hp); } }
     if (G.boss) updatePlayerBoss(G.boss, dt);
-    updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt); updateFires(dt);
+    updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt); updateFires(dt); updateArena(dt);
     if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin(G.lvl ? '¡DEFENDISTE LA GUARIDA!' : '¡DEFENDISTE EL TRONO!');
   } else {
     updateMobs(dt); updateBots(dt); updateShots(dt); updateArrows(dt);
@@ -5387,10 +5534,15 @@ function drawWolf(B, over, alpha) {
   const cx = B.x + BW / 2, bottom = B.y + BH + 1;
   g.save();
   if (alpha) g.globalAlpha = alpha;
+  if (B.state === 'dying') {
+    const k = easeOut(B.t / 0.8);
+    g.translate(cx, bottom); g.rotate(B.face * 0.22 * k); g.scale(1 + 0.08 * k, 1 - 0.35 * k); g.translate(-cx, -bottom);
+    if (B.t > 1.1) g.globalAlpha = Math.max(0, 1 - (B.t - 1.1) / 1.2);
+  }
   if (!over) {
     // contraluz: un borde pálido para que el lobo negro se despegue de la cueva
     const rim = B.face > 0 ? set.wr : set.wl, a0 = g.globalAlpha;
-    g.globalAlpha = a0 * (B.phase === 2 ? 0.42 : 0.3);
+    g.globalAlpha = a0 * (B.phase >= 2 ? 0.42 : 0.3);
     for (const [ox, oy] of [[-0.5, 0], [0.5, 0], [0, -0.5]]) drawScaled(rim, cx + ox, bottom + oy, jOn() ? B.sx : 1, jOn() ? B.sy : 1);
     g.globalAlpha = a0;
   }
@@ -5400,7 +5552,7 @@ function drawWolf(B, over, alpha) {
     const by = 14 + (pose === 'crouch' ? 3 : 0) - (pose === 'leap' ? 4 : 0), howl = pose === 'howl';
     const hx = howl ? 40 : 42, hy = howl ? by - 9 : by - 4 + (pose === 'crouch' ? 2 : 0) + (pose === 'leap' ? 1 : 0);
     const ex = B.face > 0 ? cx - 25 + hx + 2 : cx + 25 - hx - 3, ey = bottom - 30 + hy - 1;
-    if (B.glow ? Math.floor(G.t * 20) % 2 : B.phase === 2) { g.fillStyle = B.glow ? PAL.w : PAL.y; g.fillRect(Math.round(ex), Math.round(ey), 1, 1); }
+    if (B.glow ? Math.floor(G.t * 20) % 2 : B.phase >= 2) { g.fillStyle = B.glow ? PAL.w : PAL.y; g.fillRect(Math.round(ex), Math.round(ey), 1, 1); }
   }
   g.restore();
 }
@@ -5426,7 +5578,7 @@ function drawBoss(B, over, alpha) {
     };
   }
   const R = (lx, ly, w, h, c, upper = true) => fill(f > 0 ? bx + lx : bx + BW - lx - w, (upper ? up : by) + ly, w, h, c);
-  const wave = Math.round(Math.sin(G.t * (B.phase === 2 ? 10 : 5)));
+  const wave = Math.round(Math.sin(G.t * (B.phase >= 2 ? 10 : 5)));
   R(-1, 12, 6, 17 + wave, 'k'); R(0, 13, 4, 15 + wave, 'r'); R(0, 22, 4, 6 + wave, 'p');
   R(5, 23, 6, 7, 'k', false); R(6, 23, 4, 5, 'd', false); R(5, 28, 6, 2, 'k', false);
   R(1, 11, 8, 7, 'k'); R(2, 12, 6, 5, 'S'); R(2, 12, 6, 1, 's');
@@ -5434,12 +5586,21 @@ function drawBoss(B, over, alpha) {
   R(9, 19, 5, 6, 'p'); R(11, 19, 1, 4, 'y'); R(10, 20, 3, 1, 'y');
   R(5, 23, 13, 1, 'y');
   R(12, 23, 6, 7, 'k', false); R(13, 23, 4, 5, 'S', false); R(13, 23, 1, 4, 's', false); R(12, 28, 7, 2, 'k', false);
+  const eye = B.state === 'stun' ? 'S' : B.glow || B.state === 'act' ? 'w' : B.phase >= 2 ? 'y' : 'r';
+  if (B.phase >= 3) {
+    // sin casco: cara de pocos amigos, pelo rojo erizado y una cicatriz
+    R(7, 3, 10, 10, 'k'); R(8, 4, 8, 8, 'o'); R(8, 4, 8, 1, 'y');
+    R(6, 1, 12, 4, 'k'); R(7, 2, 10, 2, 'r'); R(7, 0, 2, 2, 'k'); R(10, -1, 2, 3, 'k'); R(14, 0, 2, 2, 'k'); R(8, 1, 1, 1, 'r'); R(11, 0, 1, 2, 'r'); R(15, 1, 1, 1, 'r');
+    R(11, 6, 3, 1, 'k'); R(15, 6, 2, 1, 'k');
+    R(12, 7, 2, 1, eye === 'r' ? 'w' : eye); R(15, 7, 1, 1, eye === 'r' ? 'w' : eye);
+    R(9, 6, 1, 4, 'r'); R(12, 10, 4, 1, 'k');
+  } else {
   R(6, 2, 11, 11, 'k'); R(7, 3, 9, 9, 'S'); R(7, 3, 9, 2, 's'); R(8, 3, 3, 1, 'w');
   R(8, 7, 9, 2, 'k');
-  const eye = B.state === 'stun' ? 'S' : B.glow || B.state === 'act' ? 'w' : B.phase === 2 ? 'y' : 'r';
   R(12, 7, 2, 1, eye); R(15, 7, 1, 1, eye);
   R(5, 0, 2, 4, 'k'); R(4, -2, 2, 3, 'k'); R(5, 1, 1, 2, 's'); R(4, -1, 1, 1, 'w');
   R(16, 0, 2, 4, 'k'); R(17, -2, 2, 3, 'k'); R(16, 1, 1, 2, 's'); R(17, -1, 1, 1, 'w');
+  }
   R(13, 11, 9, 7, 'k'); R(14, 12, 7, 5, 's'); R(14, 12, 7, 1, 'w'); R(15, 16, 5, 1, 'S');
   R(18, 17, 3, 3, 'k'); R(19, 18, 1, 1, 'S');
   drawSword(B, fill);
@@ -5534,6 +5695,7 @@ function drawPip(p, kind, isPlayer) {
     g.fillStyle = PAL.r; g.fillRect(x, y, Math.max(1, Math.round(8 * p.hp / p.max)), 1);
   }
 }
+const CINE = { k: 0, at: 0 };
 function render() {
   const camX = G ? Math.round(G.cam * RS) / RS : 0, q2 = v => Math.round(v * RS) / RS;
   g.setTransform(RS, 0, 0, RS, 0, 0);
@@ -5648,6 +5810,15 @@ function render() {
   for (const m of G.mobs || []) drawMob(m);
   // jefe
   const B = G.boss;
+  if (B && B.state === 'wait' && isWolf(B) && B.t > 0.4) { // dos ojos rojos en la oscuridad antes de saltar
+    const ex = Math.round(B.x + BW / 2 + B.face * 16), ey = GROUND - 24, open = Math.floor(B.t * 2.5) % 4 !== 3, a = Math.min(1, (B.t - 0.4) * 1.5);
+    g.globalAlpha = a * 0.35; g.fillStyle = 'rgba(10,8,16,1)'; g.fillRect(0, 0, WW, H); // la cueva se oscurece
+    if (open) for (const dx of [0, -B.face * 7]) {
+      g.globalAlpha = a * 0.3; g.fillStyle = PAL.r; g.beginPath(); g.arc(ex + dx + 1, ey + 1, 4, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = a; g.fillRect(ex + dx, ey, 3, 2); g.fillStyle = PAL.y; g.fillRect(ex + dx + (B.face > 0 ? 2 : 0), ey, 1, 1);
+    }
+    g.globalAlpha = 1;
+  }
   if (B && B.state !== 'wait') {
     if (B.state === 'act' && B.atk === 'slam' && !B.landed) {
       const hgt = Math.max(0, (GROUND - BH) - B.y), sw = Math.max(4, 16 - hgt / 8);
@@ -5659,12 +5830,12 @@ function render() {
       g.fillRect(tx - 12, GROUND - 3, 3, 1); g.fillRect(tx - 12, GROUND - 3, 1, 2); g.fillRect(tx + 10, GROUND - 3, 3, 1); g.fillRect(tx + 12, GROUND - 3, 1, 2);
     }
     for (const tr of B.trail) drawBoss({ ...B, x: tr.x, y: tr.y, face: tr.face, angle: tr.angle, flash: 0, sx: 1, sy: 1 }, PAL.c, 0.45 * (1 - tr.t / 0.25));
-    if (!(B.state === 'dying' && Math.floor(B.t * 14) % 2 && B.t > 1.6)) drawBoss(B);
+    if (isWolf(B) || !(B.state === 'dying' && Math.floor(B.t * 14) % 2 && B.t > 1.6)) drawBoss(B);
     if (B.state === 'act' && B.atk === 'sweep' && jOn() && B.swing && B.swing.t < 0.24) {
       if (isWolf(B)) drawArc(B.x + BW / 2 + B.face * 14, GROUND - 13, B.face, 12, 22, -120, 200, B.swing.t, 0.24, ARC_FIRE);
       else { const h = swordHand(B); drawArc(h.x, h.y, B.face, 24, 34, -165, 215, B.swing.t, 0.24); }
     }
-    if (B.state === 'tele' && Math.floor(G.t * 10) % 2) drawText(g, '!', B.x + BW / 2 + 1, B.y - (isWolf(B) ? 6 : 14), B.phase === 2 ? PAL.y : PAL.r, 2, 'center');
+    if (B.state === 'tele' && Math.floor(G.t * 10) % 2) drawText(g, '!', B.x + BW / 2 + 1, B.y - (isWolf(B) ? 6 : 14), B.phase >= 2 ? PAL.y : PAL.r, 2, 'center');
     if (B.state === 'stun') for (let i = 0; i < 3; i++) { const a = G.t * 5 + i * 2.1; g.fillStyle = PAL.y; g.fillRect(Math.round(B.x + BW / 2 + Math.cos(a) * 9), Math.round(B.y + (isWolf(B) ? 6 : -4) + Math.sin(a) * 3), 1, 1); }
   }
   // ondas de choque
@@ -5687,6 +5858,23 @@ function render() {
     g.globalAlpha = 0.28; g.fillStyle = cols[2]; g.beginPath(); g.arc(f.x, f.y, 6.5 + fl * 2, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
     for (let k = 3; k >= 1; k--) ball(f.x - ux * k * 2.6, f.y - uy * k * 2.6 + Math.sin(G.t * 30 + k + f.id) * 0.5, 3.4 - k * 0.8, -1);
     ball(f.x, f.y, 3.6 + fl, 0.3);
+  }
+  // rocas en el piso (con grietas según el daño) y fuego en el suelo
+  for (const r of G.boulders || []) {
+    if (r.life - r.t < 1 && Math.floor(G.t * 12) % 2) continue;
+    g.drawImage(r.flash > 0 ? BOULDER_W : BOULDER, r.x - 6, GROUND - 9);
+    g.fillStyle = PAL.k;
+    if (r.hp <= 2) { g.fillRect(r.x - 1, GROUND - 8, 1, 2); g.fillRect(r.x, GROUND - 6, 1, 2); g.fillRect(r.x - 1, GROUND - 4, 1, 2); }
+    if (r.hp <= 1) { g.fillRect(r.x - 4, GROUND - 6, 2, 1); g.fillRect(r.x + 2, GROUND - 5, 2, 1); g.fillRect(r.x + 3, GROUND - 7, 1, 2); }
+  }
+  for (const f of G.flames || []) {
+    const k = Math.min(1, f.life / 0.5, (f.max - f.life) / 0.2 + 0.2), x0 = Math.round(f.x - f.w / 2);
+    for (let i = 0; i < f.w; i++) {
+      const h = Math.max(1, Math.round((2 + ((i * 7 + Math.floor(G.t * 14)) % 5)) * k));
+      g.fillStyle = PAL.r; g.fillRect(x0 + i, GROUND - h, 1, h);
+      if (h > 2) { g.fillStyle = PAL.o; g.fillRect(x0 + i, GROUND - h + 1, 1, h - 1); }
+      if (h > 4) { g.fillStyle = PAL.y; g.fillRect(x0 + i, GROUND - 2, 1, 2); }
+    }
   }
   // flechas
   for (const a of G.arrows) {
@@ -5722,6 +5910,10 @@ function render() {
 
   // ---- pantalla ----
   g.setTransform(RS, 0, 0, RS, 0, 0);
+  // franjas de cine cuando entra o cae un jefe
+  { const Bc = G.boss, on = !!Bc && ['wait', 'drop', 'roar', 'dying'].includes(Bc.state), now = performance.now(), dtc = Math.min(0.1, (now - (CINE.at || now)) / 1000);
+    CINE.at = now; CINE.k += ((on ? 1 : 0) - CINE.k) * Math.min(1, dtc * 5);
+    if (CINE.k > 0.01) { const hb = Math.round(CINE.k * 15); g.fillStyle = PAL.k; g.fillRect(0, 0, W, hb); g.fillRect(0, H - hb, W, hb); } }
   if (G.flashRed > 0) { g.fillStyle = 'rgba(177,62,83,' + (Math.min(1, G.flashRed / 0.18) * 0.35) + ')'; g.fillRect(0, 0, W, H); }
   for (const f of LFX) if (f.own && performance.now() - f.t0 < 60) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(0, 0, W, H); }
   if (G.impact) {
@@ -5767,15 +5959,15 @@ function render() {
   if (Bh && Bh.state !== 'wait' && Bh.state !== 'drop') {
     const shx = jOn() && Bh.barShake > 0 ? Math.round((Math.random() * 2 - 1) * 2) : 0;
     const bx = 68 + shx, by = 12, bw = 120;
-    drawText(g, (bossCtl() ? 'VOS: ' : '') + bossName(Bh), W / 2, 4, Bh.phase === 2 ? PAL.o : PAL.s, 1, 'center');
+    drawText(g, (bossCtl() ? 'VOS: ' : '') + bossName(Bh), W / 2, 4, Bh.phase >= 3 ? (Math.floor(G.t * 8) % 2 ? PAL.r : PAL.y) : Bh.phase >= 2 ? PAL.o : PAL.s, 1, 'center');
     g.fillStyle = PAL.s; g.fillRect(bx - 1.5, by - 1.5, bw + 3, 7);
     g.fillStyle = PAL.k; g.fillRect(bx - 1, by - 1, bw + 2, 6);
     g.fillStyle = PAL.d; g.fillRect(bx, by, bw, 4);
     const fill = Bh.fill;
     g.fillStyle = PAL.w; g.fillRect(bx, by, Math.round(bw * Bh.show / (Bh.maxHp || BOSS_HP) * fill), 4);
-    g.fillStyle = Bh.phase === 2 ? PAL.o : PAL.r; g.fillRect(bx, by, Math.round(bw * Bh.hp / (Bh.maxHp || BOSS_HP) * fill), 4);
-    g.fillStyle = Bh.phase === 2 ? PAL.y : PAL.o; g.fillRect(bx, by, Math.round(bw * Bh.hp / (Bh.maxHp || BOSS_HP) * fill), 1);
-    g.fillStyle = PAL.k; g.fillRect(bx + bw / 2, by, 1, 4);
+    g.fillStyle = Bh.phase >= 2 ? PAL.o : PAL.r; g.fillRect(bx, by, Math.round(bw * Bh.hp / (Bh.maxHp || BOSS_HP) * fill), 4);
+    g.fillStyle = Bh.phase >= 2 ? PAL.y : PAL.o; g.fillRect(bx, by, Math.round(bw * Bh.hp / (Bh.maxHp || BOSS_HP) * fill), 1);
+    g.fillStyle = PAL.k; g.fillRect(bx + bw / 2, by, 1, 4); g.fillRect(bx + bw / 4, by, 1, 4);
   }
   if (G.kind === 'invade') {
     let y = 4;
@@ -5805,7 +5997,7 @@ function render() {
     if (G.boss && !(isTouch() && stage.classList.contains('immersive'))) {
       let x = 4;
       for (const atk of Object.keys(pbOf(G.boss))) {
-        const PP = pbOf(G.boss), lab = PP[atk].label, w = textW(lab) + 6, cd = G.boss.cd[atk], max = PP[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
+        const PP = pbOf(G.boss), lab = PP[atk].label, w = textW(lab) + 6, cd = G.boss.cd[atk], max = PP[atk].cd * bossCdm(G.boss);
         g.fillStyle = PAL.k; g.fillRect(x, 133, w, 9);
         g.fillStyle = cd <= 0 ? PAL.d : PAL.k; g.fillRect(x + 1, 134, w - 2, 7);
         if (cd > 0) { g.fillStyle = PAL.S; g.fillRect(x + 1, 140, Math.round((w - 2) * (1 - cd / max)), 1); }
@@ -5821,7 +6013,15 @@ function render() {
     let y = 46;
     if (jOn()) { const e = Math.min(1, t / 0.35); y = -14 + 60 * (1 - Math.pow(1 - e, 3)) + (t < 0.5 ? Math.sin(e * Math.PI) * 4 : 0); }
     const end = G.banner.long ? 2.3 : 1.6;
-    if (t < end || Math.floor(t * 12) % 2) {
+    if (G.banner.card) {
+      // presentación del jefe: una franja que entra de costado con el nombre grande
+      const e = easeOut(t / 0.45), out = t > 2.2 ? easeOut((t - 2.2) / 0.35) : 0, bx = (1 - e) * -W + out * W;
+      g.fillStyle = 'rgba(10,8,16,0.82)'; g.fillRect(bx, 42, W, 40);
+      g.fillStyle = PAL.r; g.fillRect(bx, 42, W, 1); g.fillRect(bx, 81, W, 1);
+      g.fillStyle = PAL.o; g.fillRect(bx + 20, 76, W - 40, 1);
+      drawText(g, G.banner.text, W / 2 + bx + (1 - e) * 30, 48, PAL.y, 3, 'center', PAL.r);
+      if (G.banner.sub) drawText(g, G.banner.sub, W / 2 - bx * 0.6, 69, PAL.w, 1, 'center');
+    } else if (t < end || Math.floor(t * 12) % 2) {
       drawText(g, G.banner.text, W / 2, y, PAL.y, 2, 'center');
       if (G.banner.sub) drawText(g, G.banner.sub, W / 2, y + 14, PAL.s, 1, 'center');
     }
@@ -6158,7 +6358,7 @@ function uiFrame(now) {
     const PP = pbOf(G.boss);
     for (const [k, atk] of [['attack', 'sweep'], ['jump', 'slam'], ['charge', 'charge'], ['rain', 'rain'], ['special', 'fire']]) {
       if (!PP[atk]) continue;
-      const max = PP[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
+      const max = PP[atk].cd * bossCdm(G.boss);
       tbEls[k].style.setProperty('--cd', (G.boss.cd[atk] / max).toFixed(3));
     }
   }
@@ -6362,7 +6562,7 @@ const SP = {
   h: 'iiiiiiiiiiiiiiisiiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt cartas
   m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
   a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
-  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii', fb: 'iiii',
+  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii', fb: 'iiii', bo: 'iiii', fl: 'iiiii',
   b: 'iiiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
   pp: 'iisiii', rg: 'iiii',
   p: 'iiiiiiiiii',           // x y vx vy gravedad color tamaño vida max dueño
@@ -6381,7 +6581,7 @@ function netPack(now) {
   if (G.zoom) w.rec([C2(G.zoom.t), H2(G.zoom.x), H2(G.zoom.y)], 'iii');
   if (G.impact) w.rec([C2(G.impact.t), H2(G.impact.x), H2(G.impact.y), C2(G.impact.seed)], 'iiii');
   if (G.critText) w.rec([C2(G.critText.t), H2(G.critText.x), H2(G.critText.y)], 'iii');
-  if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), G.banner.long ? 1 : 0], 'ssii');
+  if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), (G.banner.long ? 1 : 0) | (G.banner.card ? 2 : 0)], 'ssii');
   if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
   if (G.pick) { const pk = G.pick; w.s(JSON.stringify({ r: pk.r, t: Math.round(pk.t * 10) / 10, mx: pk.mx, o: pk.o, c: Object.keys(pk.c) })); }
   w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
@@ -6391,6 +6591,8 @@ function netPack(now) {
   w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), (h.big ? 1 : 0) | (h.rock ? 2 : 0), C2(h.life), C2(h.wob)]), SP.hz);
   w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.hero ? v.dir * 2 : v.dir]), SP.wv);
   w.list((G.fires || []).map(f => [f.id, H2(f.x), H2(f.y), f.hero ? 1 : 0]), SP.fb);
+  w.list((G.boulders || []).map(r => [r.id, r.x, r.hp, C2(Math.max(0, r.life - r.t))]), SP.bo);
+  w.list((G.flames || []).map(f => [f.id, H2(f.x), f.w, C2(f.life), C2(f.max)]), SP.fl);
   if (B) {
     w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp, isWolf(B) ? 1 : 0], SP.b);
     w.list(B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)]), SP.tr);
@@ -6421,7 +6623,9 @@ const POV = {
   '¡DETUVISTE A LOS HÉROES!': ['GANÓ EL VILLANO', ''],
   '¡DEFENDISTE EL TRONO!': ['GANÓ EL VILLANO', ''],
   '¡DEFENDISTE LA GUARIDA!': ['GANÓ EL VILLANO', ''],
-  'TE ELIMINARON': null, 'AHORA SOS': null
+  'TE ELIMINARON': null, 'AHORA SOS': null,
+  '¡ÚLTIMA FURIA!': ['¡ÚLTIMA FURIA!', 'EL CAMPEÓN DEJA FUEGO AL EMBESTIR'],
+  '¡SIN CASCO!': ['¡SIN CASCO!', 'EL MEGA CABALLERO PELEA CON TODO']
 };
 function povBanner(b) {
   if (b.text in POV) { const m = POV[b.text]; return m ? { ...b, text: m[0], sub: m[1] } : null; }
@@ -6438,7 +6642,7 @@ function netDecode(bytes) {
   const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
   let pick = null;
   if (flags & 64) { try { pick = JSON.parse(r.s()); } catch (err) { pick = null; } }
-  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv), fb = r.list(SP.fb);
+  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv), fb = r.list(SP.fb), bo = r.list(SP.bo), fl = r.list(SP.fl);
   const b = flags & 32 ? r.rec(SP.b) : null, tr = flags & 32 ? r.list(SP.tr) : [];
   const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
@@ -6449,7 +6653,7 @@ function netDecode(bytes) {
     zoom: zo ? { t: P(zo[0]), x: L(zo[1]), y: L(zo[2]) } : null,
     impact: im ? { t: P(im[0]), x: L(im[1]), y: L(im[2]), seed: P(im[3]) } : null,
     critText: ct ? { t: P(ct[0]), x: L(ct[1]), y: L(ct[2]) } : null,
-    banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!bn[3] }) : null,
+    banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!(bn[3] & 1), card: !!(bn[3] & 2) }) : null,
     soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
     heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, cm: q[20] || 0 })),
     mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), stunT: q[5] & 16 ? 1 : 0, spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
@@ -6457,6 +6661,8 @@ function netDecode(bytes) {
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2), toxic: !!(q[3] & 4) })),
     hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!(q[7] & 1), rock: !!(q[7] & 2), life: P(q[8]), wob: P(q[9]) })),
     fires: fb.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), hero: !!q[3] })),
+    boulders: bo.map(q => ({ id: q[0], x: q[1], hp: q[2], t: 0, life: P(q[3]), flash: 0 })),
+    flames: fl.map(q => ({ id: q[0], x: L(q[1]), w: q[2], life: P(q[3]), max: P(q[4]) || 1 })),
     waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: Math.sign(q[2]) || 1, hero: Math.abs(q[2]) === 2 })),
     boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], type: b[22] ? 'wolf' : 'knight', trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
     pops: pp.map(q => ({ x: L(q[0]), y: L(q[1]), text: q[2], c: CLIST[q[3]] || PAL.w, t: P(q[4]), o: q[5] })),
@@ -6644,6 +6850,7 @@ function netPredict(real) {
       else if (!onHead && B.state !== 'stun' && overlap(m, bossBody(B))) hit = [6, 0, dirB, B.state === 'act' && B.atk === 'charge' ? 2 : 1];
     }
     if (!hit) for (const w of G.waves) if (!w.hero && overlap(m, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { hit = [9, w.id, w.dir || 1, 1]; break; }
+    if (!hit) for (const f of G.flames || []) if (overlap(m, flameBox(f))) { hit = [14, f.id, Math.sign(m.x + 4 - f.x) || 1, 1]; break; }
     if (!hit) for (const tr of TRAPS) if (trapPhase(tr, G.t) === 2 && overlap(m, trapBox(tr))) { hit = [12, tr.id, Math.sign(m.x + 4 - (tr.x + tr.w / 2)) || 1, 1]; break; }
     if (!hit) for (const h of G.hazards) if (h.phase === 'fall' && overlap(m, hazBox(h))) { hit = [10, h.id, Math.sign(m.x + 4 - h.x) || 1, 1]; break; }
     const pkey = hit && hit[0] + ':' + hit[1];
@@ -6729,6 +6936,7 @@ function netMyArrows(dt) {
     if (G.z < 3 ? (tipX < Z.start - 12 || tipX > Z.end + 12) : (tipX < NET.cam - 12 || tipX > NET.cam + W + 12)) { a.dead = true; continue; }
     // la flecha cargada atraviesa a los enemigos (el daño lo cuenta el villano)
     if (!a.power && G.mobs.some(o => !o.dead && o.spawn <= 0 && tipX >= o.x - 1 && tipX <= o.x + o.w + 1 && tipY >= o.y - 2 && tipY <= o.y + o.h + 1)) { a.dead = true; continue; }
+    if ((G.boulders || []).some(r => tipX >= r.x - 6 && tipX <= r.x + 6 && tipY >= GROUND - 9)) { a.dead = true; continue; }
     if (!a.power && B && G.z === 3) { const bb = bossBody(B); if (tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) { a.dead = true; continue; } }
     let hit = false;
     for (const gt of GATES) if (tipX >= gt.x && tipX <= gt.x + 8 && (gt.open < 0.85 ? tipY < GROUND : tipY < DOOR_TOP)) hit = true;
