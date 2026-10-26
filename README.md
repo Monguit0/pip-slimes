@@ -19,6 +19,19 @@ Cómo se reparte el trabajo:
 - Si el villano cambia de pestaña, la partida sigue corriendo. Si su navegador se congela (por ejemplo, salió de la app
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
+## Habilidades de los héroes
+Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con su especial y se recarga solo de a poco.
+- **Arquero · dash** (`Shift` o `V`, o el botón *Dash*): sale disparado hacia adelante y por un instante es intangible,
+  así que atraviesa enemigos, flechas y espadas sin recibir daño. Un dash en el aire hasta volver a pisar el suelo.
+- **Caballero · escudo** (mantené `Shift` o `V`, o el botón *Escudo*): mientras lo sostenés no recibe daño, camina
+  más lento y no ataca. Gasta energía mientras está levantado y un poco más con cada golpe que frena; si se vacía, se rompe.
+- **Ataques cargados** (mantené `X` y soltá cuando brille): el arquero tira un flechazo que atraviesa a todos los enemigos
+  y pega más fuerte (mientras carga no se puede mover; saltar cancela la carga). El caballero hace un espadazo con más
+  alcance y daño que además rompe babas, flechas, espadas que caen y ondas del jefe.
+
+En el online todo esto se decide en la pantalla de cada héroe, igual que los golpes: si en tu pantalla el escudo frenó
+la flecha o tu espadazo rompió la baba, para el villano también.
+
 ## Ponerlo en internet (Render)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Monguit0/pip-slimes)
