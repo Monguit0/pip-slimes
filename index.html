@@ -63,6 +63,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 44px
 .px.primary:hover { background: #ffe0a3; }
 .px.primary.alt { background: var(--sky); }
 .px.primary.alt:hover { background: #8cc8fa; }
+.px.primary.barb { background: var(--hurt); }
+.px.primary.barb:hover { background: #ea7f90; }
 .px.primary.boss { background: var(--ember); }
 .px.primary.boss:hover { background: #f59a7c; }
 .px.primary.villain { background: var(--slime); }
@@ -203,6 +205,7 @@ html.has-touch .stage.immersive .touch { display: block; position: relative; tou
 .net-code { font-family: var(--f-display); font-size: 56px; line-height: .8; color: var(--coin); letter-spacing: .08em; }
 .net-slots { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .net-slots li { background: var(--ink); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.net-slots li .px { justify-self: start; margin-top: 6px; }
 .net-slots small { font-family: var(--f-label); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .net-slots span { font-weight: 700; overflow-wrap: anywhere; }
 .net-slots .bot span { color: var(--muted); font-weight: 400; }
@@ -233,6 +236,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         <div class="overlay" id="overlay">
           <button class="px primary" id="start-archer" type="button">▶ Arquero</button>
           <button class="px primary alt" id="start-knight" type="button">▶ Caballero</button>
+          <button class="px primary barb" id="start-barb" type="button">▶ Bárbaro</button>
           <button class="px primary boss" id="start-boss" type="button">▶ Jefe</button>
           <button class="px primary villain" id="start-villain" type="button">▶ Villano</button>
           <button class="px primary online" id="start-online" type="button">▶ Online</button>
@@ -261,7 +265,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         <button class="px" id="sw-boss" type="button" aria-pressed="false">Ir directo al jefe <span class="state"></span></button>
         <button class="px" id="imm-btn" type="button">⛶ Pantalla de juego</button>
       </div>
-      <div class="keys-wrap"><p class="keys"><kbd>← →</kbd> mover · <kbd>espacio</kbd> saltar · <kbd>X</kbd> atacar (mantené para cargar) · <kbd>Shift</kbd> o <kbd>V</kbd> dash del arquero o escudo del caballero · <kbd>↓</kbd> bajar · <kbd>J</kbd> juice · <kbd>C</kbd> crítico 100%</p><p class="keys">De jefe: <kbd>X</kbd> tajo · <kbd>espacio</kbd> salto aplastante · <kbd>Z</kbd> embestida · <kbd>V</kbd> lluvia de espadas</p><p class="keys">De villano: <kbd>X</kbd> ataca · de slime mantené <kbd>X</kbd> y soltá para tirar baba · <kbd>4</kbd> empieza el modo</p></div>
+      <div class="keys-wrap"><p class="keys"><kbd>← →</kbd> mover · <kbd>espacio</kbd> saltar · <kbd>X</kbd> atacar (mantené para cargar) · <kbd>Shift</kbd> o <kbd>V</kbd> especial (dash, escudo o furia) · <kbd>5</kbd> bárbaro · <kbd>↓</kbd> bajar · <kbd>J</kbd> juice · <kbd>C</kbd> crítico 100%</p><p class="keys">De jefe: <kbd>X</kbd> tajo · <kbd>espacio</kbd> salto aplastante · <kbd>Z</kbd> embestida · <kbd>V</kbd> lluvia de espadas</p><p class="keys">De villano: <kbd>X</kbd> ataca · de slime mantené <kbd>X</kbd> y soltá para tirar baba · <kbd>4</kbd> empieza el modo</p></div>
     </div>
 
     <ul class="juice" id="jlist" aria-label="Técnicas de juice: se iluminan cuando actúan">
@@ -287,7 +291,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
   <section class="net" id="net" aria-labelledby="net-title">
     <div class="sec-head">
       <h2 id="net-title">Online</h2>
-      <p>Quien crea la sala es el <b>villano</b>: maneja a los enemigos y, si los héroes llegan al trono, al Mega Caballero. Hasta dos amigos entran como el <b>arquero</b> y el <b>caballero</b>; si falta alguno, lo maneja un bot. Creá la sala y pasales el link con <b>Copiar link</b>, o el código de 4 letras.</p>
+      <p>Quien crea la sala es el <b>villano</b>: maneja a los enemigos y, si los héroes llegan al trono, al Mega Caballero. Hasta tres amigos entran como el <b>arquero</b>, el <b>caballero</b> y el <b>bárbaro</b>; si falta alguno, lo maneja un bot (y cualquiera puede tomarlo desde la sala). Creá la sala y pasales el link con <b>Copiar link</b>, o el código de 4 letras.</p>
     </div>
     <div class="net-box">
       <p class="net-status" id="net-status" role="status">Buscando conexión…</p>
@@ -299,7 +303,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         </div>
         <div class="net-row">
           <span class="net-lab">Entrar como</span>
-          <span class="seg" id="net-want"><button class="px" type="button" data-want="archer" aria-pressed="true">Arquero</button><button class="px" type="button" data-want="knight" aria-pressed="false">Caballero</button></span>
+          <span class="seg" id="net-want"><button class="px" type="button" data-want="archer" aria-pressed="true">Arquero</button><button class="px" type="button" data-want="knight" aria-pressed="false">Caballero</button><button class="px" type="button" data-want="barb" aria-pressed="false">Bárbaro</button></span>
           <form class="net-join" id="net-join"><input id="net-code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD" aria-label="Código de sala"><button class="px" type="submit">Unirme</button></form>
         </div>
         <ul class="net-rooms" id="net-rooms" aria-label="Salas abiertas" hidden></ul>
@@ -2378,6 +2382,12 @@ const KNIGHT = [
   'kBBBBBBByyy.', 'kBByBBBBkpk.', 'kByyyBBBk...', 'kBpppppBk...', '.kSSSSSSk...'
 ];
 const KNIGHT_ALT = { 1: '..kkkkkk....', 2: '.kswwssk....', 3: '.ksssssk....', 4: '.kskkkkk....', 5: '.ksssssk....', 6: 'kBBBBBBBkSy.', 7: 'kBByBBBBk...' };
+// bárbaro: casco con cuernos, pelo y barba naranja, chaleco de piel y un hacha grande
+const BARB = [
+  'w.kkkkk.w...', 'wksssssk....', '.kssswsk.kk.', '.kkkkkkk.ksk', '.kooyykyypsk', '.kooyyyyyp..',
+  '.koooook.p..', 'kyyyddddyyp.', 'kyydddddkyp.', '.krrrrrrk.p.', '.kddkkddk...'
+];
+const BARB_ALT = { 2: '.kssswsk....', 3: '.kkkkkkk....', 4: '.kooyykyy...', 5: '.kooyyyyy...', 6: '.koooook....', 7: 'kyyyddddyypp', 8: 'kyydddddkksk', 9: '.krrrrrrk.kk' };
 function hero(base, alt, feet) {
   const a = base.map((row, i) => alt[i] || row);
   return { n: variants([...base, feet]), alt: variants([...a, feet]) };
@@ -2385,7 +2395,8 @@ function hero(base, alt, feet) {
 const FEET = { idle: '..kk..kk....', run: '.kk....kk...', air: '...kkkk.....' };
 const HEROES = {
   archer: { idle: hero(ARCHER, ARCHER_ALT, FEET.idle), run: hero(ARCHER, ARCHER_ALT, FEET.run), air: hero(ARCHER, ARCHER_ALT, FEET.air) },
-  knight: { idle: hero(KNIGHT, KNIGHT_ALT, FEET.idle), run: hero(KNIGHT, KNIGHT_ALT, FEET.run), air: hero(KNIGHT, KNIGHT_ALT, FEET.air) }
+  knight: { idle: hero(KNIGHT, KNIGHT_ALT, FEET.idle), run: hero(KNIGHT, KNIGHT_ALT, FEET.run), air: hero(KNIGHT, KNIGHT_ALT, FEET.air) },
+  barb: { idle: hero(BARB, BARB_ALT, FEET.idle), run: hero(BARB, BARB_ALT, FEET.run), air: hero(BARB, BARB_ALT, FEET.air) }
 };
 const SLIME = variants(['...kkkk...', '..kglggk..', '.kgggglgk.', 'kggkggkggk', 'kggkggkggk', 'kggggggggk', 'kGGGGGGGGk', '.kkkkkkkk.']);
 const RED = variants(['...kkkk...', '..krrork..', '.krrrrrok.', 'krkkrrkkrk', 'krrkrrkrrk', 'krrrrrrrrk', 'kppppppppk', '.kkkkkkkk.']);
@@ -2421,6 +2432,7 @@ function blitGrid(K, w, h, gx, gy, mono) {
 
 // Fuente 5x7 a media resolución, con degradé y contorno en los títulos
 const FONT_ROWS = {
+  '%': '11001 11010 00010 00100 01000 01011 10011', ',': '00000 00000 00000 00000 00110 00100 01000',
   '0': '01110 10001 10011 10101 11001 10001 01110', '1': '00100 01100 00100 00100 00100 00100 01110',
   '2': '01110 10001 00001 00010 00100 01000 11111', '3': '11111 00010 00100 00010 00001 10001 01110',
   '4': '00010 00110 01010 10010 11111 00010 00010', '5': '11111 10000 11110 00001 00001 10001 01110',
@@ -2720,10 +2732,15 @@ const TWINKLE = Array.from({ length: 16 }, () => ({ x: Math.round(srand() * W * 
    ========================================================= */
 const CHARS = {
   archer: { hearts: 3, speed: 92, jump: 268, cool: 0.25 },
-  knight: { hearts: 4, speed: 84, jump: 262, cool: 0.34 }
+  knight: { hearts: 4, speed: 84, jump: 262, cool: 0.34 },
+  barb: { hearts: 4, speed: 94, jump: 262, cool: 0.46 }
 };
+const MELEE = k => k === 'knight' || k === 'barb';
+const HERO_GORE = { knight: [PAL.B, PAL.s, PAL.w, PAL.y], archer: [PAL.r, PAL.G, PAL.w, PAL.y], barb: [PAL.o, PAL.y, PAL.d, PAL.w] };
+const KIND_NAME = { archer: 'ARQUERO', knight: 'CABALLERO', barb: 'BÁRBARO' }, KIND_TAG = { archer: 'ARQ', knight: 'CAB', barb: 'BAR' };
+const KIND_COL = () => ({ archer: PAL.o, knight: PAL.b, barb: PAL.y });
 let lastKind = 'archer';
-try { const k = localStorage.getItem('pip-kind'); if (k === 'archer' || k === 'knight' || k === 'boss' || k === 'invade') lastKind = k; } catch (e) {}
+try { const k = localStorage.getItem('pip-kind'); if (k === 'archer' || k === 'knight' || k === 'barb' || k === 'boss' || k === 'invade') lastKind = k; } catch (e) {}
 
 /* =========================================================
    Estado
@@ -2745,7 +2762,7 @@ const input = { left: false, right: false, jump: false, down: false, attack: fal
 let G = null;
 let uid = 1;
 // estado del modo online (la lógica está en la sección "Online", más abajo)
-const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0, killed: new Set(), kl: [], klSeq: 0, sentKl: 0, sentAc: 0 };
+const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null, barb: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0, killed: new Set(), kl: [], klSeq: 0, sentKl: 0, sentAc: 0 };
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
@@ -2755,12 +2772,12 @@ function newGame(kind, atBoss) {
     p: { x: 40, y: GROUND - 11, w: 8, h: 11, vx: 0, vy: 0, onGround: true, face: 1, coyote: 0, buffer: 0, cut: false, inv: 0, stompInv: 0, sx: 1, sy: 1, runT: 0, dustT: 0, drop: 0, flash: 0, cool: 0, twang: 0, swingT: 9, swingId: 0, ...skillFields() },
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
-    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0
+    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0, vcm: 0, pick: null
   };
   setTempo(132, 0);
   if (atBoss) {
     G.z = 3; G.p.x = 1556; G.cam = ZONES[3].start;
-    startBoss();
+    startBoss(); startPick();
   } else enterZone(0, true);
 }
 function enterZone(n, first) {
@@ -2770,10 +2787,12 @@ function enterZone(n, first) {
     if (G.hearts < G.maxHearts) { G.hearts++; popup(G.p.x + 4, G.p.y - 8, '+1 VIDA', PAL.r); }
     G.coins = []; G.slimes = G.slimes.filter(s => s.zone === n); G.hazards = [];
   }
-  if (ZONES[n].boss) { startBoss(); return; }
+  G.p.cureUsed = false;
+  if (ZONES[n].boss) { startBoss(); startPick(); return; }
   spawnCoins(n); spawnSlimes(n);
   G.banner = { text: 'ZONA ' + (n + 1), sub: ZONES[n].name, t: 0 };
   G.hazT = 3 + Math.random() * 2;
+  startPick();
 }
 function spawnCoins(n) {
   const spots = COIN_SPOTS[n].slice().sort(() => Math.random() - 0.5).slice(0, 8);
@@ -2843,11 +2862,16 @@ const gateBlocks = (gt, y, h) => gt.open < 0.85 || y < DOOR_TOP;
    especial y se recarga solo. El arquero hace un dash intangible y el caballero
    levanta un escudo. Mantener ataque carga un ataque más fuerte.
    ========================================================= */
-const SK = { max: 100, regen: 15, delay: 0.7, dash: 34, dashT: 0.16, dashV: 330, ghost: 0.34, shMin: 12, shOn: 6, shDrain: 28, block: 12, chgOn: 0.2, chgFull: 0.75 };
-const skillFields = () => ({ en: SK.max, enT: 0, enFlash: 0, dashT: 0, ghostT: 0, airDash: false, shield: false, blockT: 0, chg: -1, atkBuf: 0, big: false });
-const charging = h => h.chg >= SK.chgOn, charged = h => h.chg >= SK.chgFull;
-// multiplicador de velocidad: el arquero no se mueve mientras carga, el caballero va más lento
-const skillSlow = (h, kind) => h.shield ? 0.5 : charging(h) ? (kind === 'archer' ? 0 : 0.6) : 1;
+const SK = { max: 100, regen: 15, delay: 0.7, dash: 34, dashT: 0.16, dashV: 330, ghost: 0.34, shMin: 12, shOn: 6, shDrain: 28, block: 12, chgOn: 0.2, chgFull: 0.75, rage: 70, rageT: 5, spinGap: 0.2, spinHit: 0.12 };
+const skillFields = () => ({ en: SK.max, enT: 0, enFlash: 0, dashT: 0, ghostT: 0, airDash: false, shield: false, blockT: 0, chg: -1, atkBuf: 0, big: false, spin: false, rageT: 0, rageMul: 1, cm: 0, cureUsed: false, poisonT: 0 });
+const chgFullOf = h => hasC(h, 'carga') ? 0.4 : SK.chgFull;
+const charging = h => h.chg >= SK.chgOn, charged = h => h.chg >= chgFullOf(h);
+// multiplicador de velocidad: el arquero no se mueve mientras carga, el caballero y el bárbaro van más lento
+const skillSlow = (h, kind) => (h.shield ? 0.5 : charging(h) ? (kind === 'archer' ? 0 : 0.6) : 1) * (hasC(h, 'veloz') ? 1.15 : 1);
+// vida que le queda (de 0 a 1): la furia del bárbaro pega más fuerte cuanto menos tiene
+const lifeFrac = h => h === (G && G.p) ? G.hearts / Math.max(1, G.maxHearts) : h.max ? Math.max(0, h.hp) / h.max : 1;
+// daño de un golpe del héroe con sus cartas y su furia
+const heroDmg = (h, base) => Math.max(1, Math.round((base + (hasC(h, 'dmg') ? 1 : 0)) * (h.rageT > 0 ? h.rageMul || 1 : 1)));
 function noEnergy(h) { if (h.enFlash > 0.25) return; h.enFlash = 0.45; play('menu', { rate: 0.55, vol: 0.5, vary: false }); }
 // especial y recarga. held/pressed: el botón especial; dir: hacia dónde apunta el control
 function skillStep(h, kind, dt, held, pressed, dir) {
@@ -2855,11 +2879,26 @@ function skillStep(h, kind, dt, held, pressed, dir) {
   if (h.dashT > 0) { h.dashT -= dt; if (h.dashT <= 0) h.vx = Math.sign(h.vx) * Math.min(Math.abs(h.vx), CHARS[kind].speed); } // frena seco al terminar
   if (h.ghostT > 0) h.ghostT -= dt;
   if (h.onGround) h.airDash = false;
-  if (kind === 'archer') {
-    if (pressed && h.dashT <= 0) {
-      if (h.en < SK.dash || (h.airDash && !h.onGround)) noEnergy(h);
+  if (h.rageT > 0) { h.rageT -= dt; h.enT = Math.max(h.enT, SK.delay); }
+  const dashCost = hasC(h, 'fantasma') ? SK.dash / 2 : SK.dash;
+  if (kind === 'barb') {
+    // furia: unos segundos de más daño; cuanto menos vida al activarla, más fuerte
+    if (pressed && h.rageT <= 0) {
+      if (h.en < SK.rage) noEnergy(h);
       else {
-        h.en -= SK.dash; h.enT = SK.delay; h.chg = -1;
+        h.en -= SK.rage; h.enT = SK.delay;
+        h.rageMul = Math.round((1.25 + 1.5 * (1 - lifeFrac(h))) * 100) / 100;
+        h.rageT = SK.rageT * (hasC(h, 'ira') ? 2 : 1);
+        play('rugido', { rate: 1.6, vol: 0.9, vary: false }); play('escudo', { rate: 0.6 }); vib(25);
+        popup(h.x + 4, h.y - 8, 'FURIA X' + h.rageMul.toFixed(1), PAL.r);
+        if (jOn()) { h.sx = 1.3; h.sy = 0.8; shake(2, 0.15); burst(h.x + 4, h.y + 5, 14, [PAL.r, PAL.o, PAL.y], 80, 40, 120, 0.5); }
+      }
+    }
+  } else if (kind === 'archer') {
+    if (pressed && h.dashT <= 0) {
+      if (h.en < dashCost || (h.airDash && !h.onGround)) noEnergy(h);
+      else {
+        h.en -= dashCost; h.enT = SK.delay; h.chg = -1;
         if (dir) h.face = dir;
         h.dashT = SK.dashT; h.ghostT = SK.ghost; h.vx = h.face * SK.dashV; h.vy = 0; h.cut = true;
         if (!h.onGround) h.airDash = true;
@@ -2875,9 +2914,9 @@ function skillStep(h, kind, dt, held, pressed, dir) {
       if (h.en < SK.shMin) noEnergy(h);
       else { h.shield = true; h.en -= SK.shOn; h.chg = -1; play('escudo'); vib(10); if (jOn()) { h.sx = 0.85; h.sy = 1.15; } }
     }
-    if (h.shield) { h.en = Math.max(0, h.en - SK.shDrain * dt); h.enT = Math.max(h.enT, SK.delay); }
+    if (h.shield) { h.en = Math.max(0, h.en - SK.shDrain * (hasC(h, 'muralla') ? 0.5 : 1) * dt); h.enT = Math.max(h.enT, SK.delay); }
   }
-  if (h.enT > 0) h.enT -= dt; else h.en = Math.min(SK.max, h.en + SK.regen * dt);
+  if (h.enT > 0) h.enT -= dt; else h.en = Math.min(SK.max, h.en + SK.regen * (hasC(h, 'energia') ? 1.6 : 1) * dt);
 }
 // ataque: al apretar sale el normal; si lo mantenés se carga, y al soltarlo con la carga llena sale el fuerte
 function chargeStep(h, dt, held, pressed, can) {
@@ -2891,7 +2930,7 @@ function chargeStep(h, dt, held, pressed, can) {
     else {
       const was = h.chg; h.chg += dt;
       if (was < SK.chgOn && h.chg >= SK.chgOn) play('menu', { rate: 0.75, vol: 0.3, vary: false });
-      if (was < SK.chgFull && h.chg >= SK.chgFull) { play('cargado', { vary: false }); vib(12); }
+      if (was < chgFullOf(h) && h.chg >= chgFullOf(h)) { play('cargado', { vary: false }); vib(12); }
     }
   }
   return out;
@@ -2899,27 +2938,43 @@ function chargeStep(h, dt, held, pressed, can) {
 // el escudo frena el golpe: un empujoncito, chispas y un poco de energía
 function shieldBlock(h, dir) {
   if (h.blockT > 0) return;
-  h.blockT = 0.25; h.en = Math.max(0, h.en - SK.block); h.enT = Math.max(h.enT, SK.delay);
+  h.blockT = 0.25; h.en = Math.max(0, h.en - SK.block * (hasC(h, 'muralla') ? 0.5 : 1)); h.enT = Math.max(h.enT, SK.delay);
   h.vx = dir * 120; h.vy = Math.min(h.vy, -60); h.onGround = false;
   play('metal', { rate: 1.3, vol: 0.8 }); vib(20);
   if (jOn()) { h.sx = 1.2; h.sy = 0.85; burst(h.x + 4 - dir * 6, h.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); }
 }
 // el flechazo cargado: más rápido, más daño y atraviesa a los enemigos
-function powerShot(h, list = G.arrows) {
+function powerShot(h, list = G.arrows, extra = {}) {
   h.twang = 0.22;
-  const a = { id: uid++, x: h.face > 0 ? h.x + 7 : h.x - 7, y: h.y + 4, vx: h.face * 380, vy: -4, face: h.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, power: true, hits: [] };
+  const mk = vy => Object.assign({ id: uid++, x: h.face > 0 ? h.x + 7 : h.x - 7, y: h.y + 4, vx: h.face * 380, vy, face: h.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, power: true, hits: [], dmg: heroDmg(h, 3) }, extra);
+  const a = mk(-4);
   list.push(a);
+  if (hasC(h, 'triple')) list.push(mk(-55), mk(40)); // flecha triple
   play('poder'); play('disparo', { rate: 0.7, vol: 0.8 });
   if (jOn()) { h.vx -= h.face * 90; h.sx = 0.7; h.sy = 1.2; shake(2, 0.12); burst(h.face > 0 ? h.x + 12 : h.x - 4, h.y + 5, 8, [PAL.c, PAL.w, PAL.b], 70, 0, 0, 0.25); }
   return a;
 }
 // el espadazo cargado: más alcance, más daño y rompe proyectiles
 function bigSlash(h) {
-  h.swingT = 0; h.swingId++; h.big = true; h.hitSwing = false;
+  h.swingT = 0; h.swingId++; h.big = true; h.spin = false; h.hitSwing = false;
   play('poder', { rate: 0.8 }); play('tajo', { rate: 0.7 });
   if (jOn()) { h.vx += h.face * 90; h.sx = 1.35; h.sy = 0.8; shake(3, 0.15); burst(h.x + 4 + h.face * 14, h.y + 2, 10, [PAL.y, PAL.o, PAL.w], 90, 20, 160, 0.35); }
 }
-const slashTime = e => e.big ? 0.16 : 0.1;
+// hachazo circular del bárbaro: golpea alrededor, dos veces (tres con la carta Remolino)
+function spinSlash(h) {
+  h.swingT = 0; h.swingId++; h.big = false; h.spin = true; h.spinN = hasC(h, 'remolino') ? 3 : 2;
+  play('poder', { rate: 0.7 }); play('tajo', { rate: 0.6 }); play('tajo', { rate: 0.7, delay: SK.spinGap });
+  if (h.spinN > 2) play('tajo', { rate: 0.8, delay: SK.spinGap * 2 });
+  if (jOn()) { h.sx = 1.3; h.sy = 0.8; shake(3, 0.2); burst(h.x + 4, h.y + 8, 12, [PAL.o, PAL.y, PAL.w], 90, 20, 160, 0.4); }
+}
+// cuándo pega cada golpe cuerpo a cuerpo y con qué número (para no pegarle dos veces al mismo en un golpe)
+const spinIdx = e => Math.floor(e.swingT / SK.spinGap);
+function slashActive(e) {
+  if (e.spin) { const k = spinIdx(e); return k < (e.spinN || 2) && e.swingT - k * SK.spinGap < SK.spinHit; }
+  return e.swingT < (e.big ? 0.16 : 0.1);
+}
+const swingKey = e => e.swingId * 4 + (e.spin ? spinIdx(e) : 0);
+const slashBase = e => e.spin ? 3 : e.big ? 4 : e.kind === 'barb' || (e === G.p && G.kind === 'barb') ? 3 : 2;
 // proyectiles que rompe el espadazo cargado
 function slashClear(hb) {
   let n = 0;
@@ -2928,6 +2983,150 @@ function slashClear(hb) {
   for (const q of G.shots || []) if (!q.dead && overlap(hb, { x: q.x - 2, y: q.y - 2, w: 4, h: 4 })) { q.dead = true; pop(q.x, q.y); }
   for (const a of G.arrows) if (a.mob && !a.stuck && !a.dead && overlap(hb, { x: a.x, y: a.y, w: 8, h: 3 })) { a.dead = true; pop(a.x + 4, a.y + 1); }
   if (n) { play('clavar', { rate: 1.9, vary: false }); G.score += 5 * n; G.scoreBump = 1; }
+}
+
+/* =========================================================
+   Cartas: al empezar cada zona (y antes del jefe) cada héroe y el villano
+   eligen una de tres. Se van sumando hasta el final de la partida.
+   ========================================================= */
+const HERO_CARDS = [
+  { id: 'vida', name: 'CORAZÓN EXTRA', desc: 'MÁS VIDA MÁXIMA Y TE CURA AL ELEGIRLA', col: 'r' },
+  { id: 'dmg', name: { archer: 'ARCO REFORZADO', knight: 'ESPADA AFILADA', barb: 'HACHA PESADA' }, desc: '+1 DE DAÑO EN TODOS TUS GOLPES', col: 'o' },
+  { id: 'cura', name: 'POCIÓN DE EMERGENCIA', desc: 'SI TE QUEDA MENOS DE LA MITAD DE VIDA, TE CURA. UNA VEZ POR ZONA', col: 'l' },
+  { id: 'energia', name: 'CRISTAL DE MANÁ', desc: 'LA ENERGÍA SE RECARGA 60% MÁS RÁPIDO', col: 'c' },
+  { id: 'veloz', name: 'BOTAS LIGERAS', desc: 'CORRÉS 15% MÁS RÁPIDO', col: 'y' },
+  { id: 'carga', name: 'CONCENTRACIÓN', desc: 'LOS ATAQUES CARGADOS SE CARGAN EL DOBLE DE RÁPIDO', col: 'p' },
+  { id: 'triple', only: 'archer', name: 'FLECHA TRIPLE', desc: 'EL FLECHAZO CARGADO SALE DE A TRES', col: 'c' },
+  { id: 'fantasma', only: 'archer', name: 'PASO FANTASMA', desc: 'EL DASH GASTA LA MITAD DE ENERGÍA', col: 'b' },
+  { id: 'muralla', only: 'knight', name: 'ESCUDO LIVIANO', desc: 'EL ESCUDO GASTA LA MITAD DE ENERGÍA', col: 'b' },
+  { id: 'ira', only: 'barb', name: 'SANGRE CALIENTE', desc: 'LA FURIA DURA EL DOBLE', col: 'r' },
+  { id: 'remolino', only: 'barb', name: 'REMOLINO', desc: 'EL HACHAZO CIRCULAR GOLPEA TRES VECES', col: 'o' }
+];
+const VILLAIN_CARDS = [
+  { id: 'gordos', mobs: true, name: 'SLIMES ROBUSTOS', desc: 'LOS SLIMES TIENEN +2 DE VIDA', col: 'g' },
+  { id: 'veneno', mobs: true, name: 'FLECHAS VENENOSAS', desc: 'LAS FLECHAS DE ESQUELETO ENVENENAN: 1 DE DAÑO MÁS AL RATO', col: 'l' },
+  { id: 'hachas', mobs: true, name: 'HACHAS DOBLES', desc: 'LOS HACHAZOS DE ESQUELETO HACEN +1 DE DAÑO', col: 's' },
+  { id: 'rapidos', mobs: true, name: 'ENEMIGOS VELOCES', desc: 'TODOS TUS ENEMIGOS SE MUEVEN 25% MÁS RÁPIDO', col: 'y' },
+  { id: 'acida', mobs: true, name: 'BABA ÁCIDA', desc: 'LAS BABAS SALPICAN EL DOBLE DE LEJOS', col: 'g' },
+  { id: 'refuerzos', mobs: true, name: 'REFUERZOS', desc: 'LLEGAN DOS ENEMIGOS MÁS A ESTA ZONA', col: 'r' },
+  { id: 'regen', name: 'REGENERACIÓN', desc: 'TUS ENEMIGOS Y EL JEFE SE CURAN DE A POCO', col: 'l' },
+  { id: 'armadura', name: 'ARMADURA DEL JEFE', desc: 'EL MEGA CABALLERO TIENE +20 DE VIDA', col: 's' },
+  { id: 'jfuria', name: 'JEFE FURIOSO', desc: 'LOS ATAQUES DEL JEFE RECARGAN 30% MÁS RÁPIDO', col: 'o' }
+];
+const HBIT = {}, VBIT = {};
+HERO_CARDS.forEach((c, i) => { HBIT[c.id] = 1 << i; });
+VILLAIN_CARDS.forEach((c, i) => { VBIT[c.id] = 1 << i; });
+const cardOf = (key, id) => (key === 'v' ? VILLAIN_CARDS : HERO_CARDS).find(c => c.id === id);
+const cardName = (c, kind) => typeof c.name === 'string' ? c.name : c.name[kind] || c.name.knight;
+function hasC(h, id) { return !!(h && (h.cm & HBIT[id])); }
+function hasV(id) { return !!(G && (G.vcm & VBIT[id])); }
+// reparte hasta 3 cartas que todavía no tenga
+function offerFor(key, cm) {
+  const pool = key === 'v'
+    ? VILLAIN_CARDS.filter(c => !(cm & VBIT[c.id]) && !(G.z >= 3 && c.mobs))
+    : HERO_CARDS.filter(c => !(cm & HBIT[c.id]) && (!c.only || c.only === key));
+  return shuffle(pool.slice()).slice(0, 3).map(c => c.id);
+}
+let pickRound = 0;
+// abre la elección de cartas (campaña: solo el héroe; villano: el villano y cada héroe vivo)
+function startPick() {
+  const o = {};
+  if (G.p) { const ids = offerFor(G.kind, G.p.cm); if (ids.length) o[G.kind] = ids; }
+  if (G.kind === 'invade') {
+    const ids = offerFor('v', G.vcm || 0); if (ids.length) o.v = ids;
+    for (const e of G.heroes) if (!e.dead && !o[e.kind]) { const h = offerFor(e.kind, e.cm); if (h.length) o[e.kind] = h; }
+  }
+  if (!Object.keys(o).length) return;
+  G.pick = { r: ++pickRound, t: 0, mx: G.kind === 'invade' ? 20 : 0, o, c: {} };
+  play('posesion', { rate: 1.3, vary: false });
+}
+// qué elección me toca en esta pantalla
+function myPickKey() {
+  if (!G || !G.pick) return null;
+  if (NET.role === 'guest') { const e = G.heroes && G.heroes.find(h => h.net === NET.me && !h.dead); return e ? e.kind : null; }
+  if (G.p) return G.kind;
+  if (G.kind === 'invade') return 'v';
+  return null;
+}
+const PICK = { r: -1, sel: 1, done: false, l: false, rt: false, tap: -1 };
+// flechas para moverse entre cartas; ataque o salto (o tocarla) para elegir. Devuelve el número elegido.
+function pickInput(pk, key) {
+  const n = pk.o[key].length;
+  if (PICK.r !== pk.r) { PICK.r = pk.r; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; input.leftPressed = input.rightPressed = false; }
+  if (PICK.done) return null;
+  if (input.leftPressed || (input.left && !PICK.l)) { PICK.sel = (PICK.sel + n - 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
+  else if (input.rightPressed || (input.right && !PICK.rt)) { PICK.sel = (PICK.sel + 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
+  PICK.l = input.left; PICK.rt = input.right; input.leftPressed = input.rightPressed = false;
+  let ok = input.attackPressed || input.jumpPressed;
+  if (PICK.tap >= 0) { if (PICK.tap < n) { if (PICK.sel === PICK.tap) ok = true; PICK.sel = PICK.tap; } PICK.tap = -1; }
+  input.attackPressed = input.jumpPressed = input.specialPressed = false;
+  if (!ok) return null;
+  PICK.done = true;
+  play('moneda', { rate: 0.8, vary: false }); vib(20);
+  return PICK.sel;
+}
+// el villano (o la campaña) espera a que todos elijan; los bots eligen al toque
+function updatePick(dt) {
+  const pk = G.pick;
+  pk.t += dt;
+  const key = myPickKey();
+  if (key && pk.o[key] && pk.c[key] === undefined) { const i = pickInput(pk, key); if (i !== null) pk.c[key] = i; }
+  for (const e of G.heroes || []) {
+    if (!pk.o[e.kind] || pk.c[e.kind] !== undefined) continue;
+    if (e.net && !e.dead) {
+      const inp = NET.inputs && NET.inputs.get(e.net);
+      if (inp && Array.isArray(inp.cp) && inp.cp[0] === pk.r) pk.c[e.kind] = Math.max(0, Math.min(pk.o[e.kind].length - 1, inp.cp[1] | 0));
+    } else pk.c[e.kind] = Math.floor(Math.random() * pk.o[e.kind].length);
+  }
+  if (Object.keys(pk.o).every(k => pk.c[k] !== undefined) || (pk.mx && pk.t > pk.mx)) finishPick();
+}
+function finishPick() {
+  const pk = G.pick;
+  G.pick = null;
+  for (const key in pk.o) {
+    let i = pk.c[key];
+    if (i === undefined) i = key === myPickKey() ? PICK.sel : Math.floor(Math.random() * pk.o[key].length);
+    const id = pk.o[key][Math.max(0, Math.min(pk.o[key].length - 1, i))], c = cardOf(key, id);
+    if (key === 'v') { G.vcm = (G.vcm || 0) | VBIT[id]; applyVillainCard(id); if (!NET.playing || NET.role === 'host') popup(G.cam + W / 2, 40, cardName(c), PAL.p); }
+    else {
+      const hs = G.p ? [G.p] : G.heroes.filter(e => e.kind === key && !e.dead);
+      for (const h of hs) { h.cm |= HBIT[id]; applyHeroCard(h, id); popup((h.x || 0) + 4, (h.y || 60) - 12, cardName(c, key), PAL.y); }
+    }
+  }
+  if (G.banner) G.banner.t = 0;
+  play('oleada', { rate: 1.4, vol: 0.6, vary: false });
+}
+function applyHeroCard(h, id) {
+  if (id === 'vida') {
+    if (h === G.p) { G.maxHearts++; G.hearts = Math.min(G.maxHearts, G.hearts + 1); }
+    else { h.max += 2; h.hp = Math.min(h.max, h.hp + 2); }
+  }
+}
+// la poción: una vez por zona, al bajar de la mitad de vida
+function tryCure(h) {
+  if (!hasC(h, 'cura') || h.cureUsed) return;
+  if (h === G.p) { if (G.hearts <= 0 || G.hearts > G.maxHearts / 2) return; G.hearts = Math.min(G.maxHearts, G.hearts + 2); }
+  else { if (h.dead || h.hp <= 0 || h.hp > h.max / 2) return; h.hp = Math.min(h.max, h.hp + 3); }
+  h.cureUsed = true;
+  play('moneda', { rate: 0.7, vary: false }); play('oleada', { rate: 1.6, vol: 0.5, vary: false });
+  popup(h.x + 4, h.y - 10, '¡POCIÓN!', PAL.l);
+  if (jOn()) burst(h.x + 4, h.y + 5, 14, [PAL.l, PAL.g, PAL.w], 60, 40, 60, 0.6);
+}
+function applyVillainCard(id) {
+  if (id === 'gordos') for (const m of G.mobs || []) if (!m.dead && (m.type === 'slime' || m.type === 'red')) { m.hp += 2; m.max += 2; }
+  if (id === 'refuerzos' && G.z < 3) for (let i = 0; i < 2; i++) { const list = INVADE_MOBS[G.z]; spawnMob(G.z, list[Math.floor(Math.random() * list.length)], i, true); }
+  if (id === 'armadura' && G.boss) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
+}
+// el veneno de las flechas: un golpe más, sin empujón, un rato después
+function poisonStep(e, dt) {
+  if (!(e.poisonT > 0) || e.dead) return;
+  e.poisonT -= dt;
+  if (jOn() && Math.random() < 0.25) G.parts.push({ x: e.x + 2 + Math.random() * 5, y: e.y + 2, vx: 0, vy: -20, g: -10, life: 0.4, max: 0.4, c: Math.random() < 0.5 ? PAL.l : PAL.g, s: 1 });
+  if (e.poisonT > 0) return;
+  e.hp -= 1; e.flash = 0.09;
+  play('baba', { rate: 1.4 }); popup(e.x + 4, e.y - 6, '-1', PAL.l);
+  if (jOn()) burst(e.x + 4, e.y + 5, 8, [PAL.l, PAL.g], 50, 30, 150, 0.4);
+  if (e.hp <= 0) heroDeath(e, 0, false); else tryCure(e);
 }
 
 function update(dt, real) {
@@ -2951,6 +3150,7 @@ function update(dt, real) {
   if (G.kind === 'invade') updateCameraInvade(real); else if (G.kind !== 'boss') updateCamera(real);
 
   if (G.freeze > 0) { G.freeze -= real; input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false; return; }
+  if (G.pick && G.state === 'play') { updatePick(real); input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = false; return; }
   if (G.state === 'win') { G.endT += dt; return; }
   if (G.kind === 'boss') { updateBossMode(dt); return; }
   if (G.kind === 'invade') { updateInvade(dt); return; }
@@ -3022,11 +3222,11 @@ function update(dt, real) {
   p.cool -= dt; p.twang -= dt; p.swingT += dt;
   const act = chargeStep(p, dt, input.attack, input.attackPressed, !p.shield && !dash);
   input.attackPressed = false;
-  if (act === 'tap' && (G.kind === 'knight' || G.arrows.filter(a => !a.stuck).length < 4)) attack();
-  else if (act === 'big') { p.cool = G.C.cool; if (G.kind === 'archer') powerShot(p); else bigSlash(p); }
+  if (act === 'tap' && (MELEE(G.kind) || G.arrows.filter(a => !a.stuck).length < 4)) attack();
+  else if (act === 'big') { p.cool = G.C.cool; if (G.kind === 'archer') powerShot(p); else if (G.kind === 'barb') spinSlash(p); else bigSlash(p); }
 
   updateArrows(dt);
-  if (G.kind === 'knight' && p.swingT < slashTime(p)) updateSlash();
+  if (MELEE(G.kind) && slashActive(p)) updateSlash();
   updateHazards(dt);
   if (G.boss) updateBoss(dt, prevBottom);
   updateWaves(dt);
@@ -3142,7 +3342,7 @@ function attack() {
   const p = G.p;
   p.cool = G.C.cool;
   if (G.kind === 'archer') {
-    G.arrows.push({ id: uid++, x: p.face > 0 ? p.x + 7 : p.x - 7, y: p.y + 4, vx: p.face * 240 + p.vx * 0.3, vy: -14, face: p.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false });
+    G.arrows.push({ id: uid++, x: p.face > 0 ? p.x + 7 : p.x - 7, y: p.y + 4, vx: p.face * 240 + p.vx * 0.3, vy: -14, face: p.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, dmg: heroDmg(p, 1) });
     play('disparo');
     if (jOn()) {
       p.vx -= p.face * 34; p.sx = 0.82; p.sy = 1.12; p.twang = 0.16;
@@ -3150,23 +3350,24 @@ function attack() {
       burst(p.face > 0 ? p.x + 11 : p.x - 3, p.y + 5, 3, [PAL.w, PAL.s], 25, 0, 0, 0.16);
     }
   } else {
-    p.swingT = 0; p.swingId++; p.big = false;
-    play('tajo');
+    p.swingT = 0; p.swingId++; p.big = false; p.spin = false;
+    play('tajo', { rate: G.kind === 'barb' ? 0.75 : 1 });
     if (jOn()) { p.vx += p.face * 48; p.sx = 1.2; p.sy = 0.86; flashJ('recoil'); flashJ('squash'); }
   }
 }
-const slashBoxOf = e => e.big ? (e.face > 0 ? { x: e.x + 2, y: e.y - 16, w: 36, h: e.h + 22 } : { x: e.x - 30, y: e.y - 16, w: 36, h: e.h + 22 })
+const slashBoxOf = e => e.spin ? { x: e.x - 20, y: e.y - 14, w: 48, h: e.h + 20 }
+  : e.big ? (e.face > 0 ? { x: e.x + 2, y: e.y - 16, w: 36, h: e.h + 22 } : { x: e.x - 30, y: e.y - 16, w: 36, h: e.h + 22 })
   : e.face > 0 ? { x: e.x + 6, y: e.y - 8, w: 18, h: e.h + 10 } : { x: e.x - 16, y: e.y - 8, w: 18, h: e.h + 10 };
 function slashBox() { return slashBoxOf(G.p); }
 function updateSlash() {
-  const p = G.p, hb = slashBox(), dmg = p.big ? 4 : 2;
+  const p = G.p, hb = slashBox(), dmg = heroDmg(p, slashBase(p)), key = swingKey(p);
   for (const s of G.slimes) {
-    if (s.dead || s.spawn > 0 || s.lastSwing === p.swingId || !overlap(hb, s)) continue;
-    s.lastSwing = p.swingId;
-    hitSlime(s, dmg, 'sword', p.face);
+    if (s.dead || s.spawn > 0 || s.lastSwing === key || !overlap(hb, s)) continue;
+    s.lastSwing = key;
+    hitSlime(s, dmg, 'sword', p.spin ? Math.sign(s.x + 5 - p.x - 4) || 1 : p.face);
   }
   const B = G.boss;
-  if (B && B.hitSwing !== p.swingId && overlap(hb, bossBody(B))) { B.hitSwing = p.swingId; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4); }
+  if (B && B.hitSwing !== key && overlap(hb, bossBody(B))) { B.hitSwing = key; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4); }
   if (p.big) slashClear(hb);
   for (const c of G.coins) if (!c.got && c.born >= 0 && overlap(hb, { x: c.x - 3, y: c.y - 4, w: 6, h: 8 })) collectCoin(c);
   for (const h of G.hazards) {
@@ -3189,16 +3390,16 @@ function updateArrows(dt) {
     if (invZ ? (tipX < ZONES[G.z].start - 12 || tipX > ZONES[G.z].end + 12) : (tipX < camX - 12 || tipX > camX + W + 12)) { a.dead = true; continue; }
     for (const c of G.coins) if (!c.got && c.born >= 0 && Math.abs(tipX - c.x) < 5 && Math.abs(tipY - c.y) < 5) collectCoin(c);
     if (invZ) {
-      if (a.hero && a.power) { for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && !a.hits.includes(m) && tipX >= m.x - 2 && tipX <= m.x + m.w + 2 && tipY >= m.y - 3 && tipY <= m.y + m.h + 2) { a.hits.push(m); hitMob(m, 3, a.face, 'arrow'); } }
-      else if (a.hero) { const m = G.mobs.find(m => !m.dead && m.spawn <= 0 && tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 2 && tipY <= m.y + m.h + 1); if (m) { a.dead = true; hitMob(m, 1, a.face, 'arrow'); continue; } }
-      else if (a.mob) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && tipX >= e.x - 1 && tipX <= e.x + e.w + 1 && tipY >= e.y - 1 && tipY <= e.y + e.h); if (e) { a.dead = true; hitHero(e, 1, a.face, a.player); continue; } }
+      if (a.hero && a.power) { for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && !a.hits.includes(m) && tipX >= m.x - 2 && tipX <= m.x + m.w + 2 && tipY >= m.y - 3 && tipY <= m.y + m.h + 2) { a.hits.push(m); hitMob(m, a.dmg || 3, a.face, 'arrow'); } }
+      else if (a.hero) { const m = G.mobs.find(m => !m.dead && m.spawn <= 0 && tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 2 && tipY <= m.y + m.h + 1); if (m) { a.dead = true; hitMob(m, a.dmg || 1, a.face, 'arrow'); continue; } }
+      else if (a.mob) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && tipX >= e.x - 1 && tipX <= e.x + e.w + 1 && tipY >= e.y - 1 && tipY <= e.y + e.h); if (e) { a.dead = true; if (hitHero(e, 1, a.face, a.player) && hasV('veneno')) e.poisonT = 1.6; continue; } }
     }
     if (a.power) {
-      for (const t of G.slimes) if (!t.dead && t.spawn <= 0 && !a.hits.includes(t) && tipX >= t.x - 2 && tipX <= t.x + t.w + 2 && tipY >= t.y - 3 && tipY <= t.y + t.h + 1) { a.hits.push(t); hitSlime(t, 3, 'arrow', a.face); if (jOn()) burst(tipX, tipY, 5, [PAL.c, PAL.w, PAL.o], 50, 20, 200, 0.3); }
+      for (const t of G.slimes) if (!t.dead && t.spawn <= 0 && !a.hits.includes(t) && tipX >= t.x - 2 && tipX <= t.x + t.w + 2 && tipY >= t.y - 3 && tipY <= t.y + t.h + 1) { a.hits.push(t); hitSlime(t, a.dmg || 3, 'arrow', a.face); if (jOn()) burst(tipX, tipY, 5, [PAL.c, PAL.w, PAL.o], 50, 20, 200, 0.3); }
     }
     const target = !a.power && G.slimes.find(s => !s.dead && s.spawn <= 0 && tipX >= s.x - 1 && tipX <= s.x + s.w + 1 && tipY >= s.y - 2 && tipY <= s.y + s.h);
     if (target) {
-      a.dead = true; hitSlime(target, 1, 'arrow', a.face);
+      a.dead = true; hitSlime(target, a.dmg || 1, 'arrow', a.face);
       if (jOn()) burst(tipX, tipY, 3, [PAL.o, PAL.s], 40, 20, 200, 0.3);
       continue;
     }
@@ -3207,11 +3408,11 @@ function updateArrows(dt) {
       const bb = bossBody(B);
       if (a.power && !a.hitBoss && tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) {
         a.hitBoss = true; // atraviesa la armadura
-        if (!(bossCtl() ? bossTakeHit(3, tipX, tipY) : damageBoss(3, tipX, tipY))) play('metal', { rate: 1.4, vol: 0.5 });
+        if (!(bossCtl() ? bossTakeHit(a.dmg || 3, tipX, tipY) : damageBoss(a.dmg || 3, tipX, tipY))) play('metal', { rate: 1.4, vol: 0.5 });
         if (jOn()) burst(tipX, tipY, 8, [PAL.c, PAL.w, PAL.y], 70, 20, 200, 0.35);
       } else if (!a.power && tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) {
         a.dead = true;
-        if (!(bossCtl() ? bossTakeHit(1, tipX, tipY) : damageBoss(1, tipX, tipY))) { play('metal', { rate: 1.4, vol: 0.5 }); burst(tipX, tipY, 4, [PAL.s, PAL.w], 50, 20, 200, 0.3); }
+        if (!(bossCtl() ? bossTakeHit(a.dmg || 1, tipX, tipY) : damageBoss(a.dmg || 1, tipX, tipY))) { play('metal', { rate: 1.4, vol: 0.5 }); burst(tipX, tipY, 4, [PAL.s, PAL.w], 50, 20, 200, 0.3); }
         continue;
       }
     }
@@ -3318,7 +3519,7 @@ function hurt(dir) {
   G.hearts--; p.inv = 1.4; p.vx = dir * 140; p.vy = -170; p.onGround = false; p.chg = -1;
   play('dano'); vib(60);
   if (jOn()) { p.flash = 0.09; hitstop(0.09); shake(5, 0.28); G.flashRed = 0.18; flashJ('flash'); burst(p.x + 4, p.y + 5, 10, [PAL.r, PAL.o, PAL.w], 70, 40, 200, 0.5); p.sx = 1.3; p.sy = 0.75; }
-  if (G.hearts <= 0) gameOver();
+  if (G.hearts <= 0) gameOver(); else tryCure(p);
 }
 function gameOver() {
   G.state = 'over'; G.combo = 0;
@@ -3651,8 +3852,8 @@ function newBossMode() {
   setTempo(148, -2);
 }
 function heroComp(n) {
-  const knights = Math.min(3, Math.floor(n / 2)), archers = Math.min(4, 1 + Math.ceil(n / 2));
-  return shuffle([...Array(knights).fill('knight'), ...Array(archers).fill('archer')]);
+  const knights = Math.min(3, Math.floor(n / 2)), archers = Math.min(4, 1 + Math.ceil(n / 2)), barbs = Math.min(2, Math.floor((n - 1) / 2));
+  return shuffle([...Array(knights).fill('knight'), ...Array(archers).fill('archer'), ...Array(barbs).fill('barb')]);
 }
 function spawnHero(kind) {
   const C = CHARS[kind];
@@ -3722,7 +3923,7 @@ function updatePlayerBoss(B, dt) {
       for (const atk of ['sweep', 'slam', 'charge', 'rain']) if (input[PB[atk].key + 'Pressed'] && B.cd[atk] <= 0) { pick = atk; break; }
       if (pick) {
         B.atk = pick; B.rep = ph2 && pick === 'rain' ? 2 : 1; B.attackId++;
-        B.cd[pick] = PB[pick].cd * cdm;
+        B.cd[pick] = PB[pick].cd * cdm * (hasV('jfuria') ? 0.7 : 1);
         if (dir) B.face = dir;
         B.targetX = Math.max(ARENA.min + 12, Math.min(ARENA.max - 12, B.x + BW / 2 + B.face * 64));
         setState(B, 'tele');
@@ -3819,7 +4020,7 @@ function updateHeroes(dt) {
       if (e.deadT <= 0 && !e.popped) {
         e.popped = true;
         play('explotar', { rate: 1.2 });
-        burst(e.x + 4, e.y + 5, 16, e.kind === 'knight' ? [PAL.B, PAL.s, PAL.w, PAL.y] : [PAL.r, PAL.G, PAL.w, PAL.y], 90, 40, 200, 0.6);
+        burst(e.x + 4, e.y + 5, 16, HERO_GORE[e.kind], 90, 40, 200, 0.6);
       }
       continue;
     }
@@ -3831,10 +4032,11 @@ function updateHeroes(dt) {
       heroPhysics(e, dt);
     }
     e.cool -= dt; e.twang -= dt; e.swingT += dt;
-    if (!B || B.state === 'dying') continue;
-    if (e.kind === 'knight' && e.swingT < slashTime(e) && !e.hitSwing && overlap(slashBoxOf(e), bossBody(B))) {
-      e.hitSwing = true;
-      bossTakeHit(e.big ? 4 : 2, e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
+    poisonStep(e, dt);
+    if (e.dead || !B || B.state === 'dying') continue;
+    if (MELEE(e.kind) && slashActive(e) && e.hitKey !== swingKey(e) && overlap(slashBoxOf(e), bossBody(B))) {
+      e.hitKey = swingKey(e);
+      bossTakeHit(heroDmg(e, slashBase(e)), e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
     }
     if (e.net) continue; // pisotón y choque con el jefe los avisa la pantalla del jugador
     if (e.vy > 20 && e.prevBottom <= B.y + 2 && overlap(e, bossHead(B))) {
@@ -3860,9 +4062,9 @@ function heroThink(e) {
   e.face = move === -toward ? move : toward;
   if (e.cool <= 0 && e.face === toward) {
     if (e.kind === 'archer' && dist < 190) heroShoot(e);
-    else if (e.kind === 'knight' && dist < 24) heroSlash(e);
+    else if (MELEE(e.kind) && dist < 24) heroSlash(e);
   }
-  if (e.kind === 'knight' && dist < 24 && e.onGround && Math.random() < 0.12) e.jumpNow = true;
+  if (MELEE(e.kind) && dist < 24 && e.onGround && Math.random() < 0.12) e.jumpNow = true;
   if (e.kind === 'archer' && nearWall && dist < 50 && e.onGround && Math.random() < 0.25) { e.jumpNow = true; e.move = toward; }
 }
 function heroDodge(e) {
@@ -3909,20 +4111,21 @@ function heroTimers(e, dt) {
 }
 function heroShoot(e) {
   e.cool = 0.9 + Math.random() * 0.6; e.twang = 0.16;
-  G.arrows.push({ id: uid++, x: e.face > 0 ? e.x + 7 : e.x - 7, y: e.y + 4, vx: e.face * 230, vy: -12, face: e.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, hero: true });
+  G.arrows.push({ id: uid++, x: e.face > 0 ? e.x + 7 : e.x - 7, y: e.y + 4, vx: e.face * 230, vy: -12, face: e.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, hero: true, dmg: heroDmg(e, 1) });
   play('disparo', { vol: 0.5 });
   if (jOn()) { e.vx -= e.face * 30; e.sx = 0.85; e.sy = 1.1; }
 }
 function heroSlash(e) {
-  e.cool = 0.75 + Math.random() * 0.5; e.swingT = 0; e.swingId++; e.hitSwing = false; e.big = false;
-  play('tajo', { vol: 0.5 });
+  e.cool = (e.kind === 'barb' ? 0.95 : 0.75) + Math.random() * 0.5; e.swingT = 0; e.swingId++; e.hitSwing = false; e.big = false; e.spin = false;
+  play('tajo', { vol: 0.5, rate: e.kind === 'barb' ? 0.75 : 1 });
   if (jOn()) { e.vx += e.face * 40; e.sx = 1.2; e.sy = 0.86; }
 }
 // trusted: el golpe lo decidió la pantalla del jugador, que ya sabe si tenía el escudo o era intangible
+// devuelve true si el golpe entró
 function hitHero(e, dmg, dir, critOk = true, trusted = false) {
-  if (e.dead || e.inv > 0) return;
-  if (!trusted && e.ghostT > 0) return;
-  if (!trusted && e.shield) { if (e.blockT <= 0) { e.blockT = 0.25; play('metal', { rate: 1.3, vol: 0.8 }); if (jOn()) burst(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); } return; }
+  if (e.dead || e.inv > 0) return false;
+  if (!trusted && e.ghostT > 0) return false;
+  if (!trusted && e.shield) { if (e.blockT <= 0) { e.blockT = 0.25; play('metal', { rate: 1.3, vol: 0.8 }); if (jOn()) burst(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); } return false; }
   const isCrit = critOk && rollCrit();
   const total = isCrit ? dmg * 3 : dmg;
   if (G.kind === 'invade') { G.score += 20 * total; G.scoreBump = 1; }
@@ -3930,12 +4133,15 @@ function hitHero(e, dmg, dir, critOk = true, trusted = false) {
   play('dano', { rate: 1.3, vol: 0.8 });
   if (isCrit) crit(e.x + 4, e.y + 5);
   if (jOn()) { e.flash = 0.09; hitstop(0.05); shake(2.5, 0.15); flashJ('flash'); flashJ('squash'); burst(e.x + 4, e.y + 5, 10, [PAL.r, PAL.o, PAL.w], 80, 40, 220, 0.5); e.sx = 1.3; e.sy = 0.75; }
-  if (e.hp <= 0) {
-    e.dead = true; e.deadT = 0.55; e.vx = dir * 120; e.vy = -260;
-    const pts = (e.kind === 'knight' ? 150 : 100) * (isCrit ? 2 : 1);
-    G.score += pts; G.scoreBump = 1; G.kills++;
-    popup(e.x + 4, e.y - 8, '+' + pts, isCrit ? PAL.y : PAL.l);
-  } else popup(e.x + 4, e.y - 6, '-' + total, PAL.w);
+  if (e.hp <= 0) heroDeath(e, dir, isCrit);
+  else { popup(e.x + 4, e.y - 6, '-' + total, PAL.w); tryCure(e); }
+  return true;
+}
+function heroDeath(e, dir, isCrit) {
+  e.dead = true; e.deadT = 0.55; e.vx = dir * 120; e.vy = -260; e.rageT = 0; e.shield = false; e.poisonT = 0;
+  const pts = (MELEE(e.kind) ? 150 : 100) * (isCrit ? 2 : 1);
+  G.score += pts; G.scoreBump = 1; G.kills = (G.kills || 0) + 1;
+  popup(e.x + 4, e.y - 8, '+' + pts, isCrit ? PAL.y : PAL.l);
 }
 function bossTakeHit(dmg, x, y) {
   const B = G.boss;
@@ -3990,34 +4196,41 @@ function newInvadeMode() {
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 99, cleared: false, endT: 0,
     boss: null, ctrl: null, possessT: 0, soul: null, soulFrom: null, zoneLost: false, wave: 0, kills: 0
   };
-  const a = spawnHero('archer'), k = spawnHero('knight');
-  a.x = 16; k.x = 34; a.hp = a.max = 8; k.hp = k.max = 10; a.inv = k.inv = 0; a.skill = k.skill = 0.6; a.move = k.move = 0; a.vx = k.vx = 0;
-  G.heroes = [a, k];
+  const a = spawnHero('archer'), k = spawnHero('knight'), b = spawnHero('barb');
+  a.x = 16; k.x = 34; b.x = 52; a.hp = a.max = 8; k.hp = k.max = 10; b.hp = b.max = 9;
+  for (const e of [a, k, b]) { e.inv = 0; e.skill = 0.6; e.move = 0; e.vx = 0; }
+  G.heroes = [a, k, b];
+  G.vcm = 0; G.pick = null;
   setTempo(132, 0);
   spawnMobs(0); possessNext(true);
   G.banner = { text: 'MODO VILLANO', sub: 'FRENÁ A LOS HÉROES', t: 0, long: true };
+  startPick();
 }
-function spawnMobs(z) {
+function spawnMobs(z) { INVADE_MOBS[z].forEach((type, i) => spawnMob(z, type, i)); }
+function spawnMob(z, type, i, late) {
   const Z = ZONES[z], plats = PLATS.filter(p => p.zone === z);
   const ground = { x: Z.start + 120, y: GROUND, w: Z.end - Z.start - 140, ground: true };
-  INVADE_MOBS[z].forEach((type, i) => {
+  {
     const T = MOB[type];
     let surf = ground;
     const usePlat = type === 'slime' ? Math.random() < 0.7 : type === 'skarch' ? Math.random() < 0.6 : Math.random() < 0.25;
     const farPlats = plats.filter(p => p.x > Z.start + 90);
     if (usePlat && farPlats.length) surf = farPlats[Math.floor(Math.random() * farPlats.length)];
     const x = surf.x + 4 + Math.random() * Math.max(1, surf.w - T.w - 8);
-    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h, w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp, max: T.hp, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: 0.3 + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false });
-  });
+    const extra = (type === 'slime' || type === 'red') && hasV('gordos') ? 2 : 0;
+    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h, w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp + extra, max: T.hp + extra, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: (late ? 0.8 : 0.3) + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false, regT: 0 });
+  }
 }
 function enterInvadeZone(n) {
   G.z = n; G.zoneLost = false;
   GATES[n - 1].want = 0;
   G.mobs = G.mobs.filter(m => m.zone === n && !m.dead); G.shots = []; G.arrows = [];
-  for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); popup(e.x + 4, e.y - 8, '+2', PAL.l); }
+  for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); e.cureUsed = false; popup(e.x + 4, e.y - 8, '+2', PAL.l); }
   if (n === 3) {
     G.ctrl = null;
     G.boss = makePlayerBoss();
+    if (hasV('armadura')) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
+    startPick();
     for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = 1; }
     G.banner = { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
     play('rugido', { vary: false });
@@ -4026,6 +4239,7 @@ function enterInvadeZone(n) {
   }
   spawnMobs(n); possessNext(true);
   G.banner = { text: 'ZONA ' + (n + 1), sub: ZONES[n].name + ' · SOS ' + MOB[G.ctrl.type].name, t: 0 };
+  startPick();
 }
 function possessNext(first) {
   const alive = G.mobs.filter(m => !m.dead && m.zone === G.z);
@@ -4054,6 +4268,8 @@ function invadeWin(text) {
 }
 function updateInvade(dt) {
   if (G.z === 3) {
+    const Bv = G.boss;
+    if (Bv && hasV('regen') && Bv.hp < Bv.maxHp && Bv.state !== 'dying') { Bv.regT = (Bv.regT || 0) + dt; if (Bv.regT > 2.5) { Bv.regT = 0; Bv.hp++; Bv.show = Math.max(Bv.show, Bv.hp); } }
     if (G.boss) updatePlayerBoss(G.boss, dt);
     updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt);
     if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin('¡DEFENDISTE EL TRONO!');
@@ -4100,10 +4316,11 @@ function updateMobs(dt) {
     if (m.dead) { m.deadT -= dt; continue; }
     if (m.spawn > 0) { m.spawn -= dt; continue; }
     m.cool -= dt; m.swingT += dt; m.twang -= dt;
+    if (hasV('regen') && m.hp < m.max) { m.regT = (m.regT || 0) + dt; if (m.regT > 4) { m.regT = 0; m.hp++; popup(m.x + m.w / 2, m.y - 4, '+1', PAL.l); } }
     if (m.player) playerMob(m, dt); else aiMob(m, dt);
     if (m.type === 'skaxe' && m.swingT < 0.12) {
       const hb = axeBox(m);
-      for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, hb)) hitHero(e, 2, m.face, m.player);
+      for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, hb)) hitHero(e, hasV('hachas') ? 3 : 2, m.face, m.player);
     }
   }
   G.mobs = G.mobs.filter(m => !(m.dead && m.deadT <= 0));
@@ -4111,7 +4328,7 @@ function updateMobs(dt) {
 function mobPhysics(m, dt, dir, speed) {
   const Z = ZONES[m.zone];
   if (m.knockT > 0) m.knockT -= dt;
-  else { const acc = (m.onGround ? 700 : 450) * dt; m.vx += Math.max(-acc, Math.min(acc, dir * speed - m.vx)); }
+  else { const acc = (m.onGround ? 700 : 450) * dt; m.vx += Math.max(-acc, Math.min(acc, dir * speed * (hasV('rapidos') ? 1.25 : 1) - m.vx)); }
   m.vy = Math.min(m.vy + GRAV * dt, 280);
   m.prevBottom = m.y + m.h;
   m.x += m.vx * dt; m.y += m.vy * dt;
@@ -4216,7 +4433,8 @@ function updateShots(dt) {
 function splat(s) {
   s.dead = true;
   play('baba', { vol: s.player ? 1 : 0.6 });
-  for (const e of G.heroes) if (!e.dead && e.inv <= 0 && overlap(e, { x: s.x - 9, y: s.y - 10, w: 18, h: 12 })) hitHero(e, 1, Math.sign(e.x + 4 - s.x) || 1, s.player);
+  const big = hasV('acida') ? 2 : 1;
+  for (const e of G.heroes) if (!e.dead && e.inv <= 0 && overlap(e, { x: s.x - 9 * big, y: s.y - 10 * big, w: 18 * big, h: 12 + 4 * (big - 1) })) hitHero(e, 1, Math.sign(e.x + 4 - s.x) || 1, s.player);
   if (jOn()) { burst(s.x, s.y, 10, s.red ? [PAL.r, PAL.o, PAL.p] : [PAL.g, PAL.l, PAL.G], 70, 40, 260, 0.45); if (s.player) shake(1.5, 0.1); }
 }
 function mobShoot(m, isPlayer) {
@@ -4267,7 +4485,7 @@ function updateBots(dt) {
   for (const e of G.heroes) {
     if (e.dead) {
       e.vy += GRAV * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.deadT -= dt; e.flash = 0.05;
-      if (e.deadT <= 0 && !e.popped) { e.popped = true; play('explotar', { rate: 1.2 }); burst(e.x + 4, e.y + 5, 16, e.kind === 'knight' ? [PAL.B, PAL.s, PAL.w, PAL.y] : [PAL.r, PAL.G, PAL.w, PAL.y], 90, 40, 200, 0.6); }
+      if (e.deadT <= 0 && !e.popped) { e.popped = true; play('explotar', { rate: 1.2 }); burst(e.x + 4, e.y + 5, 16, HERO_GORE[e.kind], 90, 40, 200, 0.6); }
       continue;
     }
     if (e.net) { if (netHero(e, dt)) heroTimers(e, dt); else heroPhysics(e, dt); }
@@ -4279,9 +4497,11 @@ function updateBots(dt) {
       heroPhysics(e, dt);
     }
     e.cool -= dt; e.twang -= dt; e.swingT += dt;
-    if (e.kind === 'knight' && e.swingT < slashTime(e)) {
-      const hb = slashBoxOf(e), sid = e.id * 1000 + e.swingId;
-      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; hitMob(m, e.big ? 4 : 2, e.face, 'sword'); }
+    poisonStep(e, dt);
+    if (e.dead) continue;
+    if (MELEE(e.kind) && slashActive(e)) {
+      const hb = slashBoxOf(e), sid = e.id * 10000 + swingKey(e);
+      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; m.inv = 0; hitMob(m, heroDmg(e, slashBase(e)), e.spin ? Math.sign(m.x + m.w / 2 - e.x - 4) || 1 : e.face, 'sword'); }
     }
     // los héroes de jugadores avisan desde su pantalla qué pisaron y qué les pegó
     if (!e.net) for (const m of G.mobs) {
@@ -4325,7 +4545,7 @@ function botThink(e) {
       const near = Math.max(step.x + 6, Math.min(step.x + step.w - 6, cx));
       move = Math.abs(near - cx) > 3 ? Math.sign(near - cx) : toward;
     }
-    if (e.kind === 'knight' && dist < 24 && dy > -26 && e.cool <= 0) heroSlash(e);
+    if (MELEE(e.kind) && dist < 24 && dy > -26 && e.cool <= 0) heroSlash(e);
   } else {
     move = toward;
     if (dist < 22 && e.onGround && e.surf && !e.surf.ground) e.dropNow = true;
@@ -4509,7 +4729,8 @@ function drawPip(p, kind, isPlayer) {
   const H2 = HEROES[kind];
   let set = H2.idle;
   if (!p.onGround) set = H2.air; else if (p.runT > 0 && Math.floor(p.runT * 10) % 2) set = H2.run;
-  const swinging = kind === 'knight' && p.swingT < (p.big ? 0.22 : 0.16);
+  const spinDur = (p.spinN || 2) * SK.spinGap;
+  const swinging = MELEE(kind) && p.swingT < (p.spin ? spinDur : p.big ? 0.22 : 0.16);
   const chg = !p.dead && charging(p), full = chg && charged(p);
   const twanging = kind === 'archer' && jOn() && ((p.twang > 0 && Math.floor(p.twang * 40) % 2 === 0) || chg);
   const v = swinging || twanging ? set.alt : set.n;
@@ -4527,7 +4748,19 @@ function drawPip(p, kind, isPlayer) {
   if (jOn()) drawScaled(img, p.x + 4 + p.face, p.y + p.h + bob, p.sx, p.sy);
   else g.drawImage(img, Math.round(p.face > 0 ? p.x - 1 : p.x - 3), Math.round(p.y - 1 + bob));
   g.globalAlpha = 1;
-  if (swinging) {
+  // furia: un aura roja que late
+  if (p.rageT > 0 && !p.dead) {
+    const pulse = 7 + Math.sin(G.t * 14) * 1.5;
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = '#3a0c06'; glowDisc(p.x + 4, p.y + 6, pulse); g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 3; i++) { const k = (G.t * 2.3 + i / 3) % 1; g.fillStyle = k < 0.5 ? PAL.y : PAL.r; g.fillRect(Math.round(p.x + 1 + ((i * 37 + Math.floor(G.t * 3)) % 7)), Math.round(p.y + 10 - k * 14), 1, 1); }
+  }
+  if (swinging && p.spin) {
+    // hachazo circular: un anillo de fuego por cada vuelta
+    const k = Math.min((p.spinN || 2) - 1, spinIdx(p)), t = p.swingT - k * SK.spinGap;
+    if (jOn()) drawArc(p.x + 4, p.y + 5, k % 2 ? -p.face : p.face, 13, 22, -90, 360, t, SK.spinGap, ARC_FIRE);
+  } else if (swinging && kind === 'barb') {
+    if (jOn() && p.swingT < 0.16) drawArc(p.x + 4 + p.face * 2, p.y + 5, p.face, 10, 17, -120, 200, p.swingT, 0.16, ARC_FIRE);
+  } else if (swinging) {
     g.fillStyle = p.big ? PAL.y : PAL.w;
     g.fillRect(Math.round(p.face > 0 ? p.x + 10 : p.x - (p.big ? 15 : 11)), Math.round(p.y + 5 + bob), p.big ? 13 : 9, 1);
     if (jOn() && p.big) drawArc(p.x + 4 + p.face * 2, p.y + 3, p.face, 15, 26, -100, 200, p.swingT, 0.22, ARC_FIRE);
@@ -4536,7 +4769,7 @@ function drawPip(p, kind, isPlayer) {
   // carga: un anillo que se cierra sobre el arco o la espada, y un destello cuando está lista
   if (chg) {
     const fx = p.x + 4 + p.face * (kind === 'archer' ? 6 : 7), fy = p.y + (kind === 'archer' ? 5 : 4);
-    const col = kind === 'archer' ? [PAL.c, PAL.w] : [PAL.o, PAL.y];
+    const col = kind === 'archer' ? [PAL.c, PAL.w] : kind === 'barb' ? [PAL.r, PAL.y] : [PAL.o, PAL.y];
     if (!full) for (let i = 0; i < 2; i++) { const k = (G.t * 3 + i / 2) % 1; pxCircle(fx, fy, 1 + 9 * (1 - k), col[i], 30); }
     else {
       const on = Math.floor(G.t * 12) % 2;
@@ -4546,6 +4779,7 @@ function drawPip(p, kind, isPlayer) {
       pxCircle(fx, fy, 4 + Math.round(Math.sin(G.t * 20)), col[0], 45);
     }
   }
+  if (p.poisonT > 0 && !p.dead && Math.floor(G.t * 8) % 2) { g.fillStyle = PAL.l; g.fillRect(Math.round(p.x + 3), Math.round(p.y - 3), 2, 2); }
   // escudo: una burbuja alrededor del caballero
   if (p.shield && !p.dead) {
     const cx = p.x + 4, cy = p.y + 5, hit = p.blockT > 0, r = 9 + (hit ? 1 : 0);
@@ -4765,7 +4999,7 @@ function render() {
   if (G.kind === 'invade') {
     let y = 4;
     for (const e of G.heroes) {
-      drawText(g, e.kind === 'archer' ? 'ARQ' : 'CAB', 4, y, e.kind === 'archer' ? PAL.o : PAL.b, 1, 'left');
+      drawText(g, KIND_TAG[e.kind], 4, y, KIND_COL()[e.kind], 1, 'left');
       g.fillStyle = PAL.k; g.fillRect(19, y - 1, 36, 7); g.fillStyle = PAL.d; g.fillRect(20, y, 34, 5);
       g.fillStyle = e.dead ? PAL.S : PAL.r; g.fillRect(20, y, Math.round(34 * Math.max(0, e.hp) / e.max), 5);
       // mi energía, debajo de mi vida
@@ -4780,7 +5014,7 @@ function render() {
       drawText(g, NET.role === 'guest' ? netHint() : m ? 'SOS ' + MOB[m.type].name + ' · ' + MOB[m.type].hint : 'BUSCANDO OTRO CUERPO...', 4, 136, PAL.y, 1, 'left');
       for (const e of G.heroes) {
         if (e.dead) continue;
-        const sxp = e.x + 4 - camX, col = e.kind === 'archer' ? PAL.o : PAL.b, yy = Math.max(24, Math.min(118, Math.round(e.y)));
+        const sxp = e.x + 4 - camX, col = KIND_COL()[e.kind], yy = Math.max(24, Math.min(118, Math.round(e.y)));
         if (sxp < 0) drawText(g, '<', 2, yy, col, 1, 'left'); else if (sxp > W) drawText(g, '>', W - 5, yy, col, 1, 'left');
       }
     }
@@ -4809,6 +5043,7 @@ function render() {
       if (G.banner.sub) drawText(g, G.banner.sub, W / 2, y + 14, PAL.s, 1, 'center');
     }
   }
+  if (G.pick) drawPicker();
   if (G.state === 'over') {
     g.fillStyle = 'rgba(26,28,44,0.72)'; g.fillRect(0, 0, W, H);
     const heroWin = NET.role === 'guest';
@@ -4830,14 +5065,49 @@ function render() {
     }
   }
 }
+// parte un texto en renglones de hasta n letras
+function wrapText(str, n) {
+  const out = []; let line = '';
+  for (const w of str.split(' ')) { if (line && (line + ' ' + w).length > n) { out.push(line); line = w; } else line = line ? line + ' ' + w : w; }
+  if (line) out.push(line);
+  return out;
+}
+const PICK_X = n => Array.from({ length: n }, (_, i) => Math.round(W / 2 - (n * 80 + (n - 1) * 5) / 2 + i * 85));
+// la elección de cartas, dibujada encima del juego congelado
+function drawPicker() {
+  const pk = G.pick, key = myPickKey(), done = Array.isArray(pk.c) ? pk.c : Object.keys(pk.c);
+  g.fillStyle = 'rgba(10,10,24,0.78)'; g.fillRect(0, 0, W, H);
+  const mine = key && pk.o[key], chose = mine && (done.includes(key) || (PICK.r === pk.r && PICK.done));
+  drawText(g, mine ? (chose ? '¡LISTO!' : 'ELEGÍ UNA CARTA') : 'ELIGIENDO CARTAS...', W / 2, 5, PAL.y, 2, 'center');
+  drawText(g, mine ? (key === 'v' ? 'PARA TUS ENEMIGOS' : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO', W / 2, 19, PAL.s, 1, 'center');
+  if (mine) {
+    const ids = pk.o[key], xs = PICK_X(ids.length), sel = PICK.r === pk.r ? PICK.sel : 1;
+    ids.forEach((id, i) => {
+      const c = cardOf(key, id); if (!c) return;
+      const on = i === sel, x = xs[i], y = 30 - (on ? 3 : 0), w = 80, h = 88, dim = chose && !on;
+      const ramp = RAMPS[c.col] || RAMPS.s;
+      g.fillStyle = on ? (Math.floor(G.t * 6) % 2 || chose ? PAL.y : PAL.o) : PAL.S; g.fillRect(x - 1, y - 1, w + 2, h + 2);
+      g.fillStyle = PAL.k; g.fillRect(x, y, w, h);
+      g.fillStyle = ramp[1]; g.fillRect(x + 1, y + 1, w - 2, 22);
+      g.fillStyle = ramp[2]; g.fillRect(x + 1, y + 1, w - 2, 1);
+      wrapText(norm(cardName(c, key)), 12).slice(0, 2).forEach((ln, j) => drawText(g, ln, x + w / 2, y + 4 + j * 9, PAL.w, 1, 'center'));
+      wrapText(norm(c.desc), 12).slice(0, 7).forEach((ln, j) => drawText(g, ln, x + w / 2, y + 28 + j * 8, dim ? PAL.S : PAL.s, 1, 'center', null));
+      if (dim) { g.fillStyle = 'rgba(10,10,24,0.55)'; g.fillRect(x, y, w, h); }
+    });
+  }
+  const wait = Object.keys(pk.o).filter(k => !done.includes(k) && k !== key).map(k => k === 'v' ? 'VILLANO' : KIND_NAME[k]);
+  if (wait.length) drawText(g, 'ESPERANDO: ' + wait.join(' · '), W / 2, 124, PAL.c, 1, 'center');
+  if (mine && !chose) drawText(g, '< > ELEGIR · ATAQUE O SALTO CONFIRMA', W / 2, 134, PAL.y, 1, 'center');
+  else if (pk.mx) drawText(g, 'SIGUE EN ' + Math.max(0, Math.ceil(pk.mx - pk.t)), W / 2, 134, PAL.s, 1, 'center');
+}
 // medidor de energía con marcas de lo que cuesta cada especial
 function drawEnergy(x, y, w, h, kind) {
-  const cost = kind === 'archer' ? SK.dash : SK.shMin, k = Math.max(0, Math.min(1, h.en / SK.max));
+  const cost = kind === 'archer' ? (hasC(h, 'fantasma') ? SK.dash / 2 : SK.dash) : kind === 'barb' ? SK.rage : SK.shMin, k = Math.max(0, Math.min(1, h.en / SK.max));
   const warn = h.enFlash > 0 && Math.floor(h.enFlash * 16) % 2;
   g.fillStyle = warn ? PAL.r : PAL.k; g.fillRect(x - 1, y - 1, w + 2, 5);
   g.fillStyle = PAL.d; g.fillRect(x, y, w, 3);
-  const ready = h.en >= cost || h.shield;
-  g.fillStyle = h.shield ? (Math.floor(G.t * 10) % 2 ? PAL.c : PAL.b) : ready ? PAL.c : PAL.B; g.fillRect(x, y, Math.round(w * k), 3);
+  const ready = h.en >= cost || h.shield || h.rageT > 0;
+  g.fillStyle = h.shield || h.rageT > 0 ? (Math.floor(G.t * 10) % 2 ? (h.rageT > 0 ? PAL.o : PAL.c) : PAL.b) : ready ? PAL.c : PAL.B; g.fillRect(x, y, Math.round(w * k), 3);
   g.fillStyle = ready ? PAL.w : PAL.b; g.fillRect(x, y, Math.round(w * k), 1);
   g.fillStyle = PAL.k;
   for (let c = cost; c < SK.max; c += kind === 'archer' ? cost : SK.max) g.fillRect(x + Math.round(w * c / SK.max), y, 1, 3);
@@ -4850,6 +5120,8 @@ function renderTitle() {
   const b = Math.abs(Math.sin(T * 3)) * 3, b2 = Math.abs(Math.sin(T * 3 + 1.2)) * 3;
   drawScaled(HEROES.archer.idle.n.r, 70, GROUND - b, 1 + b * 0.03, 1 - b * 0.02);
   drawScaled(HEROES.knight.idle.n.r, 92, GROUND - b2, 1 + b2 * 0.03, 1 - b2 * 0.02);
+  const b3 = Math.abs(Math.sin(T * 3 + 2.4)) * 3;
+  drawScaled(HEROES.barb.idle.n.r, 48, GROUND - b3, 1 + b3 * 0.03, 1 - b3 * 0.02);
   g.drawImage(ARROW.r, 104 + Math.round((T * 30) % 30), 117);
   drawScaled(SLIME.l, 160, GROUND, 1 + Math.sin(T * 6) * 0.08, 1 - Math.sin(T * 6) * 0.08);
   drawScaled(RED.l, 182, GROUND, 1 + Math.sin(T * 9) * 0.1, 1 - Math.sin(T * 9) * 0.1);
@@ -4909,7 +5181,7 @@ document.addEventListener('visibilitychange', bgTickSync);
    Entrada
    ========================================================= */
 const BOSS_KEYS = { KeyZ: 'charge', KeyV: 'rain' };
-const PRESS = new Set(['jump', 'attack', 'charge', 'rain', 'special']);
+const PRESS = new Set(['jump', 'attack', 'charge', 'rain', 'special', 'left', 'right']);
 const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyS: 'down', KeyX: 'attack', KeyK: 'attack', KeyF: 'attack', ShiftLeft: 'special', ShiftRight: 'special', KeyV: 'special', KeyL: 'special', KeyG: 'special' };
 const isIdle = () => !G || G.state === 'over' || (G.state === 'win' && G.endT > 2.6);
 window.addEventListener('keydown', e => {
@@ -4920,7 +5192,7 @@ window.addEventListener('keydown', e => {
   if (free && e.code === 'KeyJ') { toggle('juice'); return; }
   if (free && e.code === 'KeyM') { toggle('music'); return; }
   if (free && e.code === 'KeyC') { toggle('crit'); return; }
-  const DIG = { Digit1: 'archer', Digit2: 'knight', Digit3: 'boss', Digit4: 'invade' };
+  const DIG = { Digit1: 'archer', Digit2: 'knight', Digit3: 'boss', Digit4: 'invade', Digit5: 'barb' };
   if (free && isIdle() && DIG[e.code]) { startGame(DIG[e.code]); return; }
   if (!k) return;
   if (G && G.state === 'play' && (free || !(ae instanceof HTMLButtonElement || ae instanceof HTMLInputElement))) {
@@ -4931,7 +5203,19 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { const k = KEYS[e.code], k2 = BOSS_KEYS[e.code]; if (k) input[k] = false; if (k2) input[k2] = false; });
 window.addEventListener('blur', () => { for (const k in input) input[k] = false; });
-cv.addEventListener('pointerdown', e => { if (isIdle()) startGame(lastKind); else if (e.pointerType === 'mouse' && G.state === 'play') input.attackPressed = true; });
+cv.addEventListener('pointerdown', e => {
+  // tocar una carta la marca; tocarla de nuevo la elige
+  if (G && G.pick) {
+    const key = myPickKey();
+    if (key && G.pick.o[key]) {
+      const r = cv.getBoundingClientRect(), lx = (e.clientX - r.left) / r.width * W, ly = (e.clientY - r.top) / r.height * H;
+      const xs = PICK_X(G.pick.o[key].length), i = xs.findIndex(x => lx >= x && lx <= x + 80);
+      if (i >= 0 && ly >= 24 && ly <= 122) PICK.tap = i;
+    }
+    return;
+  }
+  if (isIdle()) startGame(lastKind); else if (e.pointerType === 'mouse' && G.state === 'play') input.attackPressed = true;
+});
 
 const overlay = document.getElementById('overlay');
 function startGame(kind) {
@@ -4954,6 +5238,7 @@ document.getElementById('start-boss').addEventListener('click', () => startGame(
 document.getElementById('start-villain').addEventListener('click', () => startGame('invade'));
 document.getElementById('start-archer').addEventListener('click', () => startGame('archer'));
 document.getElementById('start-knight').addEventListener('click', () => startGame('knight'));
+document.getElementById('start-barb').addEventListener('click', () => startGame('barb'));
 
 /* =========================================================
    UI: interruptores, placa de sonidos, música
@@ -5165,7 +5450,7 @@ function syncButtons() {
     btnsEl.classList.toggle('special-on', !!kind);
     tbEls.jump.firstChild.textContent = mode === 'boss' ? 'Salto' : 'Saltar';
     tbEls.attack.firstChild.textContent = mode === 'boss' ? 'Tajo' : 'Atacar';
-    tbEls.special.firstChild.textContent = kind === 'knight' ? 'Escudo' : 'Dash';
+    tbEls.special.firstChild.textContent = kind === 'knight' ? 'Escudo' : kind === 'barb' ? 'Furia' : 'Dash';
     if (mode !== 'boss') for (const k of ['jump', 'attack', 'charge', 'rain']) tbEls[k].style.setProperty('--cd', '0');
   }
   // el botón especial se oscurece según la energía que falta
@@ -5192,8 +5477,8 @@ btnsEl.querySelectorAll('.tb').forEach(btn => {
    publica una foto comprimida del mundo 20 veces por segundo y cada
    héroe publica sus teclas.
    ========================================================= */
-const NET_SLOTS = ['archer', 'knight'];
-const NET_LABEL = { archer: 'Arquero', knight: 'Caballero' };
+const NET_SLOTS = ['archer', 'knight', 'barb'];
+const NET_LABEL = { archer: 'Arquero', knight: 'Caballero', barb: 'Bárbaro' };
 const CLIST = [...new Set([...Object.values(PAL), ...Object.values(RAMPS).flat(), '#ffffff'])];
 const CIDX = new Map(CLIST.map((c, i) => [c, i]));
 const encC = c => CIDX.has(c) ? CIDX.get(c) : String(c);
@@ -5234,6 +5519,7 @@ class BinR {
   list(spec) { const n = this.u(); if (n > 4000) throw new Error('lista'); const out = new Array(n); for (let k = 0; k < n; k++) out[k] = this.rec(spec); return out; }
 }
 const ST_LIST = ['play', 'over', 'win'];
+const HK_LIST = ['archer', 'knight', 'barb'];
 const MT_LIST = ['slime', 'red', 'skarch', 'skaxe'];
 const BS_LIST = ['wait', 'drop', 'roar', 'idle', 'tele', 'act', 'rec', 'stun', 'rage', 'dying', 'gone'];
 const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain'];
@@ -5243,7 +5529,7 @@ const enumOf = (list, v) => Math.max(0, list.indexOf(v));
 const cIdx = c => CIDX.has(c) ? CIDX.get(c) : 0;
 // qué lleva cada registro: i = número, s = texto
 const SP = {
-  h: 'iiiiiiiiiiiiiiisiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt
+  h: 'iiiiiiiiiiiiiiisiiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt cartas
   m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
   a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
   sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii',
@@ -5258,7 +5544,7 @@ function netPack(now) {
   const w = new BinW(), B = G.boss;
   w.u32(Math.round(now));
   const flags = (G.zoom ? 1 : 0) | (G.impact ? 2 : 0) | (G.critText ? 4 : 0) | (G.banner ? 8 : 0) | (G.soul ? 16 : 0) | (B ? 32 : 0);
-  w.rec([enumOf(ST_LIST, G.state), G.z, G.score, C2(G.t % 600), C2(G.endT || 0), G.kills || 0, flags, G.ctrl ? G.ctrl.id : 0], 'iiiiiiii');
+  w.rec([enumOf(ST_LIST, G.state), G.z, G.score, C2(G.t % 600), C2(G.endT || 0), G.kills || 0, flags | (G.pick ? 64 : 0), G.ctrl ? G.ctrl.id : 0, G.vcm || 0], 'iiiiiiiii');
   w.rec(GATES.map(gt => C2(gt.open)), 'iii');
   w.rec([C2(Math.max(0, G.shake)), Math.round(G.shakeMag * 10), C2(G.shakeMax), C2(Math.max(0, G.flashRed))], 'iiii');
   w.rec([Music.bpm, Music.tr, G.state === 'play' && !(B && (B.state === 'dying' || B.state === 'gone')) ? 1 : 0], 'iii');
@@ -5267,7 +5553,8 @@ function netPack(now) {
   if (G.critText) w.rec([C2(G.critText.t), H2(G.critText.x), H2(G.critText.y)], 'iii');
   if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), G.banner.long ? 1 : 0], 'ssii');
   if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
-  w.list(G.heroes.map(e => [e.id, e.kind === 'knight' ? 1 : 0, H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0]), SP.h);
+  if (G.pick) { const pk = G.pick; w.s(JSON.stringify({ r: pk.r, t: Math.round(pk.t * 10) / 10, mx: pk.mx, o: pk.o, c: Object.keys(pk.c) })); }
+  w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
   w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
   w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0) | (a.power ? 8 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
   w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), q.red ? 1 : 0]), SP.sh);
@@ -5311,16 +5598,18 @@ function povBanner(b) {
 function netDecode(bytes) {
   const r = new BinR(bytes), L = v => v / 2, P = v => v / 100;
   const T = r.u32();
-  const [st, z, sc, t, e, k, flags, ctl] = r.rec('iiiiiiii');
+  const [st, z, sc, t, e, k, flags, ctl, vcm] = r.rec('iiiiiiiii');
   const gates = r.rec('iii').map(P), fx = r.rec('iiii'), mu = r.rec('iii');
   const zo = flags & 1 ? r.rec('iii') : null, im = flags & 2 ? r.rec('iiii') : null, ct = flags & 4 ? r.rec('iii') : null;
   const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
+  let pick = null;
+  if (flags & 64) { try { pick = JSON.parse(r.s()); } catch (err) { pick = null; } }
   const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv);
   const b = flags & 32 ? r.rec(SP.b) : null, tr = flags & 32 ? r.list(SP.tr) : [];
   const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
     T, kind: 'invade', state: ST_LIST[st] || 'play', z, score: sc, shownScore: sc, scoreBump: 0, t: P(t), endT: P(e), kills: k,
-    gates, mu, ctrlId: ctl,
+    gates, mu, ctrlId: ctl, vcm, pick,
     snd: snd.map(q => [q[0], SND_LIST[q[1]] || 'menu', q[2], q[3], q[4], q[5], q[6]]),
     shake: P(fx[0]), shakeMag: fx[1] / 10, shakeMax: P(fx[2]) || 1, flashRed: P(fx[3]),
     zoom: zo ? { t: P(zo[0]), x: L(zo[1]), y: L(zo[2]) } : null,
@@ -5328,7 +5617,7 @@ function netDecode(bytes) {
     critText: ct ? { t: P(ct[0]), x: L(ct[1]), y: L(ct[2]) } : null,
     banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!bn[3] }) : null,
     soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
-    heroes: h.map(q => ({ id: q[0], kind: q[1] ? 'knight' : 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0 })),
+    heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, cm: q[20] || 0 })),
     mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
     arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!q[3] })),
@@ -5452,6 +5741,18 @@ function netPredict(real) {
     NET.myArrows = []; NET.hits = []; NET.killed.clear(); NET.kl = [];
   }
   const dt = Math.min(real, 1 / 30), now = performance.now();
+  m.cm = srv.cm || 0; m.hp = srv.hp; m.max = srv.max;
+  // eligiendo cartas: el villano frena el juego, acá solo se elige
+  if (G.pick) {
+    const pk = G.pick;
+    if (pk.o[m.kind] && !(pk.c || []).includes(m.kind)) { const i = pickInput(pk, m.kind); if (i !== null) NET.cpick = [pk.r, i]; }
+    input.jumpPressed = input.attackPressed = input.specialPressed = false;
+    const j = G.heroes.findIndex(e => e.id === m.id);
+    if (j >= 0) G.heroes[j] = Object.assign({}, G.heroes[j], { x: m.x, y: m.y, face: m.face });
+    G.arrows = G.arrows.filter(a => a.o !== m.id).concat(NET.myArrows);
+    netSendIn(m);
+    return;
+  }
   if (srv.kb !== m.kb) {
     // si ya pasó acá por su cuenta (rebote o golpe predicho), lo del villano llega tarde y no se repite
     const dup = srv.kt === 2 ? now - m.bounceAt < 450 : now - m.knockAt < 700;
@@ -5536,16 +5837,18 @@ function netPredict(real) {
       // la flecha sale ya en esta pantalla; la del villano (misma, con el mismo número) no se dibuja acá
       NET.myArrows.push({ id: 'L' + m.ak, n: m.ak, x: m.face > 0 ? m.x + 7 : m.x - 7, y: m.y + 4, vx: m.face * 230, vy: -12, face: m.face, stuck: false, wob: 0, life: 0 });
       if (jOn()) { m.vx -= m.face * 30; m.sx = 0.85; m.sy = 1.1; }
-    } else { m.swingT = 0; m.big = false; play('tajo', { vol: 0.5 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
+    } else { m.swingT = 0; m.swingId++; m.big = false; m.spin = false; play('tajo', { vol: 0.5, rate: m.kind === 'barb' ? 0.75 : 1 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
+    if (m.kind === 'barb') m.cool = 0.46;
   } else if (act === 'big') {
     m.ac++; m.cool = 0.32;
     if (m.kind === 'archer') { const a = powerShot(m, NET.myArrows); a.id = 'P' + m.ac; a.n = 1000 + m.ac; }
+    else if (m.kind === 'barb') spinSlash(m);
     else bigSlash(m);
   }
-  if (m.kind === 'knight' && m.big && m.swingT < slashTime(m)) netSlashKill(slashBoxOf(m));
+  if (m.kind === 'knight' && m.big && slashActive(m)) netSlashKill(slashBoxOf(m));
   netMyArrows(dt);
   const i = G.heroes.findIndex(e => e.id === m.id);
-  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy, inv: m.inv, shield: m.shield, ghostT: m.ghostT, dashT: m.dashT, chg: m.chg, big: m.big, blockT: m.blockT });
+  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy, inv: m.inv, shield: m.shield, ghostT: m.ghostT, dashT: m.dashT, chg: m.chg, big: m.big, blockT: m.blockT, rageT: m.rageT, spin: m.spin, spinN: m.spinN, cm: m.cm });
   G.arrows = G.arrows.filter(a => a.o !== m.id).concat(NET.myArrows);
   netSendIn(m);
 }
@@ -5594,8 +5897,10 @@ function netSendIn(m) {
   const now = performance.now();
   const inp = { l: input.left ? 1 : 0, r: input.right ? 1 : 0, d: input.down ? 1 : 0, j: input.jump ? 1 : 0 };
   if (m) {
-    const fx = (m.shield ? 1 : 0) | (m.ghostT > 0 ? 2 : 0) | (charging(m) ? 4 : 0) | (charged(m) ? 8 : 0) | (m.dashT > 0 ? 16 : 0);
+    const fx = (m.shield ? 1 : 0) | (m.ghostT > 0 ? 2 : 0) | (charging(m) ? 4 : 0) | (charged(m) ? 8 : 0) | (m.dashT > 0 ? 16 : 0) | (m.rageT > 0 ? 32 : 0);
     Object.assign(inp, { hid: m.id, x: H2(m.x), y: H2(m.y), vx: Math.round(m.vx), vy: Math.round(m.vy), f: m.face, og: m.onGround ? 1 : 0, ak: m.ak, ac: m.ac, fx, kb: m.kb, hits: NET.hits.slice() });
+    if (m.rageT > 0) inp.rm = Math.round(m.rageMul * 100);
+    if (NET.cpick) inp.cp = NET.cpick;
     // los proyectiles rotos viajan un rato (por si se pierde un mensaje) y después no se mandan más
     const kl = NET.kl.filter(q => now - q[1] < 1500).map(q => q[0]);
     if (kl.length) inp.kl = kl;
@@ -5614,9 +5919,18 @@ function netHostFrame(now) {
   const guests = r.peers().filter(p => !p.sameTab && p.presence && p.presence.r === 'guest' && p.presence.code === NET.code);
   let changed = false;
   for (const k of NET_SLOTS) if (NET.slots[k] && !guests.some(p => p.peer === NET.slots[k])) { NET.slots[k] = null; changed = true; }
+  NET.pickSeen = NET.pickSeen || {};
   for (const p of guests) {
-    if (NET_SLOTS.some(k => NET.slots[k] === p.peer)) continue;
-    const k = (p.presence.want === 'knight' ? ['knight', 'archer'] : ['archer', 'knight']).find(k => !NET.slots[k] && heroFree(k));
+    const cur = NET_SLOTS.find(k => NET.slots[k] === p.peer);
+    // pidió cambiar a un héroe que maneja un bot
+    const req = p.presence.take, reqN = p.presence.takeN | 0;
+    if (NET_SLOTS.includes(req) && reqN && NET.pickSeen[p.peer] !== reqN) {
+      NET.pickSeen[p.peer] = reqN;
+      if (!NET.slots[req] && heroFree(req)) { if (cur) NET.slots[cur] = null; NET.slots[req] = p.peer; changed = true; continue; }
+    }
+    if (cur) continue;
+    const w = NET_SLOTS.includes(p.presence.want) ? p.presence.want : 'archer';
+    const k = [w, ...NET_SLOTS.filter(x => x !== w)].find(k => !NET.slots[k] && heroFree(k));
     if (k) { NET.slots[k] = p.peer; changed = true; }
   }
   const nicks = {};
@@ -5629,7 +5943,7 @@ function netHostFrame(now) {
   for (const e of G.heroes) {
     if (e.dead) continue;
     const want = NET.slots[e.kind] || null;
-    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.acSeen = undefined; e.hitSeen = undefined; e.lastIn = null; e.shield = false; e.ghostT = 0; e.dashT = 0; e.chg = -1; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
+    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.acSeen = undefined; e.hitSeen = undefined; e.lastIn = null; e.shield = false; e.ghostT = 0; e.dashT = 0; e.chg = -1; e.rageT = 0; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
   }
   // con el servidor propio, 60 fotos por segundo; la sala de claude.ai tiene un límite de mensajes, ahí 30
   if (now - NET.sendT >= (r.binary ? 15 : 32)) {
@@ -5657,11 +5971,11 @@ function netHero(e, dt) {
       if (kind !== 2 && kind !== 11 && (h[4] | 0) === 0) netBlocked(e, kind, id, dir); // lo frenó el escudo
       else if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
       else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false, true); if (s) splat(s); }
-      else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; hitHero(e, 1, dir, a ? a.player : false, true); }
+      else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; if (hitHero(e, 1, dir, a ? a.player : false, true) && hasV('veneno')) e.poisonT = 1.6; }
       else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir, true, true); }
       else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
       else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir, true, true); // jefe: choque, tajo, salto aplastante u onda
-      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? 2 : 1, dir, m ? m.player : false, true); }
+      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? (hasV('hachas') ? 3 : 2) : 1, dir, m ? m.player : false, true); }
       NET.sndOwner = null;
     }
   }
@@ -5683,13 +5997,15 @@ function netHero(e, dt) {
     // estado de las habilidades según su pantalla
     const fx = inp.fx | 0;
     e.shield = !!(fx & 1); e.ghostT = fx & 2 ? 0.1 : 0; e.chg = fx & 8 ? SK.chgFull : fx & 4 ? SK.chgOn : -1; e.dashT = fx & 16 ? 0.05 : 0;
+    e.rageT = fx & 32 ? 0.1 : 0; e.rageMul = Math.max(1, Math.min(3, (inp.rm | 0) / 100 || 1));
     if (e.blockT > 0) e.blockT -= dt;
     // ataque cargado
     if (inp.ac !== undefined) {
       if (e.acSeen === undefined) e.acSeen = 0;
       if (inp.ac > e.acSeen) {
         NET.sndOwner = e.net;
-        if (e.kind === 'archer') { const a = powerShot(e); a.hero = true; a.o = e.id; a.n = 1000 + inp.ac; }
+        if (e.kind === 'archer') { const a = powerShot(e, G.arrows, { hero: true, o: e.id }); a.n = 1000 + inp.ac; }
+        else if (e.kind === 'barb') spinSlash(e);
         else bigSlash(e);
         NET.sndOwner = null;
         e.cool = 0.3;
@@ -5744,18 +6060,19 @@ function drawNetTag(e) {
   const mine = NET.role === 'guest' && e.net === NET.me;
   const col = mine ? PAL.y : PAL.c;
   // si los dos héroes están pegados, el cartel del caballero va un poco más arriba
-  const near = e.kind === 'knight' && G.heroes.some(o => o !== e && o.net && !o.dead && Math.abs(o.x - e.x) < 16);
-  const tx = Math.round(e.x + 4), ty = Math.round(e.y) - (e.hp < e.max ? 13 : 9) - (near ? 9 : 0) + Math.round(Math.sin(G.t * 6));
+  // si hay héroes pegados, los carteles se apilan
+  const near = G.heroes.filter(o => o !== e && o.net && !o.dead && Math.abs(o.x - e.x) < 16 && HK_LIST.indexOf(o.kind) < HK_LIST.indexOf(e.kind)).length;
+  const tx = Math.round(e.x + 4), ty = Math.round(e.y) - (e.hp < e.max ? 13 : 9) - near * 9 + Math.round(Math.sin(G.t * 6));
   g.fillStyle = PAL.k; g.fillRect(tx - 3, ty - 1, 7, 1);
   g.fillStyle = col; g.fillRect(tx - 3, ty, 7, 1); g.fillRect(tx - 2, ty + 1, 5, 1); g.fillRect(tx - 1, ty + 2, 3, 1); g.fillRect(tx, ty + 3, 1, 1);
   const nicks = (NET.role === 'host' ? NET.nicks : NET.hostPres && NET.hostPres.nicks) || {};
-  drawText(g, mine ? 'VOS' : (String(nicks[e.kind] || '').toUpperCase() || 'J' + (e.kind === 'archer' ? 1 : 2)), tx + 0.5, ty - 5, col, 1, 'center');
+  drawText(g, mine ? 'VOS' : (String(nicks[e.kind] || '').toUpperCase() || 'J' + (HK_LIST.indexOf(e.kind) + 1)), tx + 0.5, ty - 5, col, 1, 'center');
 }
 function netHint() {
   const e = G.heroes.find(h => h.net === NET.me);
   if (!e) return 'MIRANDO LA PARTIDA';
   if (e.dead) return 'TE ELIMINARON · MIRANDO';
-  return 'SOS EL ' + (e.kind === 'archer' ? 'ARQUERO' : 'CABALLERO') + ' · LLEGUEN AL TRONO';
+  return 'SOS EL ' + KIND_NAME[e.kind] + ' · LLEGUEN AL TRONO';
 }
 
 /* ---- salas ---- */
@@ -5783,7 +6100,7 @@ async function netHost() {
   NET.busy = false;
   if (r === 'taken') { netMsg('No pude crear la sala. Probá de nuevo.'); return; }
   if (!r) return;
-  Object.assign(NET, { role: 'host', note: '', code, room: r, playing: false, slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', sq: [], seq: 0, spect: 0 });
+  Object.assign(NET, { role: 'host', note: '', code, room: r, playing: false, slots: { archer: null, knight: null, barb: null }, pickSeen: {}, nicks: {}, nicksKey: '', sq: [], seq: 0, spect: 0 });
   r.presence({ r: 'host', code, st: 'lobby', slots: NET.slots, nicks: {}, nm: nick(), s: null }).catch(() => {});
   if (r !== NET.lobby) r.onPeers(() => netUI(), () => {});
   netLobbyPresence();
@@ -5802,13 +6119,23 @@ async function netJoin(code) {
   NET.busy = false;
   if (!r || r === 'taken') return;
   Object.assign(NET, { role: 'guest', note: '', code, room: r, playing: false, snaps: [], offs: [], lastT: 0, lastSnd: -1, hostSeen: false, hostPres: null, joinT: performance.now(), sentIn: '', cam: 0, mine: null, hits: [], myArrows: [], parts: [], fxq: [], sndq: [], buf: 0 });
-  r.presence({ r: 'guest', code, want: NET.want, nm: nick(), in: {} }).catch(() => {});
+  NET.cpick = null;
+  r.presence({ r: 'guest', code, want: NET.want, nm: nick(), in: {}, take: null, takeN: 0 }).catch(() => {});
   if (r !== NET.lobby) r.onPeers(() => netUI(), () => {});
   stage.classList.add('net-guest');
   if (G) { G = null; musicStop(); }
   overlay.hidden = false;
   initAudio(); play('menu', { vary: false });
   netUI();
+}
+// pedirle al villano jugar con otro héroe (el que hoy maneja un bot)
+function netTake(k) {
+  if (NET.role !== 'guest' || !NET.room) return;
+  NET.takeN = (NET.takeN || 0) + 1;
+  NET.want = k;
+  NET.room.presence({ take: k, takeN: NET.takeN, want: k }).catch(() => {});
+  document.querySelectorAll('#net-want [data-want]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.want === k)));
+  play('menu', { vary: false });
 }
 function netLeave(msg) {
   const r = NET.room, wasGuest = NET.role === 'guest';
@@ -5856,7 +6183,7 @@ function netUI() {
     for (const p of rooms) {
       const li = document.createElement('li');
       const sp = document.createElement('span');
-      sp.textContent = 'Sala ' + p.presence.sala + ' · villano: ' + (String(p.presence.nm || '') || 'sin nombre') + ' · ' + (p.presence.st === 'play' ? 'jugando' : 'esperando') + ' · ' + Math.min(3, +p.presence.n || 1) + '/3';
+      sp.textContent = 'Sala ' + p.presence.sala + ' · villano: ' + (String(p.presence.nm || '') || 'sin nombre') + ' · ' + (p.presence.st === 'play' ? 'jugando' : 'esperando') + ' · ' + Math.min(4, +p.presence.n || 1) + '/4';
       const b = document.createElement('button'); b.className = 'px'; b.type = 'button'; b.textContent = 'Unirme';
       b.addEventListener('click', () => netJoin(p.presence.sala));
       li.append(sp, b); ul.appendChild(li);
@@ -5870,11 +6197,17 @@ function netUI() {
   else if (!hostP) status.textContent = 'Buscando la sala ' + NET.code + '…';
   else status.textContent = mySlot ? 'Sos el ' + NET_LABEL[mySlot] + '. ' + (NET.playing ? '¡A jugar!' : 'Esperando que el villano arranque.') : 'La sala está llena: mirás la partida.';
   const ul = netEl('net-slots'); ul.textContent = '';
-  const row = (label, who, bot) => { const li = document.createElement('li'); if (bot) li.className = 'bot'; const sm = document.createElement('small'); sm.textContent = label; const sp = document.createElement('span'); sp.textContent = who; li.append(sm, sp); ul.appendChild(li); };
+  const row = (label, who, bot, take) => {
+    const li = document.createElement('li'); if (bot) li.className = 'bot';
+    const sm = document.createElement('small'); sm.textContent = label; const sp = document.createElement('span'); sp.textContent = who; li.append(sm, sp);
+    // un héroe que maneja un bot se puede tomar (también en plena partida, si sigue vivo)
+    if (take) { const b = document.createElement('button'); b.className = 'px tiny'; b.type = 'button'; b.textContent = mySlot ? 'Cambiar a este' : 'Jugar con este'; b.addEventListener('click', () => netTake(take)); li.appendChild(b); }
+    ul.appendChild(li);
+  };
   row('Villano', NET.role === 'host' ? 'Vos' : String((hostP && hostP.presence.nm) || '') || 'Sin nombre', false);
   for (const k of NET_SLOTS) {
     const who = slots[k];
-    row(NET_LABEL[k], !who ? 'Bot' : who === NET.me ? 'Vos' : String(nicks[k] || '') || 'Jugador', !who);
+    row(NET_LABEL[k], !who ? 'Bot' : who === NET.me ? 'Vos' : String(nicks[k] || '') || 'Jugador', !who, NET.role === 'guest' && hostP && !who ? k : null);
   }
   netEl('net-start').hidden = NET.role !== 'host';
   netEl('net-copy').hidden = !(NET.role === 'host' && NET.p2p);
