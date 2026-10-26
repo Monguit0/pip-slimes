@@ -3338,6 +3338,7 @@ function netParry(e, kind, id, dir) {
   else if (kind === 5) { const a = G.arrows.find(o => o.id === id && !o.dead); if (a) reflectArrow(a); }
   else if (kind === 9) { const w = G.waves.find(o => o.id === id && !o.dead); if (w) reflectWave(w); }
   else if (kind === 10) { const hz = G.hazards.find(o => o.id === id && o.phase !== 'gone' && o.phase !== 'warn'); if (hz) reflectHazard(hz); }
+  else if (kind === 13) { const f = (G.fires || []).find(o => o.id === id && !o.dead && !o.hero); if (f) reflectFire(f); }
   else if (kind >= 6 && kind <= 8) stunBoss(G.boss);
   parryFx(e, dir, false);
   popup(e.x + 4, e.y - 8, '¡PARRY!', PAL.y, e.id);
@@ -3380,6 +3381,7 @@ function slashClear(hb) {
   const pop = (x, y) => { n++; if (jOn()) burst(x, y, 6, [PAL.y, PAL.w, PAL.o], 70, 30, 220, 0.3); };
   for (const w of G.waves) if (!w.dead && overlap(hb, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { w.dead = true; pop(w.x, GROUND - 4); }
   for (const q of G.shots || []) if (!q.dead && overlap(hb, { x: q.x - 2, y: q.y - 2, w: 4, h: 4 })) { q.dead = true; pop(q.x, q.y); }
+  for (const f of G.fires || []) if (!f.dead && !f.hero && overlap(hb, fireBox(f))) { f.dead = true; pop(f.x, f.y); }
   for (const a of G.arrows) if (a.mob && !a.stuck && !a.dead && overlap(hb, { x: a.x, y: a.y, w: 8, h: 3 })) { a.dead = true; pop(a.x + 4, a.y + 1); }
   if (n) { play('clavar', { rate: 1.9, vary: false }); G.score += 5 * n; G.scoreBump = 1; }
 }
@@ -3668,7 +3670,7 @@ function update(dt, real) {
   if (MELEE(G.kind) && slashActive(p)) updateSlash();
   updateHazards(dt);
   if (G.boss) updateBoss(dt, prevBottom);
-  updateWaves(dt);
+  updateWaves(dt); updateFires(dt);
   if (G.state !== 'play') return;
 
   // monedas
@@ -3988,6 +3990,7 @@ function hurt(dir, src = {}) {
     if (src.slime) { const s = src.slime; s.stun = 2; s.parryT = 2; s.vx = s.red ? -dir * 90 : -dir; s.vy = -130; s.onGround = false; s.flash = 0.12; }
     if (src.haz) reflectHazard(src.haz);
     if (src.wave) reflectWave(src.wave);
+    if (src.fire) reflectFire(src.fire);
     if (src.boss) stunBoss(G.boss);
     parryFx(p, dir, true);
     if (jOn()) { hitstop(0.13); G.slowmo = Math.max(G.slowmo, 0.25); if (!RM) G.zoom = { x: p.x + 4, y: p.y + 5, t: 0.3 }; }
@@ -4041,9 +4044,10 @@ function setState(B, s) { B.state = s; B.t = 0; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function chooseAttack(B) {
   const p = G.p, dist = Math.abs((p.x + 4) - (B.x + BW / 2));
-  if (!B.bag.length) B.bag = shuffle(['sweep', 'slam', 'charge', 'rain']);
+  if (!B.bag.length) B.bag = shuffle(isWolf(B) ? ['sweep', 'slam', 'charge', 'rain', 'fire'] : ['sweep', 'slam', 'charge', 'rain']);
   let atk;
   if (dist < 46 && B.last !== 'sweep' && Math.random() < 0.6) atk = 'sweep';
+  else if (isWolf(B) && dist > 110 && B.last !== 'fire' && Math.random() < 0.3) atk = 'fire';
   else { atk = B.bag.pop(); if (atk === B.last && B.bag.length) { const other = B.bag.pop(); B.bag.unshift(atk); atk = other; } }
   B.last = atk; B.atk = atk; B.rep = B.phase === 2 ? 2 : 1;
   facePlayer(B); setState(B, 'tele');
@@ -4135,12 +4139,12 @@ function updateBoss(dt, prevBottom) {
 
 function bossTele(B, dt, tm) {
   const quick = B.quick ? 0.55 : 1;
-  const dur = (isWolf(B) ? { sweep: 0.5, slam: 0.5, charge: 0.62, rain: 0.8 } : { sweep: 0.68, slam: 0.55, charge: 0.75, rain: 0.85 })[B.atk] * tm * quick;
+  const dur = (isWolf(B) ? { sweep: 0.5, slam: 0.5, charge: 0.62, rain: 0.8, fire: 0.6 } : { sweep: 0.68, slam: 0.55, charge: 0.75, rain: 0.85 })[B.atk] * tm * quick;
   const k = B.t / dur;
   B.glow = true;
   if (jOn() && Math.random() < 0.6) { // chispas que se juntan en la espada
     const tip = swordTip(B), a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 8;
-    G.parts.push({ x: tip.x + Math.cos(a) * r, y: tip.y + Math.sin(a) * r, vx: -Math.cos(a) * r * 4, vy: -Math.sin(a) * r * 4, g: 0, life: 0.22, max: 0.22, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 });
+    G.parts.push({ x: tip.x + Math.cos(a) * r, y: tip.y + Math.sin(a) * r, vx: -Math.cos(a) * r * 4, vy: -Math.sin(a) * r * 4, g: 0, life: 0.22, max: 0.22, c: B.atk === 'fire' ? (Math.random() < 0.5 ? PAL.o : PAL.y) : Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 });
     flashJ('tell');
   }
   if (B.atk === 'sweep') { B.angle = lerp(65, -165, easeOut(k * 1.3)); B.crouch = Math.round(lerp(0, 2, k)); }
@@ -4151,8 +4155,10 @@ function bossTele(B, dt, tm) {
     if (B.stompT <= 0) { B.stompT = 0.18; play('pisoton', { rate: 0.55, vol: 0.5 }); if (jOn()) { shake(1, 0.08); burst(B.x + BW / 2, GROUND, 4, [PAL.S, PAL.s], 40, 20, 200, 0.3); B.sy = 0.92; } }
   }
   if (B.atk === 'rain') { B.angle = lerp(B.angle, -90, dt * 10); B.crouch = 0; if (jOn() && Math.random() < 0.5) { const tip = swordTip(B); G.parts.push({ x: tip.x + (Math.random() - 0.5) * 3, y: tip.y, vx: 0, vy: -160, g: 0, life: 0.3, max: 0.3, c: PAL.c, s: 1 }); } }
+  if (B.atk === 'fire') B.crouch = 2;
   if (B.t >= dur) {
     setState(B, 'act');
+    if (B.atk === 'fire') wolfFire(B);
     if (B.atk === 'slam') {
       const T = 0.72; B.vy = -500; B.vx = (B.targetX - (B.x + BW / 2)) / T; B.landed = false;
       play('salto', { rate: 0.5, vary: false }); if (jOn()) { B.sx = 0.75; B.sy = 1.3; burst(B.x + BW / 2, GROUND, 10, [PAL.S, PAL.s], 70, 20, 220, 0.4); }
@@ -4201,6 +4207,8 @@ function bossAct(B, dt, tm) {
       if (B.rep > 1) { B.rep--; B.face = -B.face; setState(B, 'tele'); B.quick = true; play('alerta', { rate: 0.75, vary: false }); }
       else { B.quick = false; setState(B, 'stun'); }
     }
+  } else if (B.atk === 'fire') {
+    if (B.t > 0.35) { setState(B, 'rec'); B.recDur = B.phase === 2 ? 0.45 : 0.6; }
   } else if (B.atk === 'rain') {
     B.angle = -90;
     if (B.t > 0.9) {
@@ -4228,6 +4236,53 @@ function slamFX(x, mag, waves) {
     G.waves.push({ id: uid++, x: x - 10, dir: -1, spd }, { id: uid++, x: x + 10, dir: 1, spd });
     if (G.boss.phase === 2) G.waves.push({ id: uid++, x: x - 10, dir: -1, spd: spd * 0.62 }, { id: uid++, x: x + 10, dir: 1, spd: spd * 0.62 });
   }
+}
+/* ---- bolas de fuego del Campeón ----
+   Salen del hocico apuntando al héroe; el parry del caballero las devuelve contra el lobo. */
+const fireBox = f => ({ x: f.x - 3, y: f.y - 3, w: 6, h: 6 });
+function spawnFire(x, y, ang, spd) { (G.fires || (G.fires = [])).push({ id: uid++, x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, t: 0, hero: false, dead: false }); }
+function fireBurst(f) {
+  f.dead = true;
+  play('explotar', { rate: 1.5, vol: 0.55 });
+  if (jOn()) { burst(f.x, f.y, 12, f.hero ? [PAL.c, PAL.w, PAL.b] : [PAL.y, PAL.o, PAL.r, PAL.w], 80, 30, 160, 0.4); G.rings.push({ x: f.x, y: f.y, t: 0.12, c: f.hero ? PAL.c : PAL.o }); }
+}
+function reflectFire(f) {
+  const B = G.boss, tx = B ? B.x + BW / 2 : f.x - f.vx, ty = B ? B.y + 20 : f.y;
+  const a = Math.atan2(ty - f.y, tx - f.x), sp = Math.hypot(f.vx, f.vy) * 1.4 + 20;
+  f.hero = true; f.t = 0; f.vx = Math.cos(a) * sp; f.vy = Math.sin(a) * sp;
+}
+// el lobo escupe: una bola apuntada al héroe (tres en abanico en la furia)
+function wolfFire(B) {
+  const m = swordHand(B), front = e => Math.sign((e.x + 4) - m.x) === B.face;
+  let tg = null;
+  if (bossCtl()) { let bd = 1e9; for (const e of G.heroes) if (!e.dead && front(e)) { const d = Math.abs(e.x + 4 - m.x); if (d < bd) { bd = d; tg = e; } } }
+  else tg = G.p;
+  let ang = B.face > 0 ? 0 : Math.PI;
+  if (tg) { const a = Math.atan2(tg.y + 5 - m.y, tg.x + 4 - m.x); if (Math.cos(a) * B.face > 0.4) ang = a; }
+  const n = B.phase === 2 ? 3 : 1, spd = B.phase === 2 ? 175 : 150;
+  for (let i = 0; i < n; i++) spawnFire(m.x, m.y, ang + ((i - (n - 1) / 2) * 0.3 - (n > 1 ? 0.15 : 0)) * B.face, spd); // el abanico se abre hacia arriba
+  play('explotar', { rate: 1.9, vol: 0.5 }); play('rugido', { rate: 1.6, vol: 0.45, vary: false });
+  if (jOn()) { B.sx = 1.12; B.sy = 0.9; shake(1.5, 0.1); burst(m.x, m.y, 10, [PAL.y, PAL.o, PAL.r], 80, 20, 0, 0.3); }
+}
+function updateFires(dt) {
+  if (!G.fires || !G.fires.length) return;
+  const p = G.p, B = G.boss;
+  for (const f of G.fires) {
+    if (f.dead) continue;
+    f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt;
+    if (jOn() && Math.random() < 0.8) G.parts.push({ x: f.x + (Math.random() - 0.5) * 3, y: f.y + (Math.random() - 0.5) * 3, vx: -f.vx * 0.15, vy: -15 - Math.random() * 15, g: -20, life: 0.25, max: 0.25, c: f.hero ? (Math.random() < 0.5 ? PAL.c : PAL.w) : (Math.random() < 0.5 ? PAL.o : PAL.y), s: 1 });
+    const box = fireBox(f);
+    if (f.hero) {
+      if (B && B.state !== 'dying' && B.state !== 'gone' && overlap(box, bossBody(B))) { fireBurst(f); if (bossCtl()) bossTakeHit(3, f.x, f.y); else damageBoss(3, f.x, f.y); continue; }
+    } else if (bossCtl()) {
+      const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box));
+      if (e) { hitHero(e, 1, Math.sign(f.vx) || 1); fireBurst(f); continue; }
+    } else if (p && G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) {
+      hurt(Math.sign(f.vx) || 1, { fire: f }); if (!f.hero) fireBurst(f); continue;
+    }
+    if (f.y >= GROUND - 2 || f.x < ARENA.min - 4 || f.x > ARENA.max + 4 || f.y < -20 || f.t > 4) fireBurst(f);
+  }
+  G.fires = G.fires.filter(f => !f.dead);
 }
 function updateWaves(dt) {
   const p = G.p;
@@ -4261,14 +4316,14 @@ function damageBoss(dmg, x, y, force) {
 }
 function enrage(B) {
   B.phase = 2; setState(B, 'rage'); B.vx = 0; B.crouch = 0;
-  G.waves = []; G.hazards = [];
+  G.waves = []; G.hazards = []; G.fires = [];
   play('rugido', { rate: 1.15, vary: false }); duck();
   G.banner = { text: '¡FURIA!', sub: isWolf(B) ? 'EL CAMPEÓN SE ENFURECE' : 'EL MEGA CABALLERO SE ENOJA', t: 0 };
   if (jOn()) { hitstop(0.25); G.flashRed = 0.3; shake(4, 0.5); burst(B.x + BW / 2, B.y + 10, 30, [PAL.r, PAL.o, PAL.y], 140, 40, 120, 0.8); G.rings.push({ x: B.x + BW / 2, y: B.y + 12, t: 0, c: PAL.r }); }
 }
 function bossDie(B) {
   setState(B, 'dying'); B.vx = 0; B.boomT = 0;
-  G.waves = []; G.hazards = [];
+  G.waves = []; G.hazards = []; G.fires = [];
   musicStop();
   crit(B.x + BW / 2, B.y + 12);
   if (jOn()) { G.slowmo = 1.2; }
@@ -4294,7 +4349,7 @@ function bossDying(B, dt) {
     }
     if (G.kind === 'invade' && !G.lvl) {
       // los héroes ganaron el nivel 1: siguen al bosque y el villano tiene revancha con el Campeón
-      G.boss = null; G.nextT = 3.4; G.waves = []; G.hazards = [];
+      G.boss = null; G.nextT = 3.4; G.waves = []; G.hazards = []; G.fires = [];
       G.banner = { text: '¡CAYÓ TU JEFE!', sub: 'LOS HÉROES ENTRAN AL BOSQUE', t: 0, long: true };
       return;
     }
@@ -4345,7 +4400,8 @@ const PBW = {
   sweep: { key: 'attack', cd: 0.7, tele: 0.2, label: 'X ZARPAZO' },
   slam: { key: 'jump', cd: 1.5, tele: 0.22, label: 'ESP SALTO' },
   charge: { key: 'charge', cd: 2.4, tele: 0.26, label: 'Z EMBESTIDA' },
-  rain: { key: 'rain', cd: 6.5, tele: 0.45, label: 'V AULLIDO' }
+  rain: { key: 'rain', cd: 6.5, tele: 0.45, label: 'V AULLIDO' },
+  fire: { key: 'special', cd: 2.2, tele: 0.3, label: 'SHIFT FUEGO' }
 };
 const pbOf = B => isWolf(B) ? PBW : PB;
 function newBossMode() {
@@ -4436,7 +4492,7 @@ function updatePlayerBoss(B, dt) {
       } else B.walkT = 0.2;
       B.angle = lerp(B.angle, 65 + Math.sin(G.t * 3) * 4, dt * 6); B.crouch = 0;
       let pick = null;
-      for (const atk of ['sweep', 'slam', 'charge', 'rain']) if (input[P[atk].key + 'Pressed'] && B.cd[atk] <= 0) { pick = atk; break; }
+      for (const atk of Object.keys(P)) if (input[P[atk].key + 'Pressed'] && B.cd[atk] <= 0) { pick = atk; break; }
       if (pick) {
         B.atk = pick; B.rep = ph2 && pick === 'rain' ? 2 : 1; B.attackId++;
         B.cd[pick] = P[pick].cd * cdm * (hasV('jfuria') ? 0.7 : 1);
@@ -4453,15 +4509,17 @@ function updatePlayerBoss(B, dt) {
       B.glow = true;
       if (jOn() && Math.random() < 0.6) {
         const tip = swordTip(B), a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 8;
-        G.parts.push({ x: tip.x + Math.cos(a) * r, y: tip.y + Math.sin(a) * r, vx: -Math.cos(a) * r * 4, vy: -Math.sin(a) * r * 4, g: 0, life: 0.2, max: 0.2, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 });
+        G.parts.push({ x: tip.x + Math.cos(a) * r, y: tip.y + Math.sin(a) * r, vx: -Math.cos(a) * r * 4, vy: -Math.sin(a) * r * 4, g: 0, life: 0.2, max: 0.2, c: B.atk === 'fire' ? (Math.random() < 0.5 ? PAL.o : PAL.y) : Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 });
         flashJ('tell');
       }
       if (B.atk === 'sweep') { B.angle = lerp(65, -165, easeOut(k * 1.2)); B.crouch = Math.round(lerp(0, 2, k)); }
       if (B.atk === 'slam') { B.angle = lerp(B.angle, -90, dt * 12); B.crouch = Math.round(lerp(0, 3, k)); if (dir) B.targetX = Math.max(ARENA.min + 12, Math.min(ARENA.max - 12, B.targetX + dir * 110 * dt)); }
       if (B.atk === 'charge') { B.angle = lerp(B.angle, 0, dt * 12); B.crouch = 1; B.stompT -= dt; if (B.stompT <= 0) { B.stompT = 0.12; play('pisoton', { rate: 0.55, vol: 0.45 }); if (jOn()) { shake(1, 0.06); burst(B.x + BW / 2, GROUND, 3, [PAL.S, PAL.s], 40, 20, 200, 0.3); B.sy = 0.92; } } }
       if (B.atk === 'rain') { B.angle = lerp(B.angle, -90, dt * 12); if (jOn() && Math.random() < 0.5) { const tip = swordTip(B); G.parts.push({ x: tip.x, y: tip.y, vx: 0, vy: -160, g: 0, life: 0.3, max: 0.3, c: PAL.c, s: 1 }); } }
+      if (B.atk === 'fire') B.crouch = 2;
       if (B.t >= dur) {
         setState(B, 'act');
+        if (B.atk === 'fire') wolfFire(B);
         if (B.atk === 'slam') { const T = 0.72; B.vy = -500; B.vx = (B.targetX - (B.x + BW / 2)) / T; B.landed = false; play('salto', { rate: 0.5, vary: false }); if (jOn()) { B.sx = 0.75; B.sy = 1.3; burst(B.x + BW / 2, GROUND, 10, [PAL.S, PAL.s], 70, 20, 220, 0.4); } }
         if (B.atk === 'charge') { B.vx = B.face * (isWolf(B) ? (ph2 ? 490 : 440) : (ph2 ? 300 : 260)); play('tajo', { rate: 0.5, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.4, vol: 0.6, vary: false }); }
         if (B.atk === 'rain') rainTargeted(B);
@@ -4517,6 +4575,8 @@ function playerBossAct(B, dt) {
       if (hitWall) { play('metal', { rate: 0.4, vary: false }); play('clavar', { rate: 0.5, vary: false }); boom(0.7); if (jOn()) { shake(4, 0.25); burst(B.face > 0 ? ARENA.max : ARENA.min, GROUND - 16, 14, [PAL.S, PAL.s, PAL.d, PAL.w], 90, 40, 260, 0.6); B.sx = 0.7; B.sy = 1.1; } }
       setState(B, 'rec'); B.recDur = 0.35;
     }
+  } else if (B.atk === 'fire') {
+    if (B.t > 0.25) { setState(B, 'rec'); B.recDur = 0.15; }
   } else if (B.atk === 'rain') {
     B.angle = -90;
     if (B.t > 0.55) {
@@ -4599,6 +4659,7 @@ function heroDodge(e) {
   if (B.atk === 'slam' && (B.state === 'tele' || (B.state === 'act' && !B.landed)) && Math.abs(B.targetX - cx) < 26 && roll('l' + B.attackId)) e.move = cx < B.targetX ? -1 : 1;
   for (const w of G.waves) { const d = (cx - w.x) * w.dir; if (d > 0 && d < 24 && e.onGround && roll('w' + w.id)) e.jumpNow = true; }
   for (const h of G.hazards) if (h.phase === 'warn' && Math.abs(h.x - cx) < 9 && roll('h' + h.id)) e.move = cx < h.x ? -1 : 1;
+  for (const f of G.fires || []) { const d = (cx - f.x) * Math.sign(f.vx); if (!f.hero && d > 0 && d < 30 && Math.abs(f.y - (e.y + 5)) < 10 && e.onGround && roll('f' + f.id)) e.jumpNow = true; }
 }
 function heroPhysics(e, dt) {
   const C = CHARS[e.kind];
@@ -4717,7 +4778,7 @@ function makePlayerBoss(type = 'knight') {
   return {
     type, x: 1690, y: GROUND - BH, vx: 0, vy: 0, face: -1, hp, maxHp: hp, show: hp, showT: 0, fill: 1, state: 'idle', t: 0, phase: 1,
     flash: 0, sx: 1, sy: 1, angle: 65, crouch: 0, atk: '', rep: 0, trail: [], trailT: 0, barShake: 0, hitSwing: -1, targetX: 0, landed: true,
-    stompT: 0, glow: false, swing: null, cd: { sweep: 0, slam: 0, charge: 0, rain: 0 }, attackId: 0, swingId: 0, hurtInv: 0, walking: false, walkT: 0, player: true
+    stompT: 0, glow: false, swing: null, cd: { sweep: 0, slam: 0, charge: 0, rain: 0, fire: 0 }, attackId: 0, swingId: 0, hurtInv: 0, walking: false, walkT: 0, player: true
   };
 }
 function newInvadeMode() {
@@ -4744,7 +4805,7 @@ function newInvadeMode() {
 function campaignNextLevel() {
   setLevel(1); G.lvl = 1;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], fires: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
   Object.assign(G.p, { x: 40, y: GROUND - 11, vx: 0, vy: 0, onGround: true, face: 1, inv: 1, stompInv: 0, poisonT: 0, drop: 0, surf: null, chg: -1, dashT: 0 });
   G.hearts = G.maxHearts;
   enterZone(0, true);
@@ -4754,7 +4815,7 @@ function campaignNextLevel() {
 function invadeNextLevel() {
   setLevel(1); G.lvl = 1;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], fires: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
   const old = new Map(G.heroes.map(e => [e.kind, e])), base = { archer: 8, knight: 10, barb: 9 };
   G.heroes = ['archer', 'knight', 'barb'].map((kind, i) => {
     const prev = old.get(kind), src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
@@ -4837,7 +4898,7 @@ function updateInvade(dt) {
     const Bv = G.boss;
     if (Bv && hasV('regen') && Bv.hp < Bv.maxHp && Bv.state !== 'dying') { Bv.regT = (Bv.regT || 0) + dt; if (Bv.regT > 2.5) { Bv.regT = 0; Bv.hp++; Bv.show = Math.max(Bv.show, Bv.hp); } }
     if (G.boss) updatePlayerBoss(G.boss, dt);
-    updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt);
+    updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt); updateFires(dt);
     if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin(G.lvl ? '¡DEFENDISTE LA GUARIDA!' : '¡DEFENDISTE EL TRONO!');
   } else {
     updateMobs(dt); updateBots(dt); updateShots(dt); updateArrows(dt);
@@ -5314,6 +5375,7 @@ function wolfPose(B) {
   if (s === 'drop' || (s === 'act' && a === 'slam' && !B.landed)) return 'leap';
   if (s === 'roar' || s === 'rage' || (a === 'rain' && (s === 'tele' || s === 'act'))) return 'howl';
   if (s === 'act' && a === 'charge') return Math.floor(G.t * 18) % 2 ? 'run1' : 'run2';
+  if (s === 'act' && a === 'fire') return 'crouch';
   if (s === 'act' && a === 'sweep') return B.swing && B.swing.t < 0.12 ? 'leap' : 'crouch';
   if (s === 'tele' || s === 'stun' || s === 'dying' || (s === 'rec' && B.crouch > 1)) return 'crouch';
   if (B.walking) return Math.floor(G.t * 9) % 2 ? 'run1' : 'run2';
@@ -5611,6 +5673,21 @@ function render() {
     g.fillStyle = w.hero ? PAL.y : PAL.c; g.fillRect(x - 4, GROUND - 2, 8, 2);
     g.fillStyle = PAL.w; g.fillRect(x - 3, GROUND - 4, 6, 2); g.fillRect(x - 1 + w.dir, GROUND - 7, 2, 3);
   }
+  // bolas de fuego (las devueltas por un parry, en celeste): una bola redonda a media resolución con su cola
+  for (const f of G.fires || []) {
+    const cols = f.hero ? [PAL.w, PAL.c, PAL.b, RAMPS.b ? RAMPS.b[0] : PAL.B] : [PAL.w, PAL.y, PAL.o, PAL.r], sp = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / sp, uy = f.vy / sp;
+    const fl = (Math.floor(G.t * 24 + f.id) % 3) * 0.25, hp = 1 / RS;
+    const ball = (cx, cy, r, core) => {
+      for (let y = -r; y <= r; y += hp) for (let x = -r; x <= r; x += hp) {
+        const d = Math.hypot(x, y); if (d > r) continue;
+        const k = d / r; g.fillStyle = cols[k < core ? 0 : k < 0.55 ? 1 : k < 0.8 ? 2 : 3];
+        g.fillRect(Math.round((cx + x) * RS) / RS, Math.round((cy + y) * RS) / RS, hp, hp);
+      }
+    };
+    g.globalAlpha = 0.28; g.fillStyle = cols[2]; g.beginPath(); g.arc(f.x, f.y, 6.5 + fl * 2, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+    for (let k = 3; k >= 1; k--) ball(f.x - ux * k * 2.6, f.y - uy * k * 2.6 + Math.sin(G.t * 30 + k + f.id) * 0.5, 3.4 - k * 0.8, -1);
+    ball(f.x, f.y, 3.6 + fl, 0.3);
+  }
   // flechas
   for (const a of G.arrows) {
     if (a.stuck && a.life < 0.4 && Math.floor(a.life * 20) % 2) continue;
@@ -5727,7 +5804,7 @@ function render() {
     if (G.kind === 'boss' && G.wave > 0 && G.state === 'play') drawText(g, 'OLEADA ' + G.wave + ' · HÉROES ' + (G.heroes.filter(e => !e.dead).length + G.queue.length), W / 2, 20, PAL.s, 1, 'center');
     if (G.boss && !(isTouch() && stage.classList.contains('immersive'))) {
       let x = 4;
-      for (const atk of ['sweep', 'slam', 'charge', 'rain']) {
+      for (const atk of Object.keys(pbOf(G.boss))) {
         const PP = pbOf(G.boss), lab = PP[atk].label, w = textW(lab) + 6, cd = G.boss.cd[atk], max = PP[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
         g.fillStyle = PAL.k; g.fillRect(x, 133, w, 9);
         g.fillStyle = cd <= 0 ? PAL.d : PAL.k; g.fillRect(x + 1, 134, w - 2, 7);
@@ -6078,8 +6155,10 @@ function uiFrame(now) {
   musicDirector();
   syncButtons();
   if (G && bossCtl() && G.boss) {
-    for (const [k, atk] of [['attack', 'sweep'], ['jump', 'slam'], ['charge', 'charge'], ['rain', 'rain']]) {
-      const max = PB[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
+    const PP = pbOf(G.boss);
+    for (const [k, atk] of [['attack', 'sweep'], ['jump', 'slam'], ['charge', 'charge'], ['rain', 'rain'], ['special', 'fire']]) {
+      if (!PP[atk]) continue;
+      const max = PP[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
       tbEls[k].style.setProperty('--cd', (G.boss.cd[atk] / max).toFixed(3));
     }
   }
@@ -6190,16 +6269,19 @@ function myHeroKind() {
   return G.p ? G.kind : '';
 }
 function syncButtons() {
-  const kind = bossCtl() ? '' : myHeroKind();
-  const mode = bossCtl() ? 'boss' : 'hero' + kind;
+  const kind = bossCtl() ? '' : myHeroKind(), wolf = bossCtl() && isWolf(G.boss);
+  const mode = bossCtl() ? (wolf ? 'bossw' : 'boss') : 'hero' + kind;
   if (mode !== btnMode) {
     btnMode = mode;
-    btnsEl.classList.toggle('boss', mode === 'boss');
-    btnsEl.classList.toggle('special-on', !!kind);
-    tbEls.jump.firstChild.textContent = mode === 'boss' ? 'Salto' : 'Saltar';
-    tbEls.attack.firstChild.textContent = mode === 'boss' ? 'Tajo' : 'Atacar';
-    tbEls.special.firstChild.textContent = kind === 'knight' ? 'Escudo' : kind === 'barb' ? 'Furia' : 'Dash';
-    if (mode !== 'boss') for (const k of ['jump', 'attack', 'charge', 'rain']) tbEls[k].style.setProperty('--cd', '0');
+    const boss = mode.startsWith('boss');
+    btnsEl.classList.toggle('boss', boss);
+    btnsEl.classList.toggle('special-on', !!kind || wolf);
+    tbEls.jump.firstChild.textContent = boss ? 'Salto' : 'Saltar';
+    tbEls.attack.firstChild.textContent = wolf ? 'Zarpazo' : boss ? 'Tajo' : 'Atacar';
+    tbEls.charge.firstChild.textContent = wolf ? 'Embestida' : 'Carga';
+    tbEls.rain.firstChild.textContent = wolf ? 'Aullido' : 'Lluvia';
+    tbEls.special.firstChild.textContent = wolf ? 'Fuego' : kind === 'knight' ? 'Escudo' : kind === 'barb' ? 'Furia' : 'Dash';
+    if (!boss) for (const k of ['jump', 'attack', 'charge', 'rain']) tbEls[k].style.setProperty('--cd', '0');
   }
   // el botón especial se oscurece según la energía que falta
   const h = kind && (NET.role === 'guest' ? NET.mine : G.p);
@@ -6270,7 +6352,7 @@ const ST_LIST = ['play', 'over', 'win'];
 const HK_LIST = ['archer', 'knight', 'barb'];
 const MT_LIST = ['slime', 'red', 'skarch', 'skaxe', 'toxic', 'bat', 'pup'];
 const BS_LIST = ['wait', 'drop', 'roar', 'idle', 'tele', 'act', 'rec', 'stun', 'rage', 'dying', 'gone'];
-const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain'];
+const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain', 'fire'];
 const HP_LIST = ['warn', 'fall', 'stuck', 'gone', 'back'];
 const SND_LIST = SFX_INFO.map(x => x[0]).concat(['!boom', '!duck']);
 const enumOf = (list, v) => Math.max(0, list.indexOf(v));
@@ -6280,7 +6362,7 @@ const SP = {
   h: 'iiiiiiiiiiiiiiisiiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt cartas
   m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
   a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
-  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii',
+  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii', fb: 'iiii',
   b: 'iiiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
   pp: 'iisiii', rg: 'iiii',
   p: 'iiiiiiiiii',           // x y vx vy gravedad color tamaño vida max dueño
@@ -6308,6 +6390,7 @@ function netPack(now) {
   w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), (q.red ? 1 : 0) | (q.hero ? 2 : 0) | (q.toxic ? 4 : 0)]), SP.sh);
   w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), (h.big ? 1 : 0) | (h.rock ? 2 : 0), C2(h.life), C2(h.wob)]), SP.hz);
   w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.hero ? v.dir * 2 : v.dir]), SP.wv);
+  w.list((G.fires || []).map(f => [f.id, H2(f.x), H2(f.y), f.hero ? 1 : 0]), SP.fb);
   if (B) {
     w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp, isWolf(B) ? 1 : 0], SP.b);
     w.list(B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)]), SP.tr);
@@ -6355,7 +6438,7 @@ function netDecode(bytes) {
   const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
   let pick = null;
   if (flags & 64) { try { pick = JSON.parse(r.s()); } catch (err) { pick = null; } }
-  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv);
+  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv), fb = r.list(SP.fb);
   const b = flags & 32 ? r.rec(SP.b) : null, tr = flags & 32 ? r.list(SP.tr) : [];
   const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
@@ -6373,6 +6456,7 @@ function netDecode(bytes) {
     arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2), toxic: !!(q[3] & 4) })),
     hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!(q[7] & 1), rock: !!(q[7] & 2), life: P(q[8]), wob: P(q[9]) })),
+    fires: fb.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), hero: !!q[3] })),
     waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: Math.sign(q[2]) || 1, hero: Math.abs(q[2]) === 2 })),
     boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], type: b[22] ? 'wolf' : 'knight', trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
     pops: pp.map(q => ({ x: L(q[0]), y: L(q[1]), text: q[2], c: CLIST[q[3]] || PAL.w, t: P(q[4]), o: q[5] })),
@@ -6399,7 +6483,7 @@ function netView(now, real) {
   const V = Object.assign({}, b);
   if ((V.lvl || 0) !== CUR_LVL) setLevel(V.lvl || 0); // el villano pasó de nivel
   V.heroes = mix(a.heroes, b.heroes); V.mobs = mix(a.mobs, b.mobs); V.shots = mix(a.shots, b.shots);
-  V.arrows = mix(a.arrows, b.arrows); V.hazards = mix(a.hazards, b.hazards); V.waves = mix(a.waves, b.waves);
+  V.arrows = mix(a.arrows, b.arrows); V.hazards = mix(a.hazards, b.hazards); V.waves = mix(a.waves, b.waves); V.fires = mix(a.fires || [], b.fires || []);
   if (a.boss && b.boss) V.boss = Object.assign({}, b.boss, { x: a.boss.x + (b.boss.x - a.boss.x) * al, y: a.boss.y + (b.boss.y - a.boss.y) * al, angle: a.boss.angle + (b.boss.angle - a.boss.angle) * al });
   // partículas y sonidos salen cuando la imagen llega a ese momento, así coinciden con lo que se ve
   while (NET.fxq.length && NET.fxq[0].T <= tgt) {
@@ -6480,7 +6564,7 @@ function netGuestFrame(now, real) {
 function netPredict(real) {
   // lo que rompió mi espadazo o frenó mi escudo ya no está en mi pantalla
   const K = NET.killed;
-  if (K.size) { G.shots = G.shots.filter(q => !K.has('s' + q.id)); G.arrows = G.arrows.filter(a => !K.has('a' + a.id)); G.waves = G.waves.filter(w => !K.has('w' + w.id)); G.hazards = G.hazards.filter(h => !K.has('h' + h.id)); }
+  if (K.size) { G.shots = G.shots.filter(q => !K.has('s' + q.id)); G.arrows = G.arrows.filter(a => !K.has('a' + a.id)); G.waves = G.waves.filter(w => !K.has('w' + w.id)); G.hazards = G.hazards.filter(h => !K.has('h' + h.id)); G.fires = (G.fires || []).filter(f => !K.has('f' + f.id)); }
   const latest = NET.snaps[NET.snaps.length - 1];
   const srv = latest && latest.heroes.find(e => e.net === NET.me);
   if (!srv || srv.dead) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = input.specialPressed = false; netSendIn(null); return; }
@@ -6546,6 +6630,7 @@ function netPredict(real) {
       if (o.type === 'skaxe' && o.swingT < 0.12 && overlap(m, axeBox(o))) { hit = [3, o.id, o.face || 1]; break; }
     }
     if (!hit) for (const s of G.shots) if (!s.hero && overlap(m, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 })) { hit = [4, s.id, Math.sign((m.x + 4) - s.x) || 1]; break; }
+    if (!hit) for (const f of G.fires || []) if (!f.hero && overlap(m, fireBox(f))) { hit = [13, f.id, Math.sign((m.x + 4) - f.x) || 1, 1]; break; }
     if (!hit) for (const a of G.arrows) {
       if (!a.mob || a.stuck) continue;
       const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
@@ -6575,7 +6660,7 @@ function netPredict(real) {
       if (m.blockT <= 0) {
         shieldBlock(m, hit[2]);
         netHitReport(hit[0], hit[1], hit[2], 0);
-        const key = { 4: 's', 5: 'a', 9: 'w', 10: 'h' }[hit[0]];
+        const key = { 4: 's', 5: 'a', 9: 'w', 10: 'h', 13: 'f' }[hit[0]];
         if (key) K.add(key + hit[1]);
       }
     } else if (hit) {
@@ -6630,6 +6715,7 @@ function netSlashKill(hb) {
   for (const a of G.arrows) if (a.mob && !a.stuck && overlap(hb, { x: a.x, y: a.y, w: 8, h: 3 })) add('a' + a.id, a.x + 4, a.y + 1);
   for (const w of G.waves) if (overlap(hb, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) add('w' + w.id, w.x, GROUND - 4);
   for (const h of G.hazards) if (h.phase === 'fall' && overlap(hb, hazBox(h))) add('h' + h.id, h.x, h.y + 5);
+  for (const f of G.fires || []) if (!f.hero && overlap(hb, fireBox(f))) add('f' + f.id, f.x, f.y);
   if (n) play('clavar', { rate: 1.9, vary: false });
 }
 // mis flechas, con la misma física que las del juego; se clavan o desaparecen al tocar algo de esta pantalla
@@ -6733,6 +6819,7 @@ function netHero(e, dt) {
       else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); if (hitHero(e, 1, dir, s ? s.player : false, true) && s && s.toxic) e.poisonT = 1.6; if (s) splat(s); }
       else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; if (hitHero(e, 1, dir, a ? a.player : false, true) && hasV('veneno')) e.poisonT = 1.6; }
       else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir, true, true); }
+      else if (kind === 13) { const f = (G.fires || []).find(o => o.id === id && !o.dead); if (f) fireBurst(f); hitHero(e, 1, dir, true, true); }
       else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
       else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir, true, true); // jefe: choque, tajo, salto aplastante u onda
       else { const m = G.mobs.find(o => o.id === id); if (hitHero(e, kind === 3 ? (hasV('hachas') ? 3 : 2) : 1, dir, m ? m.player : false, true) && m && m.type === 'toxic') e.poisonT = 1.6; }
@@ -6797,6 +6884,7 @@ function netBlocked(e, kind, id, dir) {
   else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; }
   else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; }
   else if (kind === 9) { const w = G.waves.find(o => o.id === id); if (w) w.dead = true; }
+  else if (kind === 13) { const f = (G.fires || []).find(o => o.id === id && !o.dead); if (f) fireBurst(f); }
   play('metal', { rate: 1.3, vol: 0.8 });
   sparks(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], e.id);
 }
@@ -6812,6 +6900,7 @@ function netKill(k, e) {
   else if (t === 'a') { const a = G.arrows.find(o => o.id === id && o.mob && !o.dead && !o.stuck); if (a) { a.dead = true; x = a.x + 4; y = a.y + 1; } }
   else if (t === 'w') { const w = G.waves.find(o => o.id === id && !o.dead); if (w) { w.dead = true; x = w.x; y = GROUND - 4; } }
   else if (t === 'h') { const hz = G.hazards.find(o => o.id === id && o.phase === 'fall'); if (hz) { hz.phase = 'gone'; x = hz.x; y = hz.y + 5; } }
+  else if (t === 'f') { const f = (G.fires || []).find(o => o.id === id && !o.dead && !o.hero); if (f) { f.dead = true; x = f.x; y = f.y; } }
   if (x === undefined) return;
   NET.sndOwner = e.net; play('clavar', { rate: 1.9, vol: 0.7, vary: false }); NET.sndOwner = null;
   sparks(x, y, 6, [PAL.y, PAL.w, PAL.o], e.id);

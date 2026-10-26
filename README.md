@@ -30,7 +30,8 @@ elegir carta (se suman a las que ya tenías).
   pasa), **murciélagos** que vuelan y se tiran en picada, y **lobeznos** que corren y te muerden de un salto.
 - **Trampas**: pinchos en el suelo que asoman (aviso) y salen cada pocos segundos. Del cielo caen ramas en vez de flechas.
 - **El Campeón**: zarpazo, salto aplastante con ondas, **embestida** rapidísima de pared a pared (en la furia, ida y
-  vuelta) y un **aullido** que hace caer rocas del techo de la cueva. Se le pega pisándole el lomo.
+  vuelta), **bolas de fuego** que escupe apuntándote (tres en abanico en la furia; el parry del caballero se las
+  devuelve) y un **aullido** que hace caer rocas del techo de la cueva. Se le pega pisándole el lomo.
 - **Villano y online**: si los héroes vencen al Mega Caballero, el villano tiene revancha en el bosque: maneja a los
   bichos nuevos y, en la guarida, al Campeón. Los héroes caídos vuelven con media vida y todos eligen carta de nuevo.
 
