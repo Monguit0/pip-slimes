@@ -1662,8 +1662,34 @@ var units = {
   function apply(obj, patch) { for (var k in patch) { if (patch[k] === null || patch[k] === undefined) delete obj[k]; else obj[k] = patch[k]; } }
   function err(code, message) { var e = new Error(message || code); e.code = code; e.p2p = true; return e; }
   var open = function (c) { return !!c && c.readyState === 'open'; };
-  window.PIP_NET = { rtt: 0, path: '' };
+  window.PIP_NET = { rtt: 0, path: '', turn: false };
   try { fetch(httpUrl() + '/health', { mode: 'no-cors' }).catch(function () {}); } catch (e) {}
+  function b64enc(u) { var s = ''; for (var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+  // servidores para cruzar routers; si el servidor tiene la clave de Cloudflare, suma un relé (TURN) cercano
+  var iceAt = 0, icePromise = null;
+  function loadIce() {
+    if (icePromise && Date.now() - iceAt < 30 * 60 * 1000) return icePromise;
+    iceAt = Date.now();
+    var get = fetch(httpUrl() + '/ice', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!j || !Array.isArray(j.iceServers) || !j.iceServers.length) return;
+      var list = j.iceServers.map(function (s) { var urls = [].concat(s.urls || []).filter(function (u) { return !/:53(\?|$)/.test(u); }); return Object.assign({}, s, { urls: urls }); }).filter(function (s) { return s.urls.length; });
+      if (list.length) { ICE = { iceServers: list }; window.PIP_NET.turn = !!j.turn; }
+    }).catch(function () {});
+    icePromise = Promise.race([get, new Promise(function (r) { setTimeout(r, 3000); })]);
+    return icePromise;
+  }
+  // ¿la conexión directa va de punta a punta o pasa por el relé?
+  function checkPath(r) {
+    if (!r.pc || !r.pc.getStats) return;
+    r.pc.getStats().then(function (st) {
+      var pair = null;
+      st.forEach(function (x) { if (x.type === 'transport' && x.selectedCandidatePairId) pair = st.get(x.selectedCandidatePairId); });
+      if (!pair) st.forEach(function (x) { if (!pair && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') pair = x; });
+      if (!pair) return;
+      var a = st.get(pair.localCandidateId), b = st.get(pair.remoteCandidateId);
+      r.relay = !!((a && a.candidateType === 'relay') || (b && b.candidateType === 'relay'));
+    }).catch(function () {});
+  }
 
   function makeRoom(role, code) {
     var me = { peer: null, sameTab: true, presence: {} };
@@ -1688,12 +1714,12 @@ var units = {
       if (m.t === 'pong') {
         var rtt = performance.now() - m.ts;
         window.PIP_NET.rtt = window.PIP_NET.rtt ? window.PIP_NET.rtt * 0.7 + rtt * 0.3 : rtt;
-        window.PIP_NET.path = ch ? 'directo' : 'servidor';
+        window.PIP_NET.path = ch ? (r.relay ? 'rele' : 'directo') : 'servidor';
       }
     }
 
     var room = {
-      failed: false,
+      failed: false, binary: true,
       peers: function () {
         var out = [me];
         remotes.forEach(function (r) { out.push({ peer: r.peer, sameTab: false, presence: r.presence }); });
@@ -1704,16 +1730,23 @@ var units = {
         var keys = Object.keys(patch);
         if (role === 'host') {
           if (keys.length === 1 && keys[0] === 's') {
-            // cuadros de partida: por el canal directo sin reintentos; a quien no lo tenga, por el servidor
-            var viaWs = [];
-            remotes.forEach(function (r) { if (!(open(r.dcU) && sendDc(r.dcU, { t: 'p', p: patch }))) viaWs.push(r.peer); });
-            if (viaWs.length) sendWs({ t: 'p', p: patch, to: viaWs });
+            // cuadros de partida: binarios por el canal directo sin reintentos; a quien no lo tenga, por el servidor
+            var sn = patch.s, frame = null, viaWs = [];
+            remotes.forEach(function (r) {
+              if (open(r.dcU)) {
+                if (!frame) { frame = new Uint8Array(sn.bin.length + 1); frame[0] = 83; frame.set(sn.bin, 1); }
+                try { r.dcU.send(frame); stats.sentDc++; return; } catch (e) {}
+              }
+              viaWs.push(r.peer);
+            });
+            if (viaWs.length) sendWs({ t: 'p', p: { s: { T: sn.T, b64: b64enc(sn.bin) } }, to: viaWs });
           } else sendWs({ t: 'p', p: patch });
         } else {
           var out = patch;
           if (patch.in) out = Object.assign({}, patch, { in: Object.assign({}, patch.in, { q: ++inSeq }) });
           var h = remotes.get('host');
-          if (keys.length === 1 && keys[0] === 'in' && h && open(h.dcR) && sendDc(h.dcR, { t: 'p', p: out })) return Promise.resolve();
+          // los datos del héroe van por el canal sin reenvíos: si uno se pierde, el siguiente ya trae todo
+          if (keys.length === 1 && keys[0] === 'in' && h && ((open(h.dcU) && sendDc(h.dcU, { t: 'p', p: out })) || (open(h.dcR) && sendDc(h.dcR, { t: 'p', p: out })))) return Promise.resolve();
           sendWs({ t: 'p', p: out });
         }
         return Promise.resolve();
@@ -1731,8 +1764,18 @@ var units = {
     /* ---- WebRTC directo ---- */
     function setupChan(r, ch, kind) {
       if (kind === 'r') r.dcR = ch; else r.dcU = ch;
-      ch.onmessage = function (ev) { var m; try { m = JSON.parse(ev.data); } catch (e) { return; } stats.gotDc++; onMsg(r, m, ch); };
-      ch.onopen = function () { if (r.peer === 'host' && kind === 'r') pingNow(); };
+      ch.binaryType = 'arraybuffer';
+      ch.onmessage = function (ev) {
+        stats.gotDc++;
+        if (typeof ev.data !== 'string') {
+          var u = new Uint8Array(ev.data);
+          if (u[0] === 83 && u.length > 5) { var bin = u.subarray(1); applyRemote(r, { s: { T: (bin[0] | (bin[1] << 8) | (bin[2] << 16)) + bin[3] * 16777216, bin: bin } }); }
+          return;
+        }
+        var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        onMsg(r, m, ch);
+      };
+      ch.onopen = function () { if (r.peer === 'host' && kind === 'r') { checkPath(r); pingNow(); } };
     }
     function startPc(r, initiator) {
       if (!window.RTCPeerConnection || r.pc) return;
@@ -1769,12 +1812,13 @@ var units = {
     }
     function pingNow() {
       var h = remotes.get('host'); if (!h) return;
+      checkPath(h);
       var m = { t: 'ping', ts: performance.now() };
       if (open(h.dcR)) sendDc(h.dcR, m); else sendWs(m);
     }
 
     room._start = function () {
-      return new Promise(function (resolve, reject) {
+      return loadIce().then(function () { return new Promise(function (resolve, reject) {
         var settled = false;
         var fail = function (e) { if (settled) return; settled = true; clearTimeout(timer); try { ws && ws.close(); } catch (x) {} reject(e); };
         var timer = setTimeout(function () { fail(err('timeout', 'No pude conectar con el servidor. Probá de nuevo en un momento.')); }, 50000);
@@ -1813,7 +1857,7 @@ var units = {
           clearInterval(pingTimer); remotes.clear(); fire();
           try { window.dispatchEvent(new CustomEvent('pip-room-lost')); } catch (e) {}
         };
-      });
+      }); });
     };
     return room;
   }
@@ -2677,7 +2721,7 @@ const input = { left: false, right: false, jump: false, down: false, attack: fal
 let G = null;
 let uid = 1;
 // estado del modo online (la lógica está en la sección "Online", más abajo)
-const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sndOwner: null };
+const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0 };
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
@@ -3013,13 +3057,13 @@ function updateArrows(dt) {
     if (a.stuck) { a.wob -= dt; a.life -= dt; if (a.life <= 0) a.dead = true; continue; }
     a.vy += 40 * dt; a.x += a.vx * dt; a.y += a.vy * dt;
     const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
-    if (jOn()) { a.trail -= dt; if (a.trail <= 0) { a.trail = 0.02; G.parts.push({ x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1 }); } }
+    if (jOn()) { a.trail -= dt; if (a.trail <= 0) { a.trail = 0.02; G.parts.push({ x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1, o: a.o }); } }
     const invZ = G.kind === 'invade' && G.z < 3;
     if (invZ ? (tipX < ZONES[G.z].start - 12 || tipX > ZONES[G.z].end + 12) : (tipX < camX - 12 || tipX > camX + W + 12)) { a.dead = true; continue; }
     for (const c of G.coins) if (!c.got && c.born >= 0 && Math.abs(tipX - c.x) < 5 && Math.abs(tipY - c.y) < 5) collectCoin(c);
     if (invZ) {
       if (a.hero) { const m = G.mobs.find(m => !m.dead && m.spawn <= 0 && tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 2 && tipY <= m.y + m.h + 1); if (m) { a.dead = true; hitMob(m, 1, a.face, 'arrow'); continue; } }
-      else if (a.mob) { const e = G.heroes.find(e => !e.dead && e.inv <= 0 && tipX >= e.x - 1 && tipX <= e.x + e.w + 1 && tipY >= e.y - 1 && tipY <= e.y + e.h); if (e) { a.dead = true; hitHero(e, 1, a.face, a.player); continue; } }
+      else if (a.mob) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && tipX >= e.x - 1 && tipX <= e.x + e.w + 1 && tipY >= e.y - 1 && tipY <= e.y + e.h); if (e) { a.dead = true; hitHero(e, 1, a.face, a.player); continue; } }
     }
     const target = G.slimes.find(s => !s.dead && s.spawn <= 0 && tipX >= s.x - 1 && tipX <= s.x + s.w + 1 && tipY >= s.y - 2 && tipY <= s.y + s.h);
     if (target) {
@@ -3919,7 +3963,7 @@ function updateMobs(dt) {
     if (m.player) playerMob(m, dt); else aiMob(m, dt);
     if (m.type === 'skaxe' && m.swingT < 0.12) {
       const hb = axeBox(m);
-      for (const e of G.heroes) if (!e.dead && overlap(e, hb)) hitHero(e, 2, m.face, m.player);
+      for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, hb)) hitHero(e, 2, m.face, m.player);
     }
   }
   G.mobs = G.mobs.filter(m => !(m.dead && m.deadT <= 0));
@@ -4022,7 +4066,7 @@ function updateShots(dt) {
     const py = s.y;
     s.vy += 420 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
     if (jOn() && Math.random() < 0.6) G.parts.push({ x: s.x, y: s.y, vx: 0, vy: 0, g: 60, life: 0.2, max: 0.2, c: s.red ? PAL.o : PAL.l, s: 1 });
-    const e = G.heroes.find(e => !e.dead && e.inv <= 0 && overlap(e, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 }));
+    const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 }));
     if (e) { hitHero(e, 1, Math.sign(s.vx) || 1, s.player); splat(s); continue; }
     for (const surf of SURFACES) if (s.vy > 0 && py <= surf.y + 1 && s.y >= surf.y && s.x >= surf.x && s.x <= surf.x + surf.w) { s.y = surf.y - 1; splat(s); break; }
     if (s.x < ZONES[G.z].start - 20 || s.x > ZONES[G.z].end + 20 || s.y > H + 10) s.dead = true;
@@ -4099,7 +4143,8 @@ function updateBots(dt) {
       const hb = slashBoxOf(e), sid = e.id * 1000 + e.swingId;
       for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; hitMob(m, 2, e.face, 'sword'); }
     }
-    for (const m of G.mobs) {
+    // los héroes de jugadores avisan desde su pantalla qué pisaron y qué les pegó
+    if (!e.net) for (const m of G.mobs) {
       if (m.dead || m.spawn > 0 || !overlap(e, m)) continue;
       if (e.vy > 20 && e.prevBottom <= m.y + 3) { kick(e, e.vx, -230, 2); if (jOn()) { e.sx = 0.8; e.sy = 1.25; } hitMob(m, 1, 0, 'stomp'); }
       else if (e.inv <= 0) hitHero(e, 1, Math.sign((e.x + 4) - (m.x + m.w / 2)) || 1, m.player);
@@ -4376,7 +4421,7 @@ function render() {
     g.fillStyle = PAL.r; g.fillRect(t.x - 1, t.y - 3, 3, 2);
     g.fillStyle = PAL.o; g.fillRect(t.x - 1 + (fl === 1 ? 1 : 0), t.y - 5, 2, 2);
     g.fillStyle = PAL.y; g.fillRect(t.x + (fl === 2 ? -1 : 0), t.y - 6 - (fl === 0 ? 1 : 0), 1, 2);
-    if (G && jOn() && Math.random() < 0.04) G.parts.push({ x: t.x, y: t.y - 6, vx: (Math.random() - 0.5) * 8, vy: -20, g: -10, life: 0.6, max: 0.6, c: PAL.o, s: 1 });
+    if (G && jOn() && Math.random() < 0.04) G.parts.push({ x: t.x, y: t.y - 6, vx: (Math.random() - 0.5) * 8, vy: -20, g: -10, life: 0.6, max: 0.6, c: PAL.o, s: 1, _n: 1 });
   }
   if (!G) { g.setTransform(RS, 0, 0, RS, 0, 0); renderTitle(); return; }
 
@@ -4513,7 +4558,11 @@ function render() {
   const bump = jOn() && G.scoreBump > 0.5 ? -1 : 0;
   drawText(g, sc, W - 4, 4 + bump, G.scoreBump > 0.5 && jOn() ? PAL.w : PAL.y, 1, 'right');
   if (G.combo > 1) drawText(g, 'x' + G.combo, W - 4, 12, PAL.c, 1, 'right');
-  if (NET.role === 'guest' && NET.playing && window.PIP_NET && window.PIP_NET.rtt) drawText(g, 'PING ' + Math.round(window.PIP_NET.rtt) + (window.PIP_NET.path === 'directo' ? ' DIR' : ' SRV'), W - 4, 136, window.PIP_NET.path === 'directo' ? PAL.s : PAL.y, 1, 'right');
+  if (NET.role === 'guest' && NET.playing && window.PIP_NET && window.PIP_NET.rtt) {
+    const np = window.PIP_NET, tag = np.path === 'directo' ? ' DIR' : np.path === 'rele' ? ' RLY' : ' SRV';
+    drawText(g, 'PING ' + Math.round(np.rtt) + tag, W - 4, 136, np.path === 'directo' ? PAL.s : np.path === 'rele' ? PAL.c : PAL.y, 1, 'right');
+  }
+  if (NET.role === 'guest' && NET.playing && performance.now() - NET.lastSnapAt > 800 && Math.floor(performance.now() / 400) % 2) drawText(g, 'ESPERANDO AL VILLANO...', W / 2, 52, PAL.y, 1, 'center');
   if (G.z < 3 && G.kind !== 'invade') {
     const left = G.slimes.filter(s => !s.dead && s.zone === G.z).length;
     drawText(g, 'ZONA ' + (G.z + 1) + (G.cleared ? '' : ' · SLIMES ' + left), W / 2, 4, PAL.s, 1, 'center');
@@ -4616,8 +4665,8 @@ function renderTitle() {
    Loop
    ========================================================= */
 let last = performance.now();
-function frame(now) {
-  const real = Math.min(1 / 30, (now - last) / 1000); last = now;
+function step(now) {
+  const real = Math.min(1 / 30, Math.max(0, now - last) / 1000); last = now;
   if (NET.role === 'guest') netGuestFrame(now, real);
   else if (G) {
     let dt = real;
@@ -4625,10 +4674,29 @@ function frame(now) {
     update(dt, real);
   }
   if (NET.role === 'host') netHostFrame(now);
+}
+function frame(now) {
+  if (!BG_TICK.on) step(now);
   render();
   uiFrame(now);
   requestAnimationFrame(frame);
 }
+/* Con la pestaña oculta el navegador deja de dibujar. Si sos el villano de una partida online,
+   un Worker sigue marcando el ritmo para que el juego no se congele para los demás. */
+const BG_TICK = { on: false, w: null };
+function bgTickSync() {
+  const want = document.hidden && NET.role === 'host' && NET.playing;
+  if (want && !BG_TICK.on) {
+    try {
+      if (!BG_TICK.w) {
+        BG_TICK.w = new Worker(URL.createObjectURL(new Blob(['let t=0;onmessage=e=>{clearInterval(t);if(e.data)t=setInterval(()=>postMessage(0),16)}'], { type: 'text/javascript' })));
+        BG_TICK.w.onmessage = () => { if (BG_TICK.on) step(performance.now()); };
+      }
+      BG_TICK.w.postMessage(1); BG_TICK.on = true;
+    } catch (e) {}
+  } else if (!want && BG_TICK.on) { BG_TICK.w.postMessage(0); BG_TICK.on = false; last = performance.now(); }
+}
+document.addEventListener('visibilitychange', bgTickSync);
 
 /* =========================================================
    Entrada
@@ -4918,49 +4986,91 @@ const nick = () => nickEl.value.replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0
 nickEl.addEventListener('change', () => { try { localStorage.setItem('pip-nick', nick()); } catch (e) {} if (NET.room) NET.room.presence({ nm: nick() }).catch(() => {}); });
 
 function netSound(name, o) {
-  const q = [++NET.seq, name, C2(o.rate || 1), C2(o.vol ?? 1), C2(o.delay || 0), o.vary === false ? 0 : 1];
-  if (NET.sndOwner) q.push(NET.sndOwner); // ese jugador ya lo escuchó en su pantalla
-  NET.sq.push(q);
-  if (NET.sq.length > 16) NET.sq.shift();
+  NET.sq.push([++NET.seq, name, C2(o.rate || 1), C2(o.vol ?? 1), C2(o.delay || 0), o.vary === false ? 0 : 1, NET.sndOwner || '', performance.now()]);
+  if (NET.sq.length > 24) NET.sq.shift();
 }
+
+/* ---- formato binario: cada número ocupa 1 o 2 bytes en vez de 4 o 5 letras ---- */
+const U8D = new TextDecoder();
+class BinW {
+  constructor() { this.b = new Uint8Array(2048); this.n = 0; }
+  need(k) { if (this.n + k > this.b.length) { const nb = new Uint8Array(Math.max(this.b.length * 2, this.n + k + 256)); nb.set(this.b.subarray(0, this.n)); this.b = nb; } }
+  u32(v) { this.need(4); v = v >>> 0; this.b[this.n++] = v & 255; this.b[this.n++] = (v >>> 8) & 255; this.b[this.n++] = (v >>> 16) & 255; this.b[this.n++] = (v >>> 24) & 255; }
+  u(v) { v = Math.max(0, Math.round(v) || 0); this.need(8); while (v >= 128) { this.b[this.n++] = (v % 128) | 128; v = Math.floor(v / 128); } this.b[this.n++] = v; }
+  i(v) { v = Math.round(v) || 0; this.u(v >= 0 ? v * 2 : -v * 2 - 1); }
+  s(v) { const e = U8.encode(String(v || '')); this.u(e.length); this.need(e.length); this.b.set(e, this.n); this.n += e.length; }
+  rec(a, spec) { for (let k = 0; k < spec.length; k++) { if (spec[k] === 's') this.s(a[k]); else this.i(a[k]); } }
+  list(arr, spec) { this.u(arr.length); for (const a of arr) this.rec(a, spec); }
+  out() { return this.b.slice(0, this.n); }
+}
+class BinR {
+  constructor(b) { this.b = b; this.n = 0; }
+  u32() { const b = this.b, n = this.n; this.n += 4; return (b[n] | (b[n + 1] << 8) | (b[n + 2] << 16)) + b[n + 3] * 16777216; }
+  u() { let v = 0, m = 1, c; do { if (this.n >= this.b.length) throw new Error('corto'); c = this.b[this.n++]; v += (c & 127) * m; m *= 128; } while (c & 128); return v; }
+  i() { const z = this.u(); return z % 2 ? -(z + 1) / 2 : z / 2; }
+  s() { const k = this.u(), v = U8D.decode(this.b.subarray(this.n, this.n + k)); this.n += k; return v; }
+  rec(spec) { const a = new Array(spec.length); for (let k = 0; k < spec.length; k++) a[k] = spec[k] === 's' ? this.s() : this.i(); return a; }
+  list(spec) { const n = this.u(); if (n > 4000) throw new Error('lista'); const out = new Array(n); for (let k = 0; k < n; k++) out[k] = this.rec(spec); return out; }
+}
+const ST_LIST = ['play', 'over', 'win'];
+const MT_LIST = ['slime', 'red', 'skarch', 'skaxe'];
+const BS_LIST = ['wait', 'drop', 'roar', 'idle', 'tele', 'act', 'rec', 'stun', 'rage', 'dying', 'gone'];
+const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain'];
+const HP_LIST = ['warn', 'fall', 'stuck', 'gone'];
+const SND_LIST = SFX_INFO.map(x => x[0]).concat(['!boom', '!duck']);
+const enumOf = (list, v) => Math.max(0, list.indexOf(v));
+const cIdx = c => CIDX.has(c) ? CIDX.get(c) : 0;
+// qué lleva cada registro: i = número, s = texto
+const SP = {
+  h: 'iiiiiiiiiiiiiiisiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt
+  m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
+  a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
+  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii',
+  b: 'iiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
+  pp: 'iisii', rg: 'iiii',
+  p: 'iiiiiiiiii',           // x y vx vy gravedad color tamaño vida max dueño
+  snd: 'iiiiiis'
+};
 
 /* ---- la foto del mundo (villano) ---- */
 function netPack(now) {
-  const s = {
-    T: Math.round(now), st: G.state, z: G.z, sc: G.score, t: C2(G.t), e: C2(G.endT || 0), k: G.kills || 0,
-    g: GATES.map(gt => C2(gt.open)),
-    fx: [C2(Math.max(0, G.shake)), Math.round(G.shakeMag * 10), C2(G.shakeMax), C2(Math.max(0, G.flashRed))],
-    mu: [Music.bpm, Music.tr, G.state === 'play' && !(G.boss && (G.boss.state === 'dying' || G.boss.state === 'gone')) ? 1 : 0],
-    ctl: G.ctrl ? G.ctrl.id : 0
-  };
-  if (G.zoom) s.zo = [C2(G.zoom.t), H2(G.zoom.x), H2(G.zoom.y)];
-  if (G.impact) s.im = [C2(G.impact.t), H2(G.impact.x), H2(G.impact.y), C2(G.impact.seed)];
-  if (G.critText) s.ct = [C2(G.critText.t), H2(G.critText.x), H2(G.critText.y)];
-  if (G.banner) s.bn = [G.banner.text, G.banner.sub || '', C2(G.banner.t), G.banner.long ? 1 : 0];
-  if (G.soul) s.so = [H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)];
-  s.h = G.heroes.map(e => [e.id, e.kind === 'knight' ? 1 : 0, H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || 0, e.kb || 0, Math.round(e.kvx || 0), Math.round(e.kvy || 0), e.kt || 0]);
-  s.m = G.mobs.map(m => [m.id, m.type, H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]);
-  s.a = G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, a.stuck ? 1 : 0, C2(a.life), C2(a.wob)]);
-  s.sh = (G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), q.red ? 1 : 0]);
-  s.hz = G.hazards.map(h => [h.id, h.phase, H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), h.big ? 1 : 0, C2(h.life), C2(h.wob)]);
-  s.wv = G.waves.map(w => [w.id || 0, H2(w.x), w.dir]);
-  const B = G.boss;
-  if (B) s.b = [H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, B.state, B.atk || '', B.landed ? 1 : 0, H2(B.targetX), C2(B.t), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp, B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)])];
-  s.pp = G.pops.map(p => [H2(p.x), H2(p.y), p.text, encC(p.c), C2(p.t)]);
-  s.rg = G.rings.map(r => [H2(r.x), H2(r.y), C2(r.t), encC(r.c)]);
-  s.snd = NET.sq.slice(-10);
-  const size = () => U8.encode(JSON.stringify(s)).length;
-  let n = size();
-  if (n > 3500) { delete s.rg; delete s.pp; n = size(); }
-  if (n > 3500) { s.a = s.a.filter(a => !a[4]); s.snd = s.snd.slice(-4); n = size(); }
-  if (n > 3500) return null;
-  const fit = Math.max(0, Math.min(G.parts.length, Math.floor((3500 - n) / 30)));
-  if (fit) {
-    s.p = G.parts.slice(-fit).map(q => [H2(q.x), H2(q.y), Math.round(q.vx), Math.round(q.vy), Math.round(q.g / 10), encC(q.c), (q.s || 1) | (q.star ? 8 : 0), Math.round(Math.max(0, q.life) / q.max * 20)]);
-    while (s.p.length && size() > 3600) s.p.splice(0, 8);
+  const w = new BinW(), B = G.boss;
+  w.u32(Math.round(now));
+  const flags = (G.zoom ? 1 : 0) | (G.impact ? 2 : 0) | (G.critText ? 4 : 0) | (G.banner ? 8 : 0) | (G.soul ? 16 : 0) | (B ? 32 : 0);
+  w.rec([enumOf(ST_LIST, G.state), G.z, G.score, C2(G.t % 600), C2(G.endT || 0), G.kills || 0, flags, G.ctrl ? G.ctrl.id : 0], 'iiiiiiii');
+  w.rec(GATES.map(gt => C2(gt.open)), 'iii');
+  w.rec([C2(Math.max(0, G.shake)), Math.round(G.shakeMag * 10), C2(G.shakeMax), C2(Math.max(0, G.flashRed))], 'iiii');
+  w.rec([Music.bpm, Music.tr, G.state === 'play' && !(B && (B.state === 'dying' || B.state === 'gone')) ? 1 : 0], 'iii');
+  if (G.zoom) w.rec([C2(G.zoom.t), H2(G.zoom.x), H2(G.zoom.y)], 'iii');
+  if (G.impact) w.rec([C2(G.impact.t), H2(G.impact.x), H2(G.impact.y), C2(G.impact.seed)], 'iiii');
+  if (G.critText) w.rec([C2(G.critText.t), H2(G.critText.x), H2(G.critText.y)], 'iii');
+  if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), G.banner.long ? 1 : 0], 'ssii');
+  if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
+  w.list(G.heroes.map(e => [e.id, e.kind === 'knight' ? 1 : 0, H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0]), SP.h);
+  w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
+  w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
+  w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), q.red ? 1 : 0]), SP.sh);
+  w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), h.big ? 1 : 0, C2(h.life), C2(h.wob)]), SP.hz);
+  w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.dir]), SP.wv);
+  if (B) {
+    w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp], SP.b);
+    w.list(B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)]), SP.tr);
   }
-  return s;
+  w.list(G.pops.map(p => [H2(p.x), H2(p.y), p.text, cIdx(p.c), C2(p.t)]), SP.pp);
+  w.list(G.rings.map(r => [H2(r.x), H2(r.y), C2(r.t), cIdx(r.c)]), SP.rg);
+  // partículas: viajan una sola vez, cuando nacen; cada pantalla las mueve por su cuenta
+  const fresh = [];
+  for (const q of G.parts) if (!q._n) { q._n = 1; fresh.push(q); }
+  w.list(fresh.slice(-90).map(q => [H2(q.x), H2(q.y), q.vx, q.vy, (q.g || 0) / 10, cIdx(q.c), (q.s || 1) | (q.star ? 8 : 0), C2(Math.max(0, q.life)), C2(q.max), q.o || 0]), SP.p);
+  // sonidos de los últimos 300 ms (si se pierde una foto, viajan en la siguiente)
+  w.list(NET.sq.filter(q => now - q[7] < 300).slice(-10).map(q => [q[0], enumOf(SND_LIST, q[1]), q[2], q[3], q[4], q[5], q[6]]), SP.snd);
+  return { T: Math.round(now), bin: w.out() };
 }
+const b64e = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const b64d = s => { const t = atob(s), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
+// la sala de claude.ai solo acepta textos de hasta 1 KiB: ahí la foto va en pedazos
+function netText(s) { const t = b64e(s.bin), b = []; for (let i = 0; i < t.length; i += 1000) b.push(t.slice(i, i + 1000)); return { T: s.T, b }; }
+function netBytes(raw) { return raw.bin instanceof Uint8Array ? raw.bin : b64d(raw.b64 || (Array.isArray(raw.b) ? raw.b.join('') : '')); }
 
 /* ---- lo que ve cada héroe ---- */
 const POV = {
@@ -4977,40 +5087,49 @@ function povBanner(b) {
   if (b.text === '¡FURIA!') return { ...b, sub: 'EL JEFE SE ENOJA' };
   return b;
 }
-function netDecode(s) {
-  const L = v => v / 2, P = v => v / 100;
-  const b = s.b;
+function netDecode(bytes) {
+  const r = new BinR(bytes), L = v => v / 2, P = v => v / 100;
+  const T = r.u32();
+  const [st, z, sc, t, e, k, flags, ctl] = r.rec('iiiiiiii');
+  const gates = r.rec('iii').map(P), fx = r.rec('iiii'), mu = r.rec('iii');
+  const zo = flags & 1 ? r.rec('iii') : null, im = flags & 2 ? r.rec('iiii') : null, ct = flags & 4 ? r.rec('iii') : null;
+  const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
+  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv);
+  const b = flags & 32 ? r.rec(SP.b) : null, tr = flags & 32 ? r.list(SP.tr) : [];
+  const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
-    T: s.T, kind: 'invade', state: s.st, z: s.z, score: s.sc, shownScore: s.sc, scoreBump: 0, t: P(s.t), endT: P(s.e), kills: s.k,
-    gates: s.g.map(P), mu: s.mu, ctrlId: s.ctl, snd: s.snd || [],
-    shake: P(s.fx[0]), shakeMag: s.fx[1] / 10, shakeMax: P(s.fx[2]) || 1, flashRed: P(s.fx[3]),
-    zoom: s.zo ? { t: P(s.zo[0]), x: L(s.zo[1]), y: L(s.zo[2]) } : null,
-    impact: s.im ? { t: P(s.im[0]), x: L(s.im[1]), y: L(s.im[2]), seed: P(s.im[3]) } : null,
-    critText: s.ct ? { t: P(s.ct[0]), x: L(s.ct[1]), y: L(s.ct[2]) } : null,
-    banner: s.bn ? povBanner({ text: s.bn[0], sub: s.bn[1], t: P(s.bn[2]), long: !!s.bn[3] }) : null,
-    soul: s.so ? { x: L(s.so[0]), y: L(s.so[1]), tx: L(s.so[2]), ty: L(s.so[3]), t: P(s.so[4]) } : null,
-    heroes: (s.h || []).map(a => ({ id: a[0], kind: a[1] ? 'knight' : 'archer', x: L(a[2]), y: L(a[3]), w: 8, h: 11, face: a[4], onGround: !!(a[5] & 1), dead: !!(a[5] & 2), popped: !!(a[5] & 4), runT: P(a[6]), inv: P(a[7]), flash: P(a[8]), sx: P(a[9]), sy: P(a[10]), hp: a[11], max: a[12], swingT: P(a[13]), twang: P(a[14]), net: a[15] || null, kb: a[16] || 0, kvx: a[17] || 0, kvy: a[18] || 0, kt: a[19] || 0 })),
-    mobs: (s.m || []).map(a => ({ id: a[0], type: a[1], zone: s.z, x: L(a[2]), y: L(a[3]), w: MOB[a[1]].w, h: MOB[a[1]].h, face: a[4], onGround: !!(a[5] & 1), dead: !!(a[5] & 2), player: !!(a[5] & 4), charging: !!(a[5] & 8), spawn: P(a[6]), flash: P(a[7]), sx: P(a[8]), sy: P(a[9]), runT: P(a[10]), swingT: P(a[11]), twang: P(a[12]), windup: P(a[13]), hp: a[14], max: a[15], charge: P(a[16]) })),
-    arrows: (s.a || []).map(a => ({ id: a[0], x: L(a[1]), y: L(a[2]), face: a[3], stuck: !!a[4], life: P(a[5]), wob: P(a[6]) })),
-    shots: (s.sh || []).map(a => ({ id: a[0], x: L(a[1]), y: L(a[2]), red: !!a[3] })),
-    hazards: (s.hz || []).map(a => ({ id: a[0], phase: a[1], x: L(a[2]), y: L(a[3]), landY: a[4], warn: P(a[5]), warnMax: P(a[6]) || 1, big: !!a[7], life: P(a[8]), wob: P(a[9]) })),
-    waves: (s.wv || []).map(a => ({ id: a[0], x: L(a[1]), dir: a[2] })),
-    boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: b[11], atk: b[12], landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], trail: b[22].map(tr => ({ x: L(tr[0]), y: L(tr[1]), face: tr[2], angle: tr[3], t: P(tr[4]) })) } : null,
-    pops: (s.pp || []).map(a => ({ x: L(a[0]), y: L(a[1]), text: a[2], c: decC(a[3]), t: P(a[4]) })),
-    rings: (s.rg || []).map(a => ({ x: L(a[0]), y: L(a[1]), t: P(a[2]), c: decC(a[3]) })),
-    parts: (s.p || []).map(a => ({ x: L(a[0]), y: L(a[1]), vx: a[2], vy: a[3], g: a[4] * 10, c: decC(a[5]), s: a[6] & 7, star: !!(a[6] & 8), life: a[7] / 20, max: 1 })),
-    slimes: [], coins: [], p: null, hearts: 0, maxHearts: 0, combo: 0, cleared: false, freeze: 0, slowmo: 0, queue: [], wave: 0
+    T, kind: 'invade', state: ST_LIST[st] || 'play', z, score: sc, shownScore: sc, scoreBump: 0, t: P(t), endT: P(e), kills: k,
+    gates, mu, ctrlId: ctl,
+    snd: snd.map(q => [q[0], SND_LIST[q[1]] || 'menu', q[2], q[3], q[4], q[5], q[6]]),
+    shake: P(fx[0]), shakeMag: fx[1] / 10, shakeMax: P(fx[2]) || 1, flashRed: P(fx[3]),
+    zoom: zo ? { t: P(zo[0]), x: L(zo[1]), y: L(zo[2]) } : null,
+    impact: im ? { t: P(im[0]), x: L(im[1]), y: L(im[2]), seed: P(im[3]) } : null,
+    critText: ct ? { t: P(ct[0]), x: L(ct[1]), y: L(ct[2]) } : null,
+    banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!bn[3] }) : null,
+    soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
+    heroes: h.map(q => ({ id: q[0], kind: q[1] ? 'knight' : 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19] })),
+    mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
+    arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
+    shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!q[3] })),
+    hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!q[7], life: P(q[8]), wob: P(q[9]) })),
+    waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: q[2] })),
+    boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
+    pops: pp.map(q => ({ x: L(q[0]), y: L(q[1]), text: q[2], c: CLIST[q[3]] || PAL.w, t: P(q[4]) })),
+    rings: rg.map(q => ({ x: L(q[0]), y: L(q[1]), t: P(q[2]), c: CLIST[q[3]] || PAL.w })),
+    newParts: ps.map(q => ({ x: L(q[0]), y: L(q[1]), vx: q[2], vy: q[3], g: q[4] * 10, c: CLIST[q[5]] || PAL.w, s: q[6] & 7, star: !!(q[6] & 8), life: P(q[7]), max: P(q[8]) || 0.1, o: q[9] })),
+    parts: [], slimes: [], coins: [], p: null, hearts: 0, maxHearts: 0, combo: 0, cleared: false, freeze: 0, slowmo: 0, queue: [], wave: 0
   };
 }
-// arma el cuadro a mostrar 110 ms detrás del villano, interpolando entre dos fotos
+// arma el cuadro a mostrar un poco detrás del villano, interpolando entre dos fotos
 function netView(now, real) {
   const S = NET.snaps;
   if (!S.length) return null;
   let mn = Infinity, sum = 0;
   for (const o of NET.offs) { if (o < mn) mn = o; sum += o; }
-  const want = Math.max(60, Math.min(150, 50 + 2 * (sum / NET.offs.length - mn)));
+  const want = Math.max(50, Math.min(150, 45 + 2 * (sum / NET.offs.length - mn)));
   NET.buf = NET.buf ? NET.buf + (want - NET.buf) * 0.05 : want;
   const tgt = now - mn - NET.buf;
+  NET.tgt = tgt;
   let ia = 0;
   for (let i = 0; i < S.length; i++) if (S[i].T <= tgt) ia = i;
   const a = S[ia], b = S[Math.min(S.length - 1, ia + 1)];
@@ -5020,8 +5139,17 @@ function netView(now, real) {
   V.heroes = mix(a.heroes, b.heroes); V.mobs = mix(a.mobs, b.mobs); V.shots = mix(a.shots, b.shots);
   V.arrows = mix(a.arrows, b.arrows); V.hazards = mix(a.hazards, b.hazards); V.waves = mix(a.waves, b.waves);
   if (a.boss && b.boss) V.boss = Object.assign({}, b.boss, { x: a.boss.x + (b.boss.x - a.boss.x) * al, y: a.boss.y + (b.boss.y - a.boss.y) * al, angle: a.boss.angle + (b.boss.angle - a.boss.angle) * al });
-  const dt = (tgt - b.T) / 1000;
-  V.parts = b.parts.map(q => Object.assign({}, q, { x: q.x + q.vx * dt, y: q.y + q.vy * dt + 0.5 * q.g * dt * dt }));
+  // partículas y sonidos salen cuando la imagen llega a ese momento, así coinciden con lo que se ve
+  while (NET.fxq.length && NET.fxq[0].T <= tgt) {
+    const f = NET.fxq.shift(), mine = NET.mine ? NET.mine.id : -1;
+    for (const q of f.parts) if (q.o !== mine) NET.parts.push(Object.assign({}, q)); // la estela de mis flechas la hago acá
+  }
+  while (NET.sndq.length && NET.sndq[0].T <= tgt + 30) netPlay(NET.sndq.shift().q);
+  const dt = Math.min(real, 1 / 20);
+  for (const q of NET.parts) { q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; if (q.y > GROUND - 1 && q.vy > 0 && q.g > 0) { q.y = GROUND - 1; q.vy *= -0.3; q.vx *= 0.6; } }
+  NET.parts = NET.parts.filter(q => q.life > 0);
+  if (NET.parts.length > 400) NET.parts.splice(0, NET.parts.length - 400);
+  V.parts = NET.parts;
   V.ctrl = V.mobs.find(m => m.id === b.ctrlId) || null;
   return V;
 }
@@ -5043,7 +5171,7 @@ function netPlay(q) {
   if (owner && owner === NET.me) return;
   if (name === '!boom') boom(vol / 100);
   else if (name === '!duck') duck();
-  else play(name, { rate: rate / 100, vol: vol / 100, delay: delay / 100 + 0.08, vary: !!vary });
+  else play(name, { rate: rate / 100, vol: vol / 100, delay: delay / 100, vary: !!vary });
 }
 
 /* ---- cada cuadro ---- */
@@ -5057,13 +5185,19 @@ function netGuestFrame(now, real) {
   if (host) { NET.hostSeen = true; NET.hostT = now; NET.hostPres = host.presence; }
   else if (NET.hostSeen ? now - NET.hostT > 3000 : (r.failed || now - NET.joinT > 9000)) { netLeave(NET.hostSeen ? 'El villano cerró la sala.' : 'No encontré ninguna sala con ese código.'); return; }
   const hp = host ? host.presence : null;
-  if (hp && hp.s && hp.s.T !== NET.lastT) {
-    NET.lastT = hp.s.T;
-    const d = netDecode(hp.s);
-    NET.offs.push(now - d.T); if (NET.offs.length > 40) NET.offs.shift();
-    NET.snaps.push(d); while (NET.snaps.length > 8) NET.snaps.shift();
-    if (NET.lastSnd < 0) NET.lastSnd = d.snd.length ? d.snd[d.snd.length - 1][0] : 0;
-    for (const q of d.snd) if (q[0] > NET.lastSnd) { NET.lastSnd = q[0]; netPlay(q); }
+  const raw = hp && hp.s;
+  if (raw && raw.T !== NET.lastT) {
+    NET.lastT = raw.T; NET.lastSnapAt = now;
+    let d = null;
+    try { d = netDecode(netBytes(raw)); } catch (e) { d = null; }
+    if (d) {
+      NET.offs.push(now - d.T); if (NET.offs.length > 40) NET.offs.shift();
+      NET.snaps.push(d); while (NET.snaps.length > 8) NET.snaps.shift();
+      if (d.newParts.length) NET.fxq.push({ T: d.T, parts: d.newParts });
+      if (NET.fxq.length > 60) NET.fxq.splice(0, NET.fxq.length - 60);
+      if (NET.lastSnd < 0) NET.lastSnd = d.snd.length ? d.snd[d.snd.length - 1][0] : 0;
+      for (const q of d.snd) if (q[0] > NET.lastSnd) { NET.lastSnd = q[0]; NET.sndq.push({ T: d.T, q }); }
+    }
   }
   const live = hp && hp.st === 'play' && NET.snaps.length;
   if (live) {
@@ -5075,30 +5209,32 @@ function netGuestFrame(now, real) {
     const [bpm, tr, on] = G.mu;
     if (Music.bpm !== bpm || Music.tr !== tr) setTempo(bpm, tr);
     if (on && opts.music && !Music.playing) musicStart(); else if (!on && Music.playing) musicStop();
-  } else if (NET.playing) { NET.playing = false; G = null; NET.snaps = []; NET.offs = []; overlay.hidden = false; musicStop(); netUI(); }
-  if (!live) { NET.mine = null; input.jumpPressed = input.attackPressed = false; }
+  } else if (NET.playing) { NET.playing = false; G = null; NET.snaps = []; NET.offs = []; NET.fxq = []; NET.sndq = []; NET.parts = []; overlay.hidden = false; musicStop(); netUI(); }
+  if (!live) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = false; }
   input.chargePressed = input.rainPressed = false;
 }
 /* Mi héroe se mueve acá mismo, sin esperar al villano: corre la misma física que el juego
-   y le manda al villano dónde está. Los golpes y rebotes que decide el villano llegan con
-   un número (kb); se aplican una vez y se confirman, y recién ahí el villano vuelve a
-   creerle a esta pantalla. */
+   y le manda al villano dónde está. Además decide lo que le pega según lo que se ve en esta
+   pantalla. Los golpes y rebotes que decide el villano llegan con un número (kb); se aplican
+   una vez y se confirman, y recién ahí el villano vuelve a creerle a esta pantalla. */
 function netPredict(real) {
   const latest = NET.snaps[NET.snaps.length - 1];
   const srv = latest && latest.heroes.find(e => e.net === NET.me);
-  if (!srv || srv.dead) { NET.mine = null; input.jumpPressed = input.attackPressed = false; netSendIn(null); return; }
+  if (!srv || srv.dead) { NET.mine = null; NET.myArrows = []; input.jumpPressed = input.attackPressed = false; netSendIn(null); return; }
   let m = NET.mine;
   if (!m || m.id !== srv.id) {
-    m = NET.mine = { id: srv.id, kind: srv.kind, x: srv.x, y: srv.y, w: 8, h: 11, vx: 0, vy: 0, onGround: srv.onGround, face: srv.face, surf: null, drop: 0, inv: 0, flash: 0, sx: 1, sy: 1, runT: 0, swingT: 9, twang: 0, cool: 0, ak: 0, kb: srv.kb, net: NET.me, own: true, move: 0, jumpBuf: 0, cut: true, bounceAt: -9999, prevBottom: srv.y + 11 };
+    m = NET.mine = { id: srv.id, kind: srv.kind, x: srv.x, y: srv.y, w: 8, h: 11, vx: 0, vy: 0, onGround: srv.onGround, face: srv.face, surf: null, drop: 0, inv: 0, invL: 0, flash: 0, sx: 1, sy: 1, runT: 0, swingT: 9, twang: 0, cool: 0, ak: 0, kb: srv.kb, net: NET.me, own: true, move: 0, jumpBuf: 0, cut: true, bounceAt: -9999, knockAt: -9999, hurtAt: -9999, prevBottom: srv.y + 11 };
+    NET.myArrows = []; NET.hits = [];
   }
   const dt = Math.min(real, 1 / 30), now = performance.now();
   if (srv.kb !== m.kb) {
-    // si ya rebotó acá por su cuenta, el rebote del villano llega tarde y no se repite
-    const dup = srv.kt === 2 && now - m.bounceAt < 450;
+    // si ya pasó acá por su cuenta (rebote o golpe predicho), lo del villano llega tarde y no se repite
+    const dup = srv.kt === 2 ? now - m.bounceAt < 450 : now - m.knockAt < 700;
     if (!dup) { m.vx = srv.kvx; m.vy = srv.kvy; m.onGround = false; m.cut = true; if (srv.kt === 1 && jOn()) { m.sx = 1.3; m.sy = 0.75; } }
     m.kb = srv.kb;
   }
-  m.inv = srv.inv; m.flash = srv.flash;
+  m.invL = Math.max(0, m.invL - dt);
+  m.inv = Math.max(srv.inv, m.invL); m.flash = srv.flash;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   m.move = dir;
   if (dir && m.inv < 0.45) m.face = dir;
@@ -5111,33 +5247,90 @@ function netPredict(real) {
   if (input.down && !input.jump && m.onGround && m.surf && !m.surf.ground) m.dropNow = true;
   if (!input.jump && m.vy < -60 && !m.cut) { m.vy *= 0.45; m.cut = true; }
   heroPhysics(m, dt);
-  // pisotón predicho: rebota ya; el daño lo confirma el villano
+  const B = G.boss, bossOn = B && G.z === 3 && B.state !== 'dying' && B.state !== 'gone';
+  // pisotón: rebota ya y le avisa al villano a quién pisó
   if (m.vy > 20) {
-    const B = G.boss;
-    const stomp = G.mobs.some(o => !o.dead && o.spawn <= 0 && overlap(m, o) && m.prevBottom <= o.y + 3) || (B && G.z === 3 && B.state !== 'dying' && m.prevBottom <= B.y + 2 && overlap(m, bossHead(B)));
-    if (stomp) { m.vy = B && G.z === 3 ? -250 : -230; m.onGround = false; m.cut = true; m.bounceAt = now; if (jOn()) { m.sx = 0.8; m.sy = 1.25; } }
+    const mob = G.mobs.find(o => !o.dead && o.spawn <= 0 && overlap(m, o) && m.prevBottom <= o.y + 3);
+    const head = !mob && bossOn && m.prevBottom <= B.y + 2 && overlap(m, bossHead(B));
+    if (mob || head) {
+      m.vy = head ? -250 : -230; m.onGround = false; m.cut = true; m.bounceAt = now;
+      if (jOn()) { m.sx = 0.8; m.sy = 1.25; }
+      if (mob) { netHitReport(2, mob.id, 0); play('pisoton'); }
+    }
+  }
+  // lo que te pega en esta pantalla, te pega
+  if (m.inv <= 0 && now - m.hurtAt > 400) {
+    let hit = null;
+    for (const o of G.mobs) {
+      if (o.dead || o.spawn > 0) continue;
+      if (overlap(m, o) && !(m.vy > 20 && m.prevBottom <= o.y + 3)) { hit = [1, o.id, Math.sign((m.x + 4) - (o.x + o.w / 2)) || 1]; break; }
+      if (o.type === 'skaxe' && o.swingT < 0.12 && overlap(m, axeBox(o))) { hit = [3, o.id, o.face || 1]; break; }
+    }
+    if (!hit) for (const s of G.shots) if (overlap(m, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 })) { hit = [4, s.id, Math.sign((m.x + 4) - s.x) || 1]; break; }
+    if (!hit) for (const a of G.arrows) {
+      if (!a.mob || a.stuck) continue;
+      const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
+      if (tipX >= m.x - 1 && tipX <= m.x + m.w + 1 && tipY >= m.y - 1 && tipY <= m.y + m.h) { hit = [5, a.id, a.face || 1]; break; }
+    }
+    if (hit) {
+      netHitReport(hit[0], hit[1], hit[2]);
+      m.hurtAt = now; m.knockAt = now; m.invL = 0.75;
+      m.vx = hit[2] * 170; m.vy = -200; m.onGround = false; m.cut = true;
+      play('dano', { rate: 1.3, vol: 0.8 });
+      if (jOn()) { m.sx = 1.3; m.sy = 0.75; }
+    }
   }
   m.cool -= dt; m.twang -= dt; m.swingT += dt;
   const want = input.attackPressed || (input.attack && m.cool <= -0.07);
   input.attackPressed = false;
   if (want && m.cool <= 0) {
     m.ak++; m.cool = m.kind === 'archer' ? 0.32 : 0.34;
-    if (m.kind === 'archer') { m.twang = 0.16; play('disparo', { vol: 0.5 }); if (jOn()) { m.vx -= m.face * 30; m.sx = 0.85; m.sy = 1.1; } }
-    else { m.swingT = 0; play('tajo', { vol: 0.5 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
+    if (m.kind === 'archer') {
+      m.twang = 0.16; play('disparo', { vol: 0.5 });
+      // la flecha sale ya en esta pantalla; la del villano (misma, con el mismo número) no se dibuja acá
+      NET.myArrows.push({ id: 'L' + m.ak, n: m.ak, x: m.face > 0 ? m.x + 7 : m.x - 7, y: m.y + 4, vx: m.face * 230, vy: -12, face: m.face, stuck: false, wob: 0, life: 0 });
+      if (jOn()) { m.vx -= m.face * 30; m.sx = 0.85; m.sy = 1.1; }
+    } else { m.swingT = 0; play('tajo', { vol: 0.5 }); if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; } }
   }
+  netMyArrows(dt);
   const i = G.heroes.findIndex(e => e.id === m.id);
-  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy });
+  if (i >= 0) G.heroes[i] = Object.assign({}, G.heroes[i], { x: m.x, y: m.y, face: m.face, onGround: m.onGround, runT: m.runT, swingT: m.swingT, twang: m.twang, sx: m.sx, sy: m.sy, inv: m.inv });
+  G.arrows = G.arrows.filter(a => a.o !== m.id).concat(NET.myArrows);
   netSendIn(m);
 }
-// unas 30 veces por segundo; un ataque nuevo sale enseguida
+function netHitReport(kind, id, dir) {
+  NET.hitSeq++;
+  NET.hits.push([NET.hitSeq, kind, id, dir]);
+  if (NET.hits.length > 5) NET.hits.shift();
+}
+// mis flechas, con la misma física que las del juego; se clavan o desaparecen al tocar algo de esta pantalla
+function netMyArrows(dt) {
+  const Z = ZONES[G.z] || ZONES[0], B = G.boss;
+  for (const a of NET.myArrows) {
+    if (a.stuck) { a.wob -= dt; a.life -= dt; if (a.life <= 0) a.dead = true; continue; }
+    a.vy += 40 * dt; a.x += a.vx * dt; a.y += a.vy * dt;
+    if (jOn()) { a.trail = (a.trail || 0) - dt; if (a.trail <= 0) { a.trail = 0.02; NET.parts.push({ x: a.face > 0 ? a.x : a.x + 7, y: a.y + 1, vx: 0, vy: 0, g: 0, life: 0.14, max: 0.14, c: PAL.S, s: 1 }); } }
+    const tipX = a.face > 0 ? a.x + 7 : a.x, tipY = a.y + 1;
+    if (G.z < 3 ? (tipX < Z.start - 12 || tipX > Z.end + 12) : (tipX < NET.cam - 12 || tipX > NET.cam + W + 12)) { a.dead = true; continue; }
+    if (G.mobs.some(o => !o.dead && o.spawn <= 0 && tipX >= o.x - 1 && tipX <= o.x + o.w + 1 && tipY >= o.y - 2 && tipY <= o.y + o.h + 1)) { a.dead = true; continue; }
+    if (B && G.z === 3) { const bb = bossBody(B); if (tipX >= bb.x && tipX <= bb.x + bb.w && tipY >= bb.y - 4 && tipY <= bb.y + bb.h) { a.dead = true; continue; } }
+    let hit = false;
+    for (const gt of GATES) if (tipX >= gt.x && tipX <= gt.x + 8 && (gt.open < 0.85 ? tipY < GROUND : tipY < DOOR_TOP)) hit = true;
+    if (!hit) for (const s of SURFACES) { const bottom = s.ground ? H : s.y + 8; if (tipX >= s.x && tipX <= s.x + s.w && tipY >= s.y && tipY <= bottom) { hit = true; break; } }
+    if (hit) { if (jOn()) { a.stuck = true; a.wob = 0.3; a.life = 1.4; a.x += a.face * 2; } else a.dead = true; }
+  }
+  NET.myArrows = NET.myArrows.filter(a => !a.dead);
+}
+// unas 30 veces por segundo; un ataque o un golpe nuevo sale enseguida
 function netSendIn(m) {
   const now = performance.now();
   const inp = { l: input.left ? 1 : 0, r: input.right ? 1 : 0, d: input.down ? 1 : 0, j: input.jump ? 1 : 0 };
-  if (m) Object.assign(inp, { x: H2(m.x), y: H2(m.y), vx: Math.round(m.vx), vy: Math.round(m.vy), f: m.face, og: m.onGround ? 1 : 0, ak: m.ak, kb: m.kb });
+  if (m) Object.assign(inp, { hid: m.id, x: H2(m.x), y: H2(m.y), vx: Math.round(m.vx), vy: Math.round(m.vy), f: m.face, og: m.onGround ? 1 : 0, ak: m.ak, kb: m.kb, hits: NET.hits.slice() });
   const key = JSON.stringify(inp);
   if (key === NET.sentIn) return;
-  if (now - NET.sentAt < 30 && !(m && m.ak !== NET.sentAk)) return;
-  NET.sentIn = key; NET.sentAt = now; NET.sentAk = m ? m.ak : 0;
+  const urgent = m && (m.ak !== NET.sentAk || NET.hitSeq !== NET.sentHit);
+  if (now - NET.sentAt < 30 && !urgent) return;
+  NET.sentIn = key; NET.sentAt = now; NET.sentAk = m ? m.ak : 0; NET.sentHit = NET.hitSeq;
   NET.room.presence({ in: inp }).catch(() => {});
 }
 const heroFree = k => !NET.playing || !G || G.kind !== 'invade' || G.heroes.some(e => e.kind === k && !e.dead);
@@ -5162,23 +5355,46 @@ function netHostFrame(now) {
   for (const e of G.heroes) {
     if (e.dead) continue;
     const want = NET.slots[e.kind] || null;
-    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.lastIn = null; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
+    if (e.net !== want) { e.net = want; e.akSeen = undefined; e.hitSeen = undefined; e.lastIn = null; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
   }
   if (now - NET.sendT >= 33) {
     NET.sendT = now;
     const s = netPack(now);
-    if (s) r.presence({ s }).catch(() => {});
+    r.presence({ s: r.binary ? s : netText(s) }).catch(() => {});
   }
 }
 // un héroe manejado por alguien de la sala. Su pantalla manda dónde está: cuando llega un dato
 // nuevo se usa tal cual (devuelve true); entre dato y dato, o mientras no confirmó el último
 // empujón, se mueve acá con sus teclas para que el villano lo vea fluido.
 function netHero(e, dt) {
-  const inp = (NET.inputs && NET.inputs.get(e.net)) || {};
-  if (inp.ak !== undefined) {
-    if (e.akSeen !== undefined && inp.ak > e.akSeen) {
+  const got = (NET.inputs && NET.inputs.get(e.net)) || {};
+  // solo vale lo que manda para este héroe: al arrancar otra partida pueden quedar datos de la anterior
+  const inp = got.hid === undefined || got.hid === e.id ? got : {};
+  const mine = got.hid === e.id;
+  // golpes que vio en su pantalla (contacto, pisotón, hachazo, baba, flecha)
+  if (mine && Array.isArray(inp.hits)) {
+    if (e.hitSeen === undefined) e.hitSeen = 0;
+    for (const h of inp.hits) {
+      if (!Array.isArray(h) || (h[0] | 0) <= e.hitSeen) continue;
+      e.hitSeen = h[0] | 0;
+      const kind = h[1], id = h[2], dir = Math.sign(h[3]) || 1;
       NET.sndOwner = e.net;
-      for (let n = Math.min(2, inp.ak - e.akSeen); n > 0; n--) { if (e.kind === 'archer') heroShoot(e); else heroSlash(e); }
+      if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
+      else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false); if (s) splat(s); }
+      else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; hitHero(e, 1, dir, a ? a.player : false); }
+      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? 2 : 1, dir, m ? m.player : false); }
+      NET.sndOwner = null;
+    }
+  }
+  if (mine && inp.ak !== undefined) {
+    if (e.akSeen === undefined) e.akSeen = 0;
+    if (inp.ak > e.akSeen) {
+      NET.sndOwner = e.net;
+      const n = Math.min(2, inp.ak - e.akSeen);
+      for (let k = n - 1; k >= 0; k--) {
+        if (e.kind === 'archer') { heroShoot(e); const a = G.arrows[G.arrows.length - 1]; if (a) { a.o = e.id; a.n = inp.ak - k; } }
+        else heroSlash(e);
+      }
       NET.sndOwner = null;
       e.cool = 0.3;
     }
@@ -5188,11 +5404,11 @@ function netHero(e, dt) {
   e.move = dir;
   const fresh = inp !== e.lastIn;
   e.lastIn = inp;
-  if (inp.x !== undefined && (inp.kb | 0) === (e.kb | 0)) {
+  if (mine && inp.x !== undefined && (inp.kb | 0) === (e.kb | 0)) {
     if (!fresh) return false;
-    const x = inp.x / 2, y = inp.y / 2, wasGround = e.onGround;
+    const wasGround = e.onGround;
     e.prevBottom = e.y + e.h;
-    e.x = x; e.y = y; e.vx = inp.vx; e.vy = inp.vy; e.face = inp.f || e.face; e.onGround = !!inp.og;
+    e.x = inp.x / 2; e.y = inp.y / 2; e.vx = inp.vx; e.vy = inp.vy; e.face = inp.f || e.face; e.onGround = !!inp.og;
     if (wasGround && !e.onGround && e.vy < -150) { NET.sndOwner = e.net; play('salto', { vol: 0.3 }); NET.sndOwner = null; if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
     e.runT = e.onGround && Math.abs(e.vx) > 30 ? e.runT + dt : 0;
     return true;
@@ -5261,7 +5477,7 @@ async function netJoin(code) {
   const r = await netJoinRoom(code, 'guest');
   NET.busy = false;
   if (!r || r === 'taken') return;
-  Object.assign(NET, { role: 'guest', note: '', code, room: r, playing: false, snaps: [], offs: [], lastT: 0, lastSnd: -1, hostSeen: false, hostPres: null, joinT: performance.now(), sentIn: '', jp: 0, ap: 0, cam: 0 });
+  Object.assign(NET, { role: 'guest', note: '', code, room: r, playing: false, snaps: [], offs: [], lastT: 0, lastSnd: -1, hostSeen: false, hostPres: null, joinT: performance.now(), sentIn: '', cam: 0, mine: null, hits: [], myArrows: [], parts: [], fxq: [], sndq: [], buf: 0 });
   r.presence({ r: 'guest', code, want: NET.want, nm: nick(), in: {} }).catch(() => {});
   if (r !== NET.lobby) r.onPeers(() => netUI(), () => {});
   stage.classList.add('net-guest');
