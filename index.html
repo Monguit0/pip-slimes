@@ -229,7 +229,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
   <header class="top">
     <p class="eyebrow">Mockup · demo de juice para juegos pixel art · edición 16 bits</p>
     <h1>Pip y los Slimes</h1>
-    <p class="lede">Elegí a Pip <b>arquero</b> o <b>caballero</b> y cruzá la Pradera, las Ruinas y las Murallas: en cada zona el portón se abre cuando no queda ningún slime. Al final te espera el <b>Mega Caballero</b> en el Salón del Trono, o elegí <b>Jefe</b> y defendé vos el trono contra oleadas de héroes. En <b>Villano</b> manejás a los enemigos para frenar a un arquero y un caballero, y si llegan al trono, al jefe. Cada golpe tiene 20% de chance de crítico. En <b>Online</b> creás una sala y hasta dos amigos juegan de héroes contra vos. Probá con el juice apagado y después prendido: misma mecánica, otra sensación.</p>
+    <p class="lede">Elegí a Pip <b>arquero</b> o <b>caballero</b> y cruzá la Pradera, las Ruinas y las Murallas: en cada zona el portón se abre cuando no queda ningún slime. Al final te espera el <b>Mega Caballero</b> en el Salón del Trono, y después el <b>Bosque Oscuro</b> con slimes tóxicos, murciélagos, lobeznos, trampas y el <b>Campeón</b>, un lobo gigante; o elegí <b>Jefe</b> y defendé vos el trono contra oleadas de héroes. En <b>Villano</b> manejás a los enemigos para frenar a un arquero y un caballero, y si llegan al trono, al jefe. Cada golpe tiene 20% de chance de crítico. En <b>Online</b> creás una sala y hasta dos amigos juegan de héroes contra vos. Probá con el juice apagado y después prendido: misma mecánica, otra sensación.</p>
   </header>
 
   <section class="console" aria-label="Juego">
@@ -2254,7 +2254,14 @@ const MOODS = {
   furia: { bpm: 168, tr: -2 },
   respiro: { bpm: 112, tr: -2, mutes: { lead: true } },
   derrota: { bpm: 72, tr: -5, mutes: { drums: true, arp: true }, lp: 2600 },
-  victoria: { bpm: 150, tr: 5 }
+  victoria: { bpm: 150, tr: 5 },
+  // nivel 2: el bosque oscuro, más grave y apagado; el lobo, más rápido
+  b0: { bpm: 124, tr: -5, lp: 7500 },
+  b1: { bpm: 128, tr: -7, lp: 6800 },
+  b2: { bpm: 134, tr: -4, mutes: { arp: true }, lp: 7200 },
+  intro2: { bpm: 108, tr: -7, mutes: { lead: true, arp: true }, lp: 4200 },
+  lobo: { bpm: 158, tr: -7 },
+  aullido: { bpm: 178, tr: -7 }
 };
 function moodNow() {
   if (!G) return { name: 'titulo' };
@@ -2263,6 +2270,7 @@ function moodNow() {
   if (G.state === 'over') return guest ? won : lost;
   if (G.state === 'win') return guest ? lost : won;
   if (G.pick) return { name: 'cartas' };
+  if (G.nextT > 0) return G.p || guest ? won : lost;
   const B = G.boss;
   let danger = false;
   if (G.p) danger = G.maxHearts > 1 && G.hearts === 1;
@@ -2271,10 +2279,12 @@ function moodNow() {
   if (G.kind === 'boss' && G.waveDone) return { name: 'respiro', danger };
   if (B && B.state !== 'gone') {
     if (B.state === 'dying') return villain ? lost : won;
-    if (['wait', 'drop', 'roar'].includes(B.state)) return { name: 'intro', danger };
-    return { name: B.phase === 2 || B.state === 'rage' ? 'furia' : 'jefe', danger };
+    const wolf = isWolf(B);
+    if (['wait', 'drop', 'roar'].includes(B.state)) return { name: wolf ? 'intro2' : 'intro', danger };
+    const mad = B.phase === 2 || B.state === 'rage';
+    return { name: wolf ? (mad ? 'aullido' : 'lobo') : mad ? 'furia' : 'jefe', danger };
   }
-  return { name: 'z' + Math.min(2, G.z || 0), danger };
+  return { name: (G.lvl ? 'b' : 'z') + Math.min(2, G.z || 0), danger };
 }
 function applyMood() {
   const w = Music.want; Music.want = null;
@@ -2468,6 +2478,73 @@ const HEROES = {
 };
 const SLIME = variants(['...kkkk...', '..kglggk..', '.kgggglgk.', 'kggkggkggk', 'kggkggkggk', 'kggggggggk', 'kGGGGGGGGk', '.kkkkkkkk.']);
 const RED = variants(['...kkkk...', '..krrork..', '.krrrrrok.', 'krkkrrkkrk', 'krrkrrkrrk', 'krrrrrrrrk', 'kppppppppk', '.kkkkkkkk.']);
+// enemigos del bosque
+const TOXIC = variants(['...kkkk...', '..kplppk..', '.kpppplpk.', 'kppkppkppk', 'kplkppklpk', 'kppppppppk', 'kllllllllk', '.kkkkkkkk.']);
+const BAT = { a: variants(['k..........k', 'kk.kk..kk.kk', 'kdkkdkkdkkdk', '.kddrddrddk.', '..kddddddk..', '...kwkkwk...', '....k..k....']),
+  b: variants(['............', '....k..k....', '...kdkkdk...', '..kddrrddk..', '.kdddddddk..', 'kdkdddddkdk.', 'kk.kwkkwk.kk']) };
+const PUP = { n: variants(['........k.k.', '.......kdkdk', 'k......kdddk', 'kdk.kkkkdrdk', '.kdkddddddwk', '..kddddddddk', '..kdkkkkdkk.', '..kk....kk..']),
+  run: variants(['........k.k.', '.......kdkdk', 'k......kdddk', 'kdk.kkkkdrdk', '.kdkddddddwk', '..kddddddddk', '.kdk....kdk.', 'kk.......kk.']) };
+// el Campeón: lobo negro gigante, dibujado por partes y pasado por el remaster
+function wolfRows(pose) {
+  const w = 50, h = 30, G2 = Array.from({ length: h }, () => Array(w).fill('.'));
+  const set = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) G2[y][x] = c; };
+  const ell = (cx, cy, rx, ry, c) => { for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1) set(x, y, c); };
+  const rect = (x, y, ww, hh, c) => { for (let j = 0; j < hh; j++) for (let i = 0; i < ww; i++) set(x + i, y + j, c); };
+  const line = (x0, y0, x1, y1, t, c) => { const n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2) + 1; for (let k = 0; k <= n; k++) { const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n; rect(Math.round(x - t / 2), Math.round(y - t / 2), t, t, c); } };
+  const leap = pose === 'leap', howl = pose === 'howl', crouch = pose === 'crouch';
+  const by = 14 + (crouch ? 3 : 0) - (leap ? 4 : 0), foot = leap ? 24 : 29;
+  // patas: [cadera x, desplazamiento del pie] traseras primero
+  const L = { stand: [[13, -1], [18, 1], [33, 0], [37, 1]], run1: [[12, -6], [18, 3], [31, 4], [38, -5]], run2: [[14, 3], [17, -3], [34, -3], [36, 4]],
+    crouch: [[12, -2], [17, 0], [33, 1], [38, 2]], leap: [[10, -9], [14, -8], [38, 6], [41, 7]], howl: [[13, -1], [18, 1], [32, 0], [36, 1]] }[pose];
+  L.forEach(([lx, dx], i) => {
+    const back = i < 2, top = by + 2, knee = back ? [lx + dx * 0.4 - 2, top + (foot - top) * 0.5] : [lx + dx * 0.5, top + (foot - top) * 0.55];
+    if (back) ell(lx, top, 4, 4, 'd');
+    line(lx, top, knee[0], knee[1], 3, 'd'); line(knee[0], knee[1], lx + dx, foot - 1, 2, 'd');
+    rect(Math.round(lx + dx) - 1, foot - 1, 4, 1, 'd');
+  });
+  // cola tupida, cae hacia atrás
+  const tw = pose === 'run1' ? -2 : pose === 'run2' ? 2 : 0, ty = leap ? -4 : howl ? 3 : 0;
+  ell(8, by + 1 + ty, 3, 3, 'd'); ell(5, by + 4 + ty + tw / 2, 3, 3, 'd'); ell(3, by + 7 + ty + tw, 2.5, 3, 'd');
+  // cuerpo: ancas, pecho hondo y lomo
+  ell(16, by + 1, 9, 5, 'd'); ell(31, by + 1, 10, 7, 'd'); rect(16, by - 3, 15, 8, 'd');
+  // melena del cuello
+  ell(37, by - 3, 5, 6, 'd');
+  // cabeza (baja y adelantada, o al cielo cuando aúlla)
+  const hx = howl ? 40 : 42, hy = howl ? by - 9 : by - 4 + (crouch ? 2 : 0) + (leap ? 1 : 0);
+  ell(hx, hy, 5, 4, 'd');
+  if (howl) { line(hx + 1, hy - 2, hx + 5, hy - 8, 3, 'd'); line(hx + 2, hy - 1, hx + 6, hy - 6, 2, 'd'); }
+  else {
+    rect(hx + 3, hy - 1, 5, 3, 'd'); rect(hx + 8, hy, 1, 2, 'd'); // hocico
+    const open = crouch || leap;
+    rect(hx + 3, hy + 2 + (open ? 1 : 0), 5, 1, 'd'); // mandíbula
+    if (open) { rect(hx + 3, hy + 2, 5, 1, '.'); set(hx + 4, hy + 2, 'w'); set(hx + 6, hy + 2, 'w'); set(hx + 7, hy + 2, 'w'); }
+  }
+  // orejas
+  const ex = howl ? hx - 2 : hx - 2;
+  line(ex - 1, hy - 3, ex - 2, hy - 7, 2, 'd'); line(ex + 2, hy - 3, ex + 2, hy - 7, 2, 'd');
+  // pelaje: borde de arriba erizado y con brillo, panza en sombra
+  const isD = (x, y) => x >= 0 && y >= 0 && x < w && y < h && G2[y][x] !== '.';
+  const tufts = [];
+  for (let x = 8; x < 40; x++) { let y = 0; while (y < h && !isD(x, y)) y++; if (y < h && (x * 5) % 3 === 0) tufts.push([x, y - 1]); }
+  for (const [x, y] of tufts) set(x, y, 'd');
+  const snap = G2.map(r => r.slice());
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (snap[y][x] !== 'd') continue;
+    const up = y > 0 && snap[y - 1][x] !== '.', dn = y < h - 1 && snap[y + 1][x] !== '.';
+    if (!up && (x + y) % 4 !== 0) G2[y][x] = 'S';
+    else if (!dn) G2[y][x] = 'k';
+    else if (up && y > 1 && snap[y - 2][x] === '.' && x % 3 === 1) G2[y][x] = 's';
+  }
+  // ojo rojo que brilla y nariz
+  const ey = howl ? hy - 1 : hy - 1;
+  set(hx + 1, ey, 'r'); set(hx + 2, ey, 'y');
+  if (!howl) set(hx + 8, hy - 1, 'k');
+  return G2.map(r => r.join(''));
+}
+const WOLF = {};
+for (const pose of ['stand', 'run1', 'run2', 'crouch', 'leap', 'howl']) WOLF[pose] = variants(wolfRows(pose));
+const BRANCH_DOWN = sprite(['g.g', 'gpg', '.p.', '.p.', 'gp.', '.p.', '.pg', '.k.']);
+const ROCK = sprite(['..kkkkk..', '.kSSsssk.', 'kSSssssdk', 'kSsssdsdk', 'ksssssddk', '.kdsddddk', '..kkkkkk.']);
 const COIN = sprite(['.kkkk.', 'kyywyk', 'kywyyk', 'kyyyyk', 'kyyyok', 'kyyook', '.kkkk.']);
 const HEART = sprite(['.kk.kk.', 'krwkrrk', 'krrrrrk', '.krrrk.', '..krk..', '...k...']);
 const HEART0 = sprite(['.kk.kk.', 'kddkddk', 'kdddddk', '.kdddk.', '..kdk..', '...k...']);
@@ -2790,7 +2867,178 @@ function buildLevel() {
   });
   return c;
 }
-const SKY = buildSky(), FAR = buildFar(), MID = hdBitmap(buildMid()), ARENA_BG = hdBitmap(buildArena()), LEVEL = keepSnap(levelExtras(hdBitmap(buildLevel())));
+let SKY = buildSky(), FAR = buildFar(), MID = hdBitmap(buildMid()), ARENA_BG = hdBitmap(buildArena()), LEVEL = keepSnap(levelExtras(hdBitmap(buildLevel())));
+
+/* =========================================================
+   Nivel 2: el bosque oscuro y la guarida del Campeón.
+   Usa las mismas zonas y portones; cambian plataformas, arte, enemigos y trampas.
+   ========================================================= */
+const LEVELS = [
+  { zones: ZONES.map(z => ({ ...z, mix: null })), plats: PLATS.map(p => ({ x: p.x, y: p.y, w: p.w })), torches: TORCHES.map(t => ({ ...t })), traps: [],
+    img: { sky: SKY, far: FAR, mid: MID, arena: ARENA_BG, level: LEVEL } },
+  { zones: [
+      { start: 0, end: 512, name: 'LINDE DEL BOSQUE', slimes: [3, 0], haz: 0.5, mix: ['green', 'toxic', 'green', 'bat', 'toxic'] },
+      { start: 512, end: 1024, name: 'BOSQUE OSCURO', slimes: [3, 1], haz: 0.8, mix: ['toxic', 'bat', 'pup', 'green', 'toxic', 'bat'] },
+      { start: 1024, end: 1536, name: 'CIÉNAGA DE RAÍCES', slimes: [3, 2], haz: 1.0, mix: ['pup', 'toxic', 'bat', 'pup', 'red', 'toxic', 'bat'] },
+      { start: 1536, end: 1792, name: 'GUARIDA DEL CAMPEÓN', boss: true, mix: null }
+    ],
+    plats: [
+      { x: 48, y: 92, w: 56 }, { x: 128, y: 68, w: 40 }, { x: 196, y: 96, w: 48 }, { x: 268, y: 72, w: 56 }, { x: 352, y: 52, w: 40 }, { x: 420, y: 90, w: 56 },
+      { x: 548, y: 84, w: 48 }, { x: 620, y: 60, w: 40 }, { x: 684, y: 92, w: 56 }, { x: 760, y: 66, w: 48 }, { x: 836, y: 44, w: 40 }, { x: 904, y: 80, w: 56 }, { x: 968, y: 56, w: 32 },
+      { x: 1056, y: 90, w: 48 }, { x: 1124, y: 64, w: 40 }, { x: 1192, y: 96, w: 56 }, { x: 1268, y: 70, w: 48 }, { x: 1340, y: 48, w: 40 }, { x: 1404, y: 84, w: 56 }, { x: 1468, y: 62, w: 36 },
+      { x: 1556, y: 92, w: 32 }, { x: 1640, y: 62, w: 48 }, { x: 1744, y: 92, w: 32 }
+    ],
+    torches: [{ x: 230, y: 70 }, { x: 700, y: 50 }, { x: 1010, y: 60 }, { x: 1230, y: 76 }, { x: 1572, y: 64 }, { x: 1756, y: 64 }],
+    // pinchos que salen del piso cada tanto
+    traps: [{ x: 300, w: 16 }, { x: 466, w: 16 }, { x: 590, w: 16 }, { x: 736, w: 16 }, { x: 884, w: 16 }, { x: 1100, w: 16 }, { x: 1244, w: 16 }, { x: 1376, w: 16 }, { x: 1452, w: 16 }],
+    img: null }
+];
+const TRAPS = [];
+let CUR_LVL = 0;
+function setLevel(n) {
+  if (CUR_LVL === n) return;
+  CUR_LVL = n;
+  const L = LEVELS[n];
+  L.zones.forEach((z, i) => Object.assign(ZONES[i], z));
+  PLATS.length = 0; L.plats.forEach(p => PLATS.push({ ...p, zone: zoneOf(p.x) }));
+  SURFACES.length = 0; SURFACES.push(GROUND_SURF, ...PLATS);
+  COIN_SPOTS.forEach(c => { c.length = 0; });
+  PLATS.forEach(s => { if (s.zone < 3) for (let x = s.x + 8; x <= s.x + s.w - 8; x += 16) COIN_SPOTS[s.zone].push({ x, y: s.y - 10 }); });
+  ZONES.slice(0, 3).forEach((z, i) => { for (let x = z.start + 40; x < z.end - 30; x += 44) COIN_SPOTS[i].push({ x, y: GROUND - 10 }); });
+  TORCHES.length = 0; L.torches.forEach(t => TORCHES.push({ ...t }));
+  TRAPS.length = 0; L.traps.forEach((t, i) => TRAPS.push({ ...t, id: i, off: (i * 0.73) % 3 }));
+  if (!L.img) L.img = buildLevel2Images(); // se dibuja la primera vez que hace falta
+  ({ sky: SKY, far: FAR, mid: MID, arena: ARENA_BG, level: LEVEL } = L.img);
+}
+// pinchos: escondidos, asomando (aviso) y afuera
+const TRAP_T = 3;
+function trapPhase(tr, t) { const k = ((t + tr.off) % TRAP_T + TRAP_T) % TRAP_T; return k < 1.8 ? 0 : k < 2.2 ? 1 : 2; }
+const trapBox = tr => ({ x: tr.x, y: GROUND - 7, w: tr.w, h: 7 });
+
+function buildLevel2Images() {
+  let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  // cielo rojo oscuro con luna de sangre
+  const sky = (() => {
+    const { w, h, put, done } = hiRes(W, H);
+    const BANDS = [[0, [0, 0, 1]], [56, [1, 0, 1]], [100, [1, 0, 2]], [140, [2, 0, 1]], [176, [3, 0, 1]], [206, [4, 1, 1]], [234, [5, 1, 1]], [262, [6, 2, 1]]];
+    for (let Y = 0; Y < h; Y++) {
+      let i = 0; while (i < BANDS.length - 1 && Y >= BANDS[i + 1][0]) i++;
+      const cur = BANDS[i][1], nx = BANDS[i + 1], gap = nx ? nx[0] - Y : 99;
+      for (let X = 0; X < w; X++) { let q = cur; if (gap <= 2) { if ((X + Y) % 2 === 0) q = nx[1]; } else if (gap <= 4) { if (X % 2 === 0 && Y % 2 === 0) q = nx[1]; } put(X, Y, q); }
+    }
+    for (let i = 0; i < 60; i++) { const X = Math.floor(rnd() * w), Y = Math.floor(rnd() * 140), r = rnd(); put(X, Y, r > 0.8 ? [6, 4, 4] : [3, 1, 2]); }
+    const mx = 400, my = 56, mr = 22;
+    for (let Y = my - 40; Y <= my + 40; Y++) for (let X = mx - 40; X <= mx + 40; X++) {
+      const d = Math.hypot(X - mx + 0.5, Y - my + 0.5);
+      if (d > mr) { if (d < mr + 5 || (d < mr + 10 && (X + Y) % 2 === 0) || (d < mr + 16 && X % 2 === 0 && Y % 2 === 0)) put(X, Y, [2, 0, 1]); continue; }
+      let q = d > mr - 1.5 ? [6, 1, 1] : [7, 2, 1];
+      for (const [cx, cy, cr] of [[mx - 8, my - 4, 4], [mx + 6, my + 8, 3], [mx + 9, my - 9, 2.2], [mx - 3, my + 12, 1.8]]) if (Math.hypot(X - cx, Y - cy) < cr) q = [5, 1, 1];
+      if (Math.hypot(X - (mx - 7), Y - (my - 9)) < 6) q = [7, 4, 3];
+      put(X, Y, q);
+    }
+    return done();
+  })();
+  // pinos lejanos en dos filas
+  const far = (() => {
+    const fw = W + Math.ceil((WW - W) * 0.25), { w, h, put, done } = hiRes(fw, H);
+    const row = (base, hmin, hmax, step, col, colHi) => {
+      const tops = new Float32Array(w).fill(999);
+      for (let cx = -20; cx < w + 20; cx += step + Math.floor(rnd() * step)) {
+        const ht = hmin + rnd() * (hmax - hmin), half = ht * 0.32;
+        for (let X = Math.floor(cx - half); X <= cx + half; X++) if (X >= 0 && X < w) { const y = base - ht + Math.abs(X - cx) * (ht / half) * 0.9; const yy = y + ((Math.abs(X - cx) | 0) % 6 < 2 ? 2 : 0); if (yy < tops[X]) tops[X] = yy; }
+      }
+      for (let X = 0; X < w; X++) for (let Y = Math.max(0, Math.floor(Math.min(tops[X], base))); Y < h; Y++) put(X, Y, Y < tops[X] + 2 && colHi ? colHi : col);
+    };
+    row(230, 50, 110, 12, [1, 0, 1], [2, 0, 2]);
+    row(270, 40, 90, 10, [0, 0, 1], [1, 0, 1]);
+    return done();
+  })();
+  // capa media: troncos enormes, copas negras y musgo colgando
+  const mid = (() => {
+    const c = document.createElement('canvas'); c.width = MIDW; c.height = H; const x = c.getContext('2d');
+    const px = (col, a, b, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+    for (let tx = 10; tx < MIDW; tx += 46 + Math.floor(rnd() * 40)) {
+      const tw = 8 + Math.floor(rnd() * 8);
+      px(PAL.k, tx - 1, 0, tw + 2, H); px(PAL.d, tx, 0, tw, H); px(PAL.S, tx + 1, 0, 1, H);
+      for (let yy = 8; yy < H; yy += 9 + Math.floor(rnd() * 8)) px(PAL.k, tx + 2 + Math.floor(rnd() * (tw - 4)), yy, 2, 3);
+      // ramas
+      if (rnd() > 0.4) { const by = 20 + Math.floor(rnd() * 40), dir = rnd() > 0.5 ? 1 : -1; for (let i = 0; i < 18; i++) px(PAL.k, dir > 0 ? tx + tw + i : tx - i, by - Math.floor(i / 3), 1, 2); }
+      // musgo
+      for (let i = 0; i < 3; i++) { const mx = tx + Math.floor(rnd() * tw), ml = 4 + Math.floor(rnd() * 10); px(PAL.G, mx, 30 + Math.floor(rnd() * 30), 1, ml); }
+    }
+    // copas
+    for (let i = 0; i < MIDW; i += 3) { const hh = 14 + Math.round(8 * Math.sin(i * 0.05) + 5 * Math.sin(i * 0.13)); px(PAL.k, i, 0, 3, hh); if (rnd() > 0.6) px(PAL.G, i, hh - 1, 2, 1); }
+    // hongos que brillan
+    for (let i = 20; i < MIDW; i += 60 + Math.floor(rnd() * 50)) { px(PAL.k, i, 100, 5, 3); px(PAL.c, i + 1, 100, 3, 1); px(PAL.w, i + 2, 101, 1, 1); }
+    return hdBitmap(c);
+  })();
+  // la guarida: cueva con boca abierta a la luna roja, huesos y un nido
+  const arena = (() => {
+    const c = document.createElement('canvas'); c.width = 256; c.height = H; const x = c.getContext('2d');
+    const px = (col, a, b, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+    px(PAL.k, 0, 0, 256, H);
+    // abertura con la luna
+    for (let yy = 0; yy < 60; yy++) for (let i = 70; i < 186; i++) { const dx = (i - 128) / 58, dy = (yy - 6) / 54; if (dx * dx + dy * dy < 1) px(yy < 20 ? '#240012' : yy < 40 ? '#360018' : '#48001e', i, yy); }
+    for (let yy = -14; yy <= 14; yy++) for (let i = -14; i <= 14; i++) { const r = Math.hypot(i, yy); if (r <= 13) px(r > 12 ? PAL.r : (i < -3 && yy < -2 ? PAL.o : PAL.r), 150 + i, 22 + yy); }
+    // paredes de roca irregular
+    for (let yy = 0; yy < GROUND; yy++) for (let i = 0; i < 256; i++) {
+      const dx = (i - 128) / 58, dy = (yy - 6) / 54; if (dx * dx + dy * dy < 1 && yy < 60) continue;
+      const n = Math.sin(i * 0.21 + Math.sin(yy * 0.13) * 2) + Math.sin(yy * 0.27 + Math.sin(i * 0.09) * 3) + Math.sin((i + yy) * 0.05);
+      const f = n - Math.floor(n);
+      if (f < 0.1) px(PAL.k, i, yy); else if (yy > 30 || (i + yy) % 2) px(PAL.d, i, yy);
+    }
+    for (let yy = 0; yy < 64; yy++) for (let i = 66; i < 190; i++) { const dx = (i - 128) / 58, dy = (yy - 6) / 54, r = dx * dx + dy * dy; if (r >= 1 && r < 1.12) px(PAL.k, i, yy); }
+    // estalactitas
+    for (let i = 4; i < 256; i += 10 + (i % 7)) { const l = 4 + (i * 13) % 10; for (let k = 0; k < l; k++) px(PAL.S, i + Math.floor(k / 4), k, Math.max(1, 3 - Math.floor(k / 3)), 1); }
+    // marcas de garras
+    for (const cx of [40, 214]) for (let k = 0; k < 3; k++) for (let j = 0; j < 14; j++) px(PAL.S, cx + k * 4 + Math.floor(j / 3), 60 + j, 1, 1);
+    // huesos y el nido
+    for (const [bx, by] of [[30, 120], [60, 123], [196, 121], [226, 124]]) { px(PAL.s, bx, by, 8, 2); px(PAL.w, bx - 1, by - 1, 2, 2); px(PAL.w, bx + 7, by - 1, 2, 2); }
+    px(PAL.k, 96, 116, 64, 12); for (let i = 98; i < 158; i += 2) px(i % 4 ? PAL.o : PAL.y, i, 117 + (i % 3), 2, 1);
+    return hdBitmap(c);
+  })();
+  // el piso del bosque y las plataformas (troncos, piedra con musgo, roca)
+  const level = (() => {
+    const c = document.createElement('canvas'); c.width = WW; c.height = H; const x = c.getContext('2d');
+    const px = (col, a, b, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+    // linde: tierra oscura con pasto
+    px(PAL.d, 0, GROUND, 512, H - GROUND); px(PAL.G, 0, GROUND, 512, 2); px(PAL.g, 0, GROUND, 512, 1);
+    for (let i = 0; i < 512; i += 2) if (rnd() > 0.5) px(PAL.G, i, GROUND - 1, 1, 1);
+    for (let i = 0; i < 60; i++) px(PAL.k, Math.floor(rnd() * 512), GROUND + 5 + Math.floor(rnd() * 10), 3, 1);
+    // bosque: musgo, raíces y hongos
+    px(PAL.k, 512, GROUND, 512, H - GROUND); px(PAL.d, 512, GROUND + 2, 512, H - GROUND - 2); px(PAL.G, 512, GROUND, 512, 2);
+    for (let i = 520; i < 1020; i += 9) { const l = 3 + Math.floor(rnd() * 8); px(PAL.p, i, GROUND + 3, 1, l); px(PAL.p, i + 1, GROUND + 3 + l, 2, 1); }
+    for (let i = 530; i < 1000; i += 37 + Math.floor(rnd() * 30)) { px(PAL.k, i - 1, GROUND - 4, 5, 4); px(PAL.r, i, GROUND - 4, 3, 1); px(PAL.w, i + 1, GROUND - 4, 1, 1); px(PAL.s, i + 1, GROUND - 3, 1, 3); }
+    // ciénaga: barro y charcos tóxicos
+    px(PAL.p, 1024, GROUND, 512, H - GROUND); px(PAL.k, 1024, GROUND, 512, 1);
+    for (let yy = GROUND + 3; yy < H; yy += 4) for (let i = 1024 + (yy % 8); i < 1536; i += 11) px(PAL.d, i, yy, 5, 1);
+    for (let i = 1050; i < 1520; i += 60 + Math.floor(rnd() * 40)) { px(PAL.g, i, GROUND, 14, 1); px(PAL.l, i + 2, GROUND, 6, 1); }
+    // guarida: piso de roca
+    px(PAL.d, 1536, GROUND, 256, H - GROUND); px(PAL.S, 1536, GROUND, 256, 1);
+    for (let i = 1536; i < 1792; i += 10) { px(PAL.k, i, GROUND + 1, 1, 4); px(PAL.S, i + 3, GROUND + 6, 4, 1); }
+    PLATS.forEach(p => {
+      px(PAL.k, p.x, p.y, p.w, 8);
+      if (p.zone <= 1) { // tronco caído
+        px(PAL.p, p.x + 1, p.y + 1, p.w - 2, 6); px(PAL.o, p.x + 1, p.y, p.w - 2, 1); px(PAL.k, p.x + 1, p.y + 4, p.w - 2, 1);
+        for (let i = p.x + 3; i < p.x + p.w - 3; i += 6) px(PAL.k, i, p.y + 2, 3, 1);
+        px(PAL.o, p.x + 1, p.y + 1, 2, 5); px(PAL.y, p.x + 1, p.y + 3, 1, 1); px(PAL.o, p.x + p.w - 3, p.y + 1, 2, 5);
+        for (let i = p.x + 2; i < p.x + p.w - 2; i += 3) if (rnd() > 0.5) px(PAL.G, i, p.y, 2, 1);
+      } else if (p.zone === 2) { // piedra con musgo
+        px(PAL.S, p.x + 1, p.y + 1, p.w - 2, 6); px(PAL.G, p.x + 1, p.y, p.w - 2, 2); px(PAL.g, p.x + 2, p.y, p.w - 4, 1);
+        for (let i = p.x + 4; i < p.x + p.w - 2; i += 7) px(PAL.k, i, p.y + 3, 1, 3);
+        for (let i = p.x + 3; i < p.x + p.w - 3; i += 5) if (rnd() > 0.5) px(PAL.G, i, p.y + 8, 1, 2 + Math.floor(rnd() * 4));
+      } else { // repisa de roca
+        px(PAL.S, p.x + 1, p.y + 1, p.w - 2, 6); px(PAL.s, p.x + 1, p.y, p.w - 2, 1); px(PAL.d, p.x + 1, p.y + 5, p.w - 2, 2);
+      }
+      px(PAL.k, p.x - 1, p.y + 1, 1, 6); px(PAL.k, p.x + p.w, p.y + 1, 1, 6);
+    });
+    const hd = hdBitmap(c), hx = hd.getContext('2d');
+    // pasto fino y helechos al doble de resolución
+    for (let i = 0; i < 512 * RS; i++) if (rnd() > 0.5) { const hh = 1 + Math.floor(rnd() * 4); hx.fillStyle = rnd() > 0.5 ? RAMPS.G[3] : RAMPS.g[2]; hx.fillRect(i, GROUND * RS - hh, 1, hh); }
+    return keepSnap(hd);
+  })();
+  return { sky, far, mid, arena, level };
+}
 const clouds = [{ x: 20, y: 18, w: 26, s: 3 }, { x: 120, y: 34, w: 34, s: 2 }, { x: 230, y: 12, w: 20, s: 4 }];
 clouds.forEach(c => { c.img = buildCloud(c.w); });
 const TWINKLE = Array.from({ length: 16 }, () => ({ x: Math.round(srand() * W * RS) / RS, y: Math.round(srand() * 72 * RS) / RS, sp: 1.2 + srand() * 2.5, ph: srand() * 7 }));
@@ -2834,13 +3082,14 @@ const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
+  setLevel(0);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind, C, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: C.hearts, maxHearts: C.hearts, z: 0, cam: 0, camV: 0,
     p: { x: 40, y: GROUND - 11, w: 8, h: 11, vx: 0, vy: 0, onGround: true, face: 1, coyote: 0, buffer: 0, cut: false, inv: 0, stompInv: 0, sx: 1, sy: 1, runT: 0, dustT: 0, drop: 0, flash: 0, cool: 0, twang: 0, swingT: 9, swingId: 0, ...skillFields() },
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
-    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0, vcm: 0, pick: null
+    shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 4, cleared: false, boss: null, endT: 0, vcm: 0, pick: null, lvl: 0, nextT: 0, fadeIn: 0
   };
   setTempo(132, 0);
   if (atBoss) {
@@ -2866,19 +3115,58 @@ function spawnCoins(n) {
   const spots = COIN_SPOTS[n].slice().sort(() => Math.random() - 0.5).slice(0, 8);
   G.coins = spots.map((s, i) => ({ x: s.x, y: s.y, t: Math.random() * 6, born: -i * 0.06, got: false }));
 }
+const ENEMY = { green: { w: 10, h: 6, hp: 1 }, red: { w: 10, h: 6, hp: 2 }, toxic: { w: 10, h: 6, hp: 1 }, bat: { w: 12, h: 7, hp: 1 }, pup: { w: 12, h: 8, hp: 2 } };
 function spawnSlimes(n) {
   const Z = ZONES[n], [ng, nr] = Z.slimes;
+  const kinds = Z.mix || [...Array(ng).fill('green'), ...Array(nr).fill('red')];
   const plats = PLATS.filter(s => s.zone === n);
   const ground = { x: Z.start + 10, y: GROUND, w: Z.end - Z.start - 20, ground: true };
   let tries = 0, made = 0;
-  while (made < ng + nr && tries++ < 200) {
-    const red = made >= ng;
+  while (made < kinds.length && tries++ < 200) {
+    const kind = kinds[made], T = ENEMY[kind], red = kind === 'red';
     const surf = Math.random() < 0.45 ? ground : plats[Math.floor(Math.random() * plats.length)];
     const x = surf.x + 4 + Math.random() * (surf.w - 18);
     if (Math.abs(x - G.p.x) < 90) continue;
-    G.slimes.push({ x, y: surf.y - 6, w: 10, h: 6, vx: (Math.random() < 0.5 ? -1 : 1), vy: 0, surf, onGround: true, red, hp: red ? 2 : 1, stun: 0, jumpT: 0.6 + Math.random(), spawn: 0.5 + Math.random() * 0.4, hopT: 1 + Math.random() * 3, sx: 1, sy: 1, dead: false, deadT: 0, flash: 0, lastSwing: -1, zone: n });
+    const y = kind === 'bat' ? surf.y - 34 - Math.random() * 16 : surf.y - T.h;
+    G.slimes.push({ x, y, w: T.w, h: T.h, vx: (Math.random() < 0.5 ? -1 : 1), vy: 0, surf, onGround: kind !== 'bat', red, kind, hp: T.hp, stun: 0, jumpT: 0.6 + Math.random(), spawn: 0.5 + Math.random() * 0.4, hopT: 1 + Math.random() * 3, sx: 1, sy: 1, dead: false, deadT: 0, flash: 0, lastSwing: -1, zone: n, cool: 1 + Math.random() * 2, dive: 0, t2: Math.random() * 6 });
     made++;
   }
+}
+// lobezno: corre hacia vos y se lanza a morder
+function updatePup(s, dt) {
+  const p = G.p, Z = ZONES[s.zone], dx = (p.x + 4) - (s.x + s.w / 2);
+  s.face = Math.sign(dx) || s.face || 1;
+  if (s.stun > 0) { s.stun -= dt; if (s.onGround) s.vx *= Math.max(0, 1 - 8 * dt); }
+  else if (s.onGround) {
+    s.cool -= dt;
+    if (s.cool <= 0 && Math.abs(dx) < 44) { s.vx = Math.sign(dx) * 250; s.vy = -110; s.onGround = false; s.cool = 1.3 + Math.random() * 0.6; play('salto', { rate: 1.9, vol: 0.6 }); if (jOn()) { s.sx = 1.4; s.sy = 0.7; } }
+    else { const want = Math.abs(dx) > 240 ? 0 : Math.sign(dx) * 66; s.vx += Math.sign(want - s.vx) * Math.min(Math.abs(want - s.vx), 420 * dt); }
+  }
+  const prevB = s.y + s.h;
+  s.vy = Math.min(s.vy + GRAV * dt, 280); s.x += s.vx * dt; s.y += s.vy * dt;
+  const lo = Z.start + 6, hi = Z.end - 6 - s.w;
+  if (s.x < lo) { s.x = lo; s.vx = 0; } if (s.x > hi) { s.x = hi; s.vx = 0; }
+  s.onGround = false;
+  for (const surf of SURFACES) if (s.vy >= 0 && prevB <= surf.y + 0.5 && s.y + s.h >= surf.y && s.x + s.w > surf.x + 1 && s.x < surf.x + surf.w - 1) { s.y = surf.y - s.h; s.vy = 0; s.onGround = true; s.surf = surf; }
+  s.runT = s.onGround && Math.abs(s.vx) > 20 ? (s.runT || 0) + dt : 0;
+}
+// murciélago: revolotea arriba tuyo y baja en picada
+function updateBat(s, dt) {
+  const p = G.p, Z = ZONES[s.zone], cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+  s.t2 += dt;
+  let tx, ty, spd = 62;
+  if (s.stun > 0) { s.stun -= dt; tx = cx; ty = cy + 20; spd = 30; }
+  else if (s.dive > 0) { s.dive -= dt; tx = s.tx; ty = s.ty; spd = 165; }
+  else {
+    tx = p.x + 4 + Math.sin(s.t2 * 1.3) * 34; ty = p.y - 26 + Math.sin(s.t2 * 3) * 4;
+    s.cool -= dt;
+    if (s.cool <= 0 && Math.abs(p.x + 4 - cx) < 40 && Math.abs(p.x + 4 - cx) < 160) { s.dive = 0.7; s.tx = p.x + 4; s.ty = p.y + 8; s.cool = 2.2 + Math.random() * 1.5; play('dash', { rate: 1.6, vol: 0.35 }); }
+  }
+  const dx = tx - cx, dy = ty - cy, d = Math.hypot(dx, dy) || 1;
+  s.vx += (dx / d * spd - s.vx) * Math.min(1, dt * 4); s.vy += (dy / d * spd - s.vy) * Math.min(1, dt * 4);
+  s.x += s.vx * dt; s.y += s.vy * dt;
+  s.x = Math.max(Z.start + 4, Math.min(Z.end - 4 - s.w, s.x)); s.y = Math.max(8, Math.min(GROUND - s.h - 1, s.y));
+  s.face = Math.sign(s.vx) || 1;
 }
 
 /* juice helpers */
@@ -3262,8 +3550,8 @@ function tryCure(h) {
   if (jOn()) burst(h.x + 4, h.y + 5, 14, [PAL.l, PAL.g, PAL.w], 60, 40, 60, 0.6);
 }
 function applyVillainCard(id) {
-  if (id === 'gordos') for (const m of G.mobs || []) if (!m.dead && (m.type === 'slime' || m.type === 'red')) { m.hp += 2; m.max += 2; }
-  if (id === 'refuerzos' && G.z < 3) for (let i = 0; i < 2; i++) { const list = INVADE_MOBS[G.z]; spawnMob(G.z, list[Math.floor(Math.random() * list.length)], i, true); }
+  if (id === 'gordos') for (const m of G.mobs || []) if (!m.dead && isSlimeMob(m)) { m.hp += 2; m.max += 2; }
+  if (id === 'refuerzos' && G.z < 3) for (let i = 0; i < 2; i++) { const list = (G.lvl ? INVADE_MOBS2 : INVADE_MOBS)[G.z]; spawnMob(G.z, list[Math.floor(Math.random() * list.length)], i, true); }
   if (id === 'armadura' && G.boss) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
 }
 // el veneno de las flechas: un golpe más, sin empujón, un rato después
@@ -3280,6 +3568,7 @@ function poisonStep(e, dt) {
 
 function update(dt, real) {
   G.t += dt;
+  if (G.fadeIn > 0) G.fadeIn -= real;
   for (const q of G.parts) { q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; if (q.y > GROUND - 1 && q.vy > 0 && q.g > 0) { q.y = GROUND - 1; q.vy *= -0.3; q.vx *= 0.6; } }
   G.parts = G.parts.filter(q => q.life > 0);
   for (const pp of G.pops) pp.t += dt;
@@ -3304,6 +3593,7 @@ function update(dt, real) {
   if (G.kind === 'boss') { updateBossMode(dt); return; }
   if (G.kind === 'invade') { updateInvade(dt); return; }
   if (G.state !== 'play') { input.jumpPressed = false; input.attackPressed = false; input.specialPressed = false; return; }
+  if (G.nextT > 0) { G.nextT -= dt; if (G.nextT <= 0) { G.nextT = 0; campaignNextLevel(); return; } }
 
   const p = G.p, C = G.C;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -3398,17 +3688,29 @@ function update(dt, real) {
     if (s.dead) { s.deadT -= dt; continue; }
     if (s.spawn > 0) { s.spawn -= dt; continue; }
     if (s.parryT > 0) s.parryT -= dt;
-    if (s.red) updateRed(s, dt); else updateGreen(s, dt);
+    if (s.kind === 'pup') updatePup(s, dt); else if (s.kind === 'bat') updateBat(s, dt); else if (s.red) updateRed(s, dt); else updateGreen(s, dt);
     if (G.state !== 'play') continue;
     if (overlap(p, s)) {
       if (descending && prevBottom <= s.y + 4) {
         if (!bounced) { p.vy = input.jump ? -C.jump * 1.05 : -210; p.cut = !input.jump; p.onGround = false; bounced = true; if (jOn()) { p.sx = 0.8; p.sy = 1.25; } }
         p.stompInv = 0.22;
         hitSlime(s, 1, 'stomp', 0);
-      } else if (p.inv <= 0 && p.stompInv <= 0) hurt(Math.sign((p.x + 4) - (s.x + 5)) || 1, { slime: s });
+      } else if (p.inv <= 0 && p.stompInv <= 0) hurt(Math.sign((p.x + 4) - (s.x + 5)) || 1, { slime: s, toxic: s.kind === 'toxic' });
     }
   }
   G.slimes = G.slimes.filter(s => !(s.dead && s.deadT <= 0));
+  // pinchos del bosque
+  for (const tr of TRAPS) if (trapPhase(tr, G.t) === 2 && p.inv <= 0 && p.ghostT <= 0 && overlap(p, trapBox(tr))) { hurt(Math.sign(p.x + 4 - (tr.x + tr.w / 2)) || 1, {}); if (!p.shield) p.vy = -230; }
+  // veneno: un corazón menos un rato después
+  if (p.poisonT > 0) {
+    p.poisonT -= dt;
+    if (jOn() && Math.random() < 0.3) G.parts.push({ x: p.x + 2 + Math.random() * 5, y: p.y + 2, vx: 0, vy: -20, g: -10, life: 0.4, max: 0.4, c: Math.random() < 0.5 ? PAL.l : PAL.p, s: 1 });
+    if (p.poisonT <= 0 && G.state === 'play') {
+      G.hearts--; p.flash = 0.09; play('baba', { rate: 1.3 }); play('dano', { rate: 1.4, vol: 0.6 });
+      if (jOn()) { burst(p.x + 4, p.y + 5, 10, [PAL.l, PAL.p, PAL.g], 60, 30, 150, 0.4); G.flashRed = 0.12; }
+      if (G.hearts <= 0) gameOver(); else tryCure(p);
+    }
+  }
 
   // zona despejada: se abre el portón
   if (G.z < 3 && !G.cleared && !G.slimes.some(s => !s.dead && s.zone === G.z)) {
@@ -3583,11 +3885,11 @@ function updateArrows(dt) {
 }
 
 // flechas (o espadas del jefe) que caen del cielo, con aviso
-function spawnHazard(x, delay = 0, big = false, warn = 1.1) {
+function spawnHazard(x, delay = 0, big = false, warn = 1.1, rock = false) {
   const surf = landingSurface(x);
-  G.hazards.push({ id: uid++, x, landY: surf.y, phase: 'warn', warn: warn + delay, warnMax: warn + delay, y: -14, vy: 0, life: 0, wob: 0, beeped: delay > 0 || big, big });
+  G.hazards.push({ id: uid++, x, landY: surf.y, phase: 'warn', warn: warn + delay, warnMax: warn + delay, y: -14, vy: 0, life: 0, wob: 0, beeped: delay > 0 || big, big, rock });
 }
-const hazBox = h => h.big ? { x: h.x - 2, y: h.y, w: 5, h: 11 } : { x: h.x - 1, y: h.y, w: 3, h: 8 };
+const hazBox = h => h.rock ? { x: h.x - 4, y: h.y, w: 9, h: 7 } : h.big ? { x: h.x - 2, y: h.y, w: 5, h: 11 } : { x: h.x - 1, y: h.y, w: 3, h: 8 };
 function updateHazards(dt) {
   const p = G.p;
   if (G.z < 3 && G.kind !== 'invade') {
@@ -3608,15 +3910,18 @@ function updateHazards(dt) {
       if (h.warn <= 0) { h.phase = 'fall'; h.y = -14; h.vy = 260; play(h.big ? 'tajo' : 'disparo', { rate: h.big ? 0.8 : 1.5, vol: 0.5 }); }
     } else if (h.phase === 'fall') {
       h.vy += 700 * dt; h.y += h.vy * dt;
-      if (jOn()) G.parts.push({ x: h.x, y: h.y, vx: 0, vy: 0, g: 0, life: 0.12, max: 0.12, c: h.big ? PAL.c : PAL.S, s: 1 });
+      if (jOn()) G.parts.push({ x: h.x, y: h.y, vx: 0, vy: 0, g: 0, life: 0.12, max: 0.12, c: h.big && !h.rock ? PAL.c : PAL.S, s: 1 });
       const box = hazBox(h);
       if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e) { h.phase = 'gone'; hitHero(e, 1, Math.sign(e.x + 4 - h.x) || 1); continue; } }
       else if (G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) { hurt(Math.sign(p.x + 4 - h.x) || 1, { haz: h }); if (h.phase === 'fall') h.phase = 'gone'; continue; }
       for (const s of G.slimes) if (!s.dead && s.spawn <= 0 && overlap(s, box)) killSlime(s, 'trap', 0, false);
       if (h.y + box.h >= h.landY + 2) {
-        h.y = h.landY + 2 - box.h; h.phase = jOn() ? 'stuck' : 'gone'; h.life = h.big ? 0.8 : 1.4; h.wob = 0.3;
-        play('clavar', { vol: 0.9, rate: h.big ? 0.7 : 1 });
-        if (jOn()) { shake(h.big ? 2 : 1.5, 0.1); burst(h.x, h.landY, 6, [PAL.S, PAL.s, h.big ? PAL.c : PAL.o], 45, 25, 220, 0.35); }
+        h.y = h.landY + 2 - box.h; h.phase = jOn() && !h.rock ? 'stuck' : 'gone'; h.life = h.big ? 0.8 : 1.4; h.wob = 0.3;
+        if (h.rock) { play('pisoton', { vol: 0.8, rate: 0.7 }); if (jOn()) { shake(2, 0.1); burst(h.x, h.landY - 3, 10, [PAL.S, PAL.s, PAL.d], 70, 50, 300, 0.45); } } // la roca se parte
+        else {
+          play('clavar', { vol: 0.9, rate: h.big ? 0.7 : 1 });
+          if (jOn()) { shake(h.big ? 2 : 1.5, 0.1); burst(h.x, h.landY, 6, [PAL.S, PAL.s, h.big ? PAL.c : PAL.o], 45, 25, 220, 0.35); }
+        }
       }
     } else if (h.phase === 'stuck') { h.life -= dt; h.wob -= dt; if (h.life <= 0) h.phase = 'gone'; }
     else if (h.phase === 'back') {
@@ -3689,6 +3994,15 @@ function hurt(dir, src = {}) {
     return;
   }
   if (p.shield) { shieldBlock(p, dir); return; }
+  if (src.toxic) {
+    // el slime tóxico no pega: envenena
+    if (p.poisonT > 0) return;
+    p.poisonT = 1.4; p.inv = 0.9; p.vx = dir * 90; p.vy = -110; p.onGround = false;
+    play('baba', { rate: 0.9 }); vib(30);
+    popup(p.x + 4, p.y - 8, '¡VENENO!', PAL.l);
+    if (jOn()) burst(p.x + 4, p.y + 5, 10, [PAL.l, PAL.p, PAL.g], 60, 30, 150, 0.4);
+    return;
+  }
   G.hearts--; p.inv = 1.4; p.vx = dir * 140; p.vy = -170; p.onGround = false; p.chg = -1;
   play('dano'); vib(60);
   if (jOn()) { p.flash = 0.09; hitstop(0.09); shake(5, 0.28); G.flashRed = 0.18; flashJ('flash'); burst(p.x + 4, p.y + 5, 10, [PAL.r, PAL.o, PAL.w], 70, 40, 200, 0.5); p.sx = 1.3; p.sy = 0.75; }
@@ -3708,11 +4022,16 @@ function bestScore() { try { return +(localStorage.getItem('pip-best') || 0); } 
    Jefe: Mega Caballero
    ========================================================= */
 const BW = 22, BH = 30, BOSS_HP = 40;
-const bossBody = B => ({ x: B.x + 3, y: B.y + 4, w: 16, h: 26 });
-const bossHead = B => ({ x: B.x + 4, y: B.y - 2, w: 14, h: 9 });
+// el Campeón (nivel 2) es un lobo: más largo y más bajo; se lo pisa en el lomo
+const WOLF_HP = 50, PW_HP = 70;
+const isWolf = B => !!B && B.type === 'wolf';
+const bossName = B => isWolf(B) ? 'CAMPEÓN' : 'MEGA CABALLERO';
+const bossBody = B => isWolf(B) ? { x: B.x + BW / 2 - 17, y: B.y + 13, w: 34, h: 17 } : { x: B.x + 3, y: B.y + 4, w: 16, h: 26 };
+const bossHead = B => isWolf(B) ? { x: B.x + BW / 2 - 15, y: B.y + 7, w: 30, h: 9 } : { x: B.x + 4, y: B.y - 2, w: 14, h: 9 };
 const bossActive = B => !['wait', 'drop', 'roar', 'rage', 'dying', 'gone'].includes(B.state);
 function startBoss() {
-  G.boss = { x: 1720, y: -70, vx: 0, vy: 0, face: -1, hp: BOSS_HP, show: BOSS_HP, showT: 0, fill: 0, state: 'wait', t: 0, phase: 1, flash: 0, sx: 1, sy: 1, angle: 70, crouch: 0, bag: [], last: '', atk: '', rep: 0, trail: [], trailT: 0, barShake: 0, hitSwing: -1, idleDur: 1, targetX: 0, landed: false, stompT: 0, glow: false, swing: null };
+  const hp = G.lvl ? WOLF_HP : BOSS_HP;
+  G.boss = { type: G.lvl ? 'wolf' : 'knight', maxHp: hp, x: 1720, y: -70, vx: 0, vy: 0, face: -1, hp, show: hp, showT: 0, fill: 0, state: 'wait', t: 0, phase: 1, flash: 0, sx: 1, sy: 1, angle: 70, crouch: 0, bag: [], last: '', atk: '', rep: 0, trail: [], trailT: 0, barShake: 0, hitSwing: -1, idleDur: 1, targetX: 0, landed: false, stompT: 0, glow: false, swing: null };
   G.hazards = []; G.coins = [];
   musicStop();
   G.banner = null;
@@ -3730,14 +4049,14 @@ function chooseAttack(B) {
   facePlayer(B); setState(B, 'tele');
   B.targetX = p.x + 4;
   play('alerta', { rate: 0.7, vary: false });
-  if (atk === 'rain') play('alerta', { rate: 0.6, delay: 0.16, vary: false });
+  if (atk === 'rain') { play('alerta', { rate: 0.6, delay: 0.16, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.25, vary: false }); }
 }
 const lerp = (a, b, t) => a + (b - a) * Math.max(0, Math.min(1, t));
 const easeOut = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
 
 function updateBoss(dt, prevBottom) {
   const B = G.boss, p = G.p, ph2 = B.phase === 2, tm = ph2 ? 0.72 : 1;
-  B.t += dt;
+  B.t += dt; B.walking = false;
   if (B.flash > 0) B.flash -= dt;
   if (B.barShake > 0) B.barShake -= dt;
   B.sx += (1 - B.sx) * Math.min(1, dt * 8); B.sy += (1 - B.sy) * Math.min(1, dt * 8);
@@ -3760,8 +4079,8 @@ function updateBoss(dt, prevBottom) {
         B.y = GROUND - BH; B.sx = 1.35; B.sy = 0.7;
         slamFX(B.x + BW / 2, 7, false);
         setState(B, 'roar');
-        play('rugido', { vary: false });
-        G.banner = { text: 'MEGA CABALLERO', sub: 'GUARDIÁN DEL TRONO', t: 0, long: true };
+        play('rugido', { vary: false, rate: isWolf(B) ? 0.75 : 1 });
+        G.banner = isWolf(B) ? { text: 'CAMPEÓN', sub: 'EL LOBO DE LA GUARIDA', t: 0, long: true } : { text: 'MEGA CABALLERO', sub: 'GUARDIÁN DEL TRONO', t: 0, long: true };
       }
       break;
     case 'roar':
@@ -3773,7 +4092,7 @@ function updateBoss(dt, prevBottom) {
     case 'idle': {
       facePlayer(B);
       const dist = (p.x + 4) - (B.x + BW / 2);
-      if (Math.abs(dist) > 36) B.x += Math.sign(dist) * (ph2 ? 32 : 22) * dt;
+      if (Math.abs(dist) > 36) { B.x += Math.sign(dist) * (isWolf(B) ? (ph2 ? 46 : 34) : (ph2 ? 32 : 22)) * dt; B.walking = true; }
       B.angle = lerp(B.angle, 65 + Math.sin(G.t * 3) * 4, dt * 6);
       B.crouch = 0;
       if (B.t > B.idleDur) chooseAttack(B);
@@ -3805,7 +4124,7 @@ function updateBoss(dt, prevBottom) {
   // daño del jugador al jefe pisándole el yelmo, y daño por contacto
   if (bossActive(B) && G.state === 'play') {
     const descending = p.vy > 20;
-    if (descending && prevBottom <= B.y + 2 && overlap(p, bossHead(B))) {
+    if (descending && prevBottom <= bossHead(B).y + 4 && overlap(p, bossHead(B))) {
       p.vy = input.jump ? -G.C.jump * 1.1 : -260; p.cut = !input.jump; p.onGround = false; p.stompInv = 0.35;
       if (jOn()) { p.sx = 0.8; p.sy = 1.25; }
       play('pisoton', { rate: 0.8 });
@@ -3816,7 +4135,7 @@ function updateBoss(dt, prevBottom) {
 
 function bossTele(B, dt, tm) {
   const quick = B.quick ? 0.55 : 1;
-  const dur = { sweep: 0.68, slam: 0.55, charge: 0.75, rain: 0.85 }[B.atk] * tm * quick;
+  const dur = (isWolf(B) ? { sweep: 0.5, slam: 0.5, charge: 0.62, rain: 0.8 } : { sweep: 0.68, slam: 0.55, charge: 0.75, rain: 0.85 })[B.atk] * tm * quick;
   const k = B.t / dur;
   B.glow = true;
   if (jOn() && Math.random() < 0.6) { // chispas que se juntan en la espada
@@ -3838,7 +4157,7 @@ function bossTele(B, dt, tm) {
       const T = 0.72; B.vy = -500; B.vx = (B.targetX - (B.x + BW / 2)) / T; B.landed = false;
       play('salto', { rate: 0.5, vary: false }); if (jOn()) { B.sx = 0.75; B.sy = 1.3; burst(B.x + BW / 2, GROUND, 10, [PAL.S, PAL.s], 70, 20, 220, 0.4); }
     }
-    if (B.atk === 'charge') { B.vx = B.face * (B.phase === 2 ? 285 : 240); play('tajo', { rate: 0.5, vary: false }); }
+    if (B.atk === 'charge') { B.vx = B.face * (isWolf(B) ? (B.phase === 2 ? 470 : 420) : (B.phase === 2 ? 285 : 240)); play('tajo', { rate: 0.5, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.4, vol: 0.6, vary: false }); }
     if (B.atk === 'rain') rainSwords(B);
     if (B.atk === 'sweep') B.swing = { t: 0 };
   }
@@ -3877,7 +4196,7 @@ function bossAct(B, dt, tm) {
     const hitWall = (B.face < 0 && B.x <= ARENA.min + 0.5) || (B.face > 0 && B.x >= ARENA.max - BW - 0.5);
     if (hitWall) {
       B.vx = 0;
-      play('metal', { rate: 0.4, vary: false }); play('clavar', { rate: 0.5, vary: false }); boom(0.8);
+      play(isWolf(B) ? 'pisoton' : 'metal', { rate: 0.4, vary: false }); play('clavar', { rate: 0.5, vary: false }); boom(0.8);
       if (jOn()) { shake(5, 0.3); hitstop(0.06); burst(B.face > 0 ? ARENA.max : ARENA.min, GROUND - 16, 16, [PAL.S, PAL.s, PAL.d, PAL.w], 90, 40, 260, 0.6); B.sx = 0.7; B.sy = 1.1; }
       if (B.rep > 1) { B.rep--; B.face = -B.face; setState(B, 'tele'); B.quick = true; play('alerta', { rate: 0.75, vary: false }); }
       else { B.quick = false; setState(B, 'stun'); }
@@ -3893,7 +4212,7 @@ function bossAct(B, dt, tm) {
 function rainSwords(B) {
   const slots = []; for (let x = ARENA.min + 10; x <= ARENA.max - 10; x += 28) slots.push(x);
   const gap = Math.floor(Math.random() * (slots.length - 1));
-  slots.forEach((x, i) => { if (i !== gap && i !== gap + 1) spawnHazard(x, i * 0.04, true, 0.85); });
+  slots.forEach((x, i) => { if (i !== gap && i !== gap + 1) spawnHazard(x, i * 0.04, true, 0.85, isWolf(B)); });
   play('alerta', { vary: false }); play('alerta', { vary: false, delay: 0.14, rate: 1.12 });
   if (jOn()) { flashJ('tell'); const tip = swordTip(B); burst(tip.x, tip.y, 10, [PAL.c, PAL.w], 80, 80, 0, 0.4); }
 }
@@ -3937,14 +4256,14 @@ function damageBoss(dmg, x, y, force) {
   else if (jOn()) { hitstop(0.03); burst(x, y, 7, [PAL.y, PAL.w, PAL.s], 70, 20, 240, 0.35); flashJ('flash'); }
   popup(x, y - 6, '-' + total, isCrit ? PAL.y : PAL.w);
   if (B.hp <= 0) bossDie(B);
-  else if (B.phase === 1 && B.hp <= BOSS_HP / 2) enrage(B);
+  else if (B.phase === 1 && B.hp <= (B.maxHp || BOSS_HP) / 2) enrage(B);
   return true;
 }
 function enrage(B) {
   B.phase = 2; setState(B, 'rage'); B.vx = 0; B.crouch = 0;
   G.waves = []; G.hazards = [];
   play('rugido', { rate: 1.15, vary: false }); duck();
-  G.banner = { text: '¡FURIA!', sub: 'EL MEGA CABALLERO SE ENOJA', t: 0 };
+  G.banner = { text: '¡FURIA!', sub: isWolf(B) ? 'EL CAMPEÓN SE ENFURECE' : 'EL MEGA CABALLERO SE ENOJA', t: 0 };
   if (jOn()) { hitstop(0.25); G.flashRed = 0.3; shake(4, 0.5); burst(B.x + BW / 2, B.y + 10, 30, [PAL.r, PAL.o, PAL.y], 140, 40, 120, 0.8); G.rings.push({ x: B.x + BW / 2, y: B.y + 12, t: 0, c: PAL.r }); }
 }
 function bossDie(B) {
@@ -3973,6 +4292,12 @@ function bossDying(B, dt) {
       burst(B.x + BW / 2, B.y + 14, 12, [PAL.y, PAL.w], 110, 70, 100, 1.2, 1, true);
       G.rings.push({ x: B.x + BW / 2, y: B.y + 14, t: 0, c: PAL.w }, { x: B.x + BW / 2, y: B.y + 14, t: -0.08, c: PAL.y }, { x: B.x + BW / 2, y: B.y + 14, t: -0.16, c: PAL.o });
     }
+    if (G.kind === 'invade' && !G.lvl) {
+      // los héroes ganaron el nivel 1: siguen al bosque y el villano tiene revancha con el Campeón
+      G.boss = null; G.nextT = 3.4; G.waves = []; G.hazards = [];
+      G.banner = { text: '¡CAYÓ TU JEFE!', sub: 'LOS HÉROES ENTRAN AL BOSQUE', t: 0, long: true };
+      return;
+    }
     if (G.kind === 'boss' || G.kind === 'invade') {
       G.boss = null; G.state = 'over'; G.endT = 0; G.banner = null;
       setTimeout(() => play('derrota', { vary: false }), 500);
@@ -3983,18 +4308,24 @@ function bossDying(B, dt) {
     G.score += 1000; G.scoreBump = 1;
     popup(B.x + BW / 2, B.y, '+1000', PAL.y);
     G.boss = null;
-    G.state = 'win'; G.endT = 0;
-    G.banner = { text: '¡VICTORIA!', sub: 'EL TRONO ES TUYO', t: 0, long: true };
     play('oleada', { delay: 0.6, vary: false }); play('oleada', { delay: 1.1, rate: 1.26, vary: false });
+    if (!G.lvl) { // el trono es tuyo... pero algo aúlla en el bosque
+      G.nextT = 3.6; G.banner = { text: '¡VICTORIA!', sub: 'ALGO AÚLLA EN EL BOSQUE...', t: 0, long: true };
+      return;
+    }
+    G.state = 'win'; G.endT = 0;
+    G.banner = { text: '¡VICTORIA!', sub: 'EL CAMPEÓN CAYÓ', t: 0, long: true };
     saveBest();
     setTimeout(() => { if (G && G.state === 'win') overlay.hidden = false; }, 2600);
   }
 }
 function swordHand(B) {
+  if (isWolf(B)) return { x: B.x + BW / 2 + B.face * 20, y: Math.round(B.y + 12 + B.crouch) }; // el hocico
   const up = Math.round(B.y + B.crouch);
   return { x: B.face > 0 ? B.x + 19.5 : B.x + BW - 19.5, y: up + 18.5 };
 }
 function swordTip(B) {
+  if (isWolf(B)) return swordHand(B);
   const h = swordHand(B), a = B.angle * Math.PI / 180;
   return { x: h.x + Math.cos(a) * B.face * 32, y: h.y + Math.sin(a) * 32 };
 }
@@ -4009,14 +4340,23 @@ const PB = {
   rain: { key: 'rain', cd: 6.5, tele: 0.45, label: 'V LLUVIA' }
 };
 const PB_HP = 60;
+// el Campeón: mismas teclas, otros nombres; embiste más seguido y más rápido
+const PBW = {
+  sweep: { key: 'attack', cd: 0.7, tele: 0.2, label: 'X ZARPAZO' },
+  slam: { key: 'jump', cd: 1.5, tele: 0.22, label: 'ESP SALTO' },
+  charge: { key: 'charge', cd: 2.4, tele: 0.26, label: 'Z EMBESTIDA' },
+  rain: { key: 'rain', cd: 6.5, tele: 0.45, label: 'V AULLIDO' }
+};
+const pbOf = B => isWolf(B) ? PBW : PB;
 function newBossMode() {
+  setLevel(0);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind: 'boss', C: null, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: 0, maxHearts: 0, z: 3, cam: ZONES[3].start, p: null,
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [], heroes: [], queue: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 99, cleared: false, endT: 0,
-    wave: 0, waveT: 2, spawnT: 0, closeT: 0, kills: 0, waveDone: true
+    wave: 0, waveT: 2, spawnT: 0, closeT: 0, kills: 0, waveDone: true, lvl: 0, nextT: 0, fadeIn: 0
   };
   G.boss = {
     x: 1690, y: GROUND - BH, vx: 0, vy: 0, face: -1, hp: PB_HP, maxHp: PB_HP, show: PB_HP, showT: 0, fill: 1, state: 'idle', t: 0, phase: 1,
@@ -4085,29 +4425,31 @@ function updatePlayerBoss(B, dt) {
   if (jOn() && B.state === 'act' && B.atk === 'charge') { B.trailT -= dt; if (B.trailT <= 0) { B.trailT = 0.035; B.trail.push({ x: B.x, y: B.y, face: B.face, angle: B.angle, t: 0 }); flashJ('ghost'); } }
   for (const tr of B.trail) tr.t += dt;
   B.trail = B.trail.filter(tr => tr.t < 0.25);
+  const P = pbOf(B);
   if (ph2 && jOn() && B.state !== 'dying' && Math.random() < 0.35) G.parts.push({ x: B.x + (B.face > 0 ? 13 : 8) + Math.random() * 3, y: B.y + 6, vx: (Math.random() - 0.5) * 10, vy: -30 - Math.random() * 20, g: -20, life: 0.4, max: 0.4, c: Math.random() < 0.5 ? PAL.y : PAL.o, s: 1 });
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   switch (B.state) {
     case 'idle': {
       if (dir) {
-        B.face = dir; B.x += dir * (ph2 ? 48 : 40) * dt; B.walking = true; B.walkT += dt;
+        B.face = dir; B.x += dir * (isWolf(B) ? (ph2 ? 66 : 56) : (ph2 ? 48 : 40)) * dt; B.walking = true; B.walkT += dt;
         if (B.walkT > 0.32) { B.walkT = 0; play('pisoton', { rate: 0.5, vol: 0.22 }); if (jOn()) { shake(0.8, 0.05); burst(B.x + BW / 2 - dir * 6, GROUND, 3, [PAL.S, PAL.s], 30, 15, 200, 0.25); } }
       } else B.walkT = 0.2;
       B.angle = lerp(B.angle, 65 + Math.sin(G.t * 3) * 4, dt * 6); B.crouch = 0;
       let pick = null;
-      for (const atk of ['sweep', 'slam', 'charge', 'rain']) if (input[PB[atk].key + 'Pressed'] && B.cd[atk] <= 0) { pick = atk; break; }
+      for (const atk of ['sweep', 'slam', 'charge', 'rain']) if (input[P[atk].key + 'Pressed'] && B.cd[atk] <= 0) { pick = atk; break; }
       if (pick) {
         B.atk = pick; B.rep = ph2 && pick === 'rain' ? 2 : 1; B.attackId++;
-        B.cd[pick] = PB[pick].cd * cdm * (hasV('jfuria') ? 0.7 : 1);
+        B.cd[pick] = P[pick].cd * cdm * (hasV('jfuria') ? 0.7 : 1);
         if (dir) B.face = dir;
         B.targetX = Math.max(ARENA.min + 12, Math.min(ARENA.max - 12, B.x + BW / 2 + B.face * 64));
         setState(B, 'tele');
         play('alerta', { rate: 0.7, vol: 0.45, vary: false });
+        if (isWolf(B) && pick === 'rain') play('rugido', { rate: 1.25, vary: false });
       }
       break;
     }
     case 'tele': {
-      const dur = PB[B.atk].tele * (ph2 ? 0.8 : 1), k = B.t / dur;
+      const dur = P[B.atk].tele * (ph2 ? 0.8 : 1), k = B.t / dur;
       B.glow = true;
       if (jOn() && Math.random() < 0.6) {
         const tip = swordTip(B), a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 8;
@@ -4121,7 +4463,7 @@ function updatePlayerBoss(B, dt) {
       if (B.t >= dur) {
         setState(B, 'act');
         if (B.atk === 'slam') { const T = 0.72; B.vy = -500; B.vx = (B.targetX - (B.x + BW / 2)) / T; B.landed = false; play('salto', { rate: 0.5, vary: false }); if (jOn()) { B.sx = 0.75; B.sy = 1.3; burst(B.x + BW / 2, GROUND, 10, [PAL.S, PAL.s], 70, 20, 220, 0.4); } }
-        if (B.atk === 'charge') { B.vx = B.face * (ph2 ? 300 : 260); play('tajo', { rate: 0.5, vary: false }); }
+        if (B.atk === 'charge') { B.vx = B.face * (isWolf(B) ? (ph2 ? 490 : 440) : (ph2 ? 300 : 260)); play('tajo', { rate: 0.5, vary: false }); if (isWolf(B)) play('rugido', { rate: 1.4, vol: 0.6, vary: false }); }
         if (B.atk === 'rain') rainTargeted(B);
         if (B.atk === 'sweep') { B.swing = { t: 0 }; B.swingId++; }
       }
@@ -4162,7 +4504,7 @@ function playerBossAct(B, dt) {
       if (B.vy > 0 && B.y >= GROUND - BH) {
         B.y = GROUND - BH; B.landed = true; B.vx = 0; B.angle = 75; B.crouch = 3; B.sx = 1.4; B.sy = 0.65;
         slamFX(B.x + BW / 2, 6, true);
-        for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, { x: B.x - 4, y: B.y, w: BW + 8, h: BH })) hitHero(e, 2, Math.sign(e.x + 4 - (B.x + BW / 2)) || 1);
+        for (const e of G.heroes) if (!e.dead && !e.net && overlap(e, isWolf(B) ? { x: B.x + BW / 2 - 21, y: B.y, w: 42, h: BH } : { x: B.x - 4, y: B.y, w: BW + 8, h: BH })) hitHero(e, 2, Math.sign(e.x + 4 - (B.x + BW / 2)) || 1);
         setState(B, 'rec'); B.recDur = 0.3;
       }
     }
@@ -4186,7 +4528,7 @@ function playerBossAct(B, dt) {
 function rainTargeted(B) {
   const xs = G.heroes.filter(e => !e.dead).map(e => Math.round(e.x + 4 + (Math.random() - 0.5) * 10));
   for (let i = 0; i < 4; i++) xs.push(Math.round(ARENA.min + 10 + Math.random() * (ARENA.max - ARENA.min - 20)));
-  xs.forEach((x, i) => spawnHazard(Math.max(ARENA.min + 6, Math.min(ARENA.max - 6, x)), i * 0.05, true, 0.7));
+  xs.forEach((x, i) => spawnHazard(Math.max(ARENA.min + 6, Math.min(ARENA.max - 6, x)), i * 0.05, true, 0.7, isWolf(B)));
   play('alerta', { vary: false }); play('alerta', { vary: false, delay: 0.14, rate: 1.12 });
   if (jOn()) { flashJ('tell'); const tip = swordTip(B); burst(tip.x, tip.y, 10, [PAL.c, PAL.w], 80, 80, 0, 0.4); }
 }
@@ -4219,7 +4561,7 @@ function updateHeroes(dt) {
       bossTakeHit(heroDmg(e, slashBase(e)), e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4, e.kind === 'knight' && B.state === 'stun' && B.parried);
     }
     if (e.net) continue; // pisotón y choque con el jefe los avisa la pantalla del jugador
-    if (e.vy > 20 && e.prevBottom <= B.y + 2 && overlap(e, bossHead(B))) {
+    if (e.vy > 20 && e.prevBottom <= bossHead(B).y + 4 && overlap(e, bossHead(B))) {
       kick(e, e.vx, -250, 2);
       play('pisoton', { rate: 0.8 });
       if (jOn()) { e.sx = 0.8; e.sy = 1.25; }
@@ -4318,6 +4660,7 @@ function hitHero(e, dmg, dir, critOk = true, trusted = false) {
   return true;
 }
 function heroDeath(e, dir, isCrit) {
+  if (G.heroKeep) G.heroKeep[e.kind] = { max: e.max, cm: e.cm || 0 }; // vuelve en el nivel 2 con sus cartas
   e.dead = true; e.deadT = 0.55; e.vx = dir * 120; e.vy = -260; e.rageT = 0; e.shield = false; e.poisonT = 0;
   const pts = (MELEE(e.kind) ? 150 : 100) * (isCrit ? 2 : 1);
   G.score += pts; G.scoreBump = 1; G.kills = (G.kills || 0) + 1;
@@ -4350,8 +4693,17 @@ const MOB = {
   slime: { w: 10, h: 6, hp: 2, speed: 40, pspeed: 58, jump: 235, name: 'SLIME', hint: 'MANTENÉ ATAQUE Y SOLTÁ' },
   red: { w: 10, h: 6, hp: 3, speed: 62, pspeed: 78, jump: 255, name: 'SLIME ROJO', hint: 'MANTENÉ ATAQUE Y SOLTÁ' },
   skarch: { w: 8, h: 11, hp: 3, speed: 34, pspeed: 62, jump: 245, name: 'ESQUELETO ARQUERO', hint: 'ATAQUE: FLECHA' },
-  skaxe: { w: 8, h: 11, hp: 4, speed: 42, pspeed: 66, jump: 245, name: 'ESQUELETO HACHERO', hint: 'ATAQUE: HACHAZO' }
+  skaxe: { w: 8, h: 11, hp: 4, speed: 42, pspeed: 66, jump: 245, name: 'ESQUELETO HACHERO', hint: 'ATAQUE: HACHAZO' },
+  toxic: { w: 10, h: 6, hp: 2, speed: 40, pspeed: 58, jump: 235, name: 'SLIME TÓXICO', hint: 'MANTENÉ ATAQUE Y SOLTÁ · ENVENENA' },
+  bat: { w: 12, h: 7, hp: 2, speed: 62, pspeed: 84, jump: 0, name: 'MURCIÉLAGO', hint: 'SALTO SUBE · ATAQUE: PICADA' },
+  pup: { w: 12, h: 8, hp: 3, speed: 66, pspeed: 86, jump: 250, name: 'LOBEZNO', hint: 'ATAQUE: MORDISCO' }
 };
+const isSlimeMob = m => m.type === 'slime' || m.type === 'red' || m.type === 'toxic';
+const INVADE_MOBS2 = [
+  ['toxic', 'slime', 'bat', 'toxic', 'pup'],
+  ['pup', 'bat', 'toxic', 'skarch', 'bat'],
+  ['pup', 'pup', 'bat', 'toxic', 'skaxe', 'bat']
+];
 const INVADE_MOBS = [
   ['slime', 'slime', 'red', 'slime', 'slime'],
   ['slime', 'skarch', 'skaxe', 'red', 'skarch'],
@@ -4360,21 +4712,23 @@ const INVADE_MOBS = [
 const isSkel = m => m.type === 'skarch' || m.type === 'skaxe';
 const bossCtl = () => G && NET.role !== 'guest' && (G.kind === 'boss' || (G.kind === 'invade' && G.z === 3));
 
-function makePlayerBoss() {
+function makePlayerBoss(type = 'knight') {
+  const hp = type === 'wolf' ? PW_HP : PB_HP;
   return {
-    x: 1690, y: GROUND - BH, vx: 0, vy: 0, face: -1, hp: PB_HP, maxHp: PB_HP, show: PB_HP, showT: 0, fill: 1, state: 'idle', t: 0, phase: 1,
+    type, x: 1690, y: GROUND - BH, vx: 0, vy: 0, face: -1, hp, maxHp: hp, show: hp, showT: 0, fill: 1, state: 'idle', t: 0, phase: 1,
     flash: 0, sx: 1, sy: 1, angle: 65, crouch: 0, atk: '', rep: 0, trail: [], trailT: 0, barShake: 0, hitSwing: -1, targetX: 0, landed: true,
     stompT: 0, glow: false, swing: null, cd: { sweep: 0, slam: 0, charge: 0, rain: 0 }, attackId: 0, swingId: 0, hurtInv: 0, walking: false, walkT: 0, player: true
   };
 }
 function newInvadeMode() {
+  setLevel(0);
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
   G = {
     kind: 'invade', C: null, state: 'play', t: 0, score: 0, shownScore: 0, scoreBump: 0, hearts: 0, maxHearts: 0, z: 0, cam: 0, p: null,
     slimes: [], coins: [], parts: [], pops: [], arrows: [], hazards: [], rings: [], waves: [], heroes: [], queue: [], mobs: [], shots: [],
     combo: 0, comboT: 0, freeze: 0, slowmo: 0, zoom: null, impact: null, critText: null,
     shake: 0, shakeMax: 0, shakeMag: 0, flashRed: 0, banner: null, hazT: 99, cleared: false, endT: 0,
-    boss: null, ctrl: null, possessT: 0, soul: null, soulFrom: null, zoneLost: false, wave: 0, kills: 0
+    boss: null, ctrl: null, possessT: 0, soul: null, soulFrom: null, zoneLost: false, wave: 0, kills: 0, lvl: 0, nextT: 0, fadeIn: 0, heroKeep: {}
   };
   const a = spawnHero('archer'), k = spawnHero('knight'), b = spawnHero('barb');
   a.x = 16; k.x = 34; b.x = 52; a.hp = a.max = 8; k.hp = k.max = 10; b.hp = b.max = 9;
@@ -4386,9 +4740,39 @@ function newInvadeMode() {
   G.banner = { text: 'MODO VILLANO', sub: 'FRENÁ A LOS HÉROES', t: 0, long: true };
   startPick();
 }
+// nivel 2 en campaña: mismo héroe y cartas, vida llena y se vuelve a elegir carta
+function campaignNextLevel() {
+  setLevel(1); G.lvl = 1;
+  GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
+  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
+  Object.assign(G.p, { x: 40, y: GROUND - 11, vx: 0, vy: 0, onGround: true, face: 1, inv: 1, stompInv: 0, poisonT: 0, drop: 0, surf: null, chg: -1, dashT: 0 });
+  G.hearts = G.maxHearts;
+  enterZone(0, true);
+  G.banner = { text: 'NIVEL 2', sub: 'EL BOSQUE OSCURO', t: 0, long: true };
+}
+// nivel 2 en modo villano: los héroes vuelven todos (los caídos con media vida) y todos eligen carta
+function invadeNextLevel() {
+  setLevel(1); G.lvl = 1;
+  GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
+  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
+  const old = new Map(G.heroes.map(e => [e.kind, e])), base = { archer: 8, knight: 10, barb: 9 };
+  G.heroes = ['archer', 'knight', 'barb'].map((kind, i) => {
+    const prev = old.get(kind), src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
+    e.max = src ? src.max : base[kind]; e.cm = src ? src.cm || 0 : 0;
+    e.hp = prev && !prev.dead ? e.max : Math.ceil(e.max / 2);
+    e.x = 16 + i * 18; e.inv = 1; e.skill = 0.6; e.move = 0; e.vx = 0;
+    e.net = NET.role === 'host' ? NET.slots[kind] || null : null;
+    e.kb = (prev ? prev.kb || 0 : 0) + 1;
+    return e;
+  });
+  spawnMobs(0); possessNext(true);
+  G.banner = { text: 'NIVEL 2', sub: 'EL BOSQUE OSCURO', t: 0, long: true };
+  startPick();
+}
 function spawnMobs(z) {
-  INVADE_MOBS[z].forEach((type, i) => spawnMob(z, type, i));
-  if (hasV('refuerzos')) for (let i = 0; i < 2; i++) spawnMob(z, INVADE_MOBS[z][Math.floor(Math.random() * INVADE_MOBS[z].length)], 6 + i);
+  const list = (G.lvl ? INVADE_MOBS2 : INVADE_MOBS)[z];
+  list.forEach((type, i) => spawnMob(z, type, i));
+  if (hasV('refuerzos')) for (let i = 0; i < 2; i++) spawnMob(z, list[Math.floor(Math.random() * list.length)], 6 + i);
 }
 function spawnMob(z, type, i, late) {
   const Z = ZONES[z], plats = PLATS.filter(p => p.zone === z);
@@ -4396,12 +4780,12 @@ function spawnMob(z, type, i, late) {
   {
     const T = MOB[type];
     let surf = ground;
-    const usePlat = type === 'slime' ? Math.random() < 0.7 : type === 'skarch' ? Math.random() < 0.6 : Math.random() < 0.25;
+    const usePlat = type === 'slime' || type === 'toxic' ? Math.random() < 0.7 : type === 'skarch' ? Math.random() < 0.6 : Math.random() < 0.25;
     const farPlats = plats.filter(p => p.x > Z.start + 90);
     if (usePlat && farPlats.length) surf = farPlats[Math.floor(Math.random() * farPlats.length)];
     const x = surf.x + 4 + Math.random() * Math.max(1, surf.w - T.w - 8);
-    const extra = (type === 'slime' || type === 'red') && hasV('gordos') ? 2 : 0;
-    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h, w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp + extra, max: T.hp + extra, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: (late ? 0.8 : 0.3) + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false, regT: 0 });
+    const extra = (type === 'slime' || type === 'red' || type === 'toxic') && hasV('gordos') ? 2 : 0;
+    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h - (type === 'bat' ? 30 + Math.random() * 20 : 0), w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp + extra, max: T.hp + extra, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: (late ? 0.8 : 0.3) + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false, regT: 0 });
   }
 }
 function enterInvadeZone(n) {
@@ -4411,11 +4795,11 @@ function enterInvadeZone(n) {
   for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); e.cureUsed = false; popup(e.x + 4, e.y - 8, '+2', PAL.l); }
   if (n === 3) {
     G.ctrl = null;
-    G.boss = makePlayerBoss();
+    G.boss = makePlayerBoss(G.lvl ? 'wolf' : 'knight');
     if (hasV('armadura')) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
     for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = 1; }
-    G.banner = { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
-    play('rugido', { vary: false });
+    G.banner = G.lvl ? { text: '¡LLEGARON A LA GUARIDA!', sub: 'AHORA SOS EL CAMPEÓN', t: 0, long: true } : { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
+    play('rugido', { vary: false, rate: G.lvl ? 0.75 : 1 });
     setTempo(148, -2); musicStop(); if (opts.music) musicStart();
     return;
   }
@@ -4427,7 +4811,7 @@ function possessNext(first) {
   if (!alive.length) { G.ctrl = null; return; }
   const bots = G.heroes.filter(e => !e.dead);
   const bx = bots.length ? bots.reduce((s, e) => s + e.x, 0) / bots.length : 0;
-  const pref = ['slime', 'skarch', 'skaxe'][G.z];
+  const pref = (G.lvl ? ['toxic', 'bat', 'pup'] : ['slime', 'skarch', 'skaxe'])[G.z];
   const host = first ? (alive.find(m => m.type === pref) || alive[0]) : alive.slice().sort((a, b) => Math.abs(a.x - bx) - Math.abs(b.x - bx))[0];
   for (const m of G.mobs) m.player = false;
   host.player = true; host.charge = 0; host.charging = false; host.windup = 0; G.ctrl = host;
@@ -4448,12 +4832,13 @@ function invadeWin(text) {
   setTimeout(() => { if (G && G.state === 'win') overlay.hidden = false; }, 2600);
 }
 function updateInvade(dt) {
+  if (G.nextT > 0 && G.state === 'play') { G.nextT -= dt; if (G.nextT <= 0) { G.nextT = 0; invadeNextLevel(); } }
   if (G.z === 3) {
     const Bv = G.boss;
     if (Bv && hasV('regen') && Bv.hp < Bv.maxHp && Bv.state !== 'dying') { Bv.regT = (Bv.regT || 0) + dt; if (Bv.regT > 2.5) { Bv.regT = 0; Bv.hp++; Bv.show = Math.max(Bv.show, Bv.hp); } }
     if (G.boss) updatePlayerBoss(G.boss, dt);
     updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt);
-    if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin('¡DEFENDISTE EL TRONO!');
+    if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin(G.lvl ? '¡DEFENDISTE LA GUARIDA!' : '¡DEFENDISTE EL TRONO!');
   } else {
     updateMobs(dt); updateBots(dt); updateShots(dt); updateArrows(dt);
     const alive = G.mobs.filter(m => !m.dead && m.zone === G.z).length;
@@ -4507,7 +4892,21 @@ function updateMobs(dt) {
   }
   G.mobs = G.mobs.filter(m => !(m.dead && m.deadT <= 0));
 }
+// vuelo del murciélago: va hacia (ax, ay) con suavidad
+function batFly(m, dt, ax, ay, speed) {
+  const Z = ZONES[m.zone], cx = m.x + m.w / 2, cy = m.y + m.h / 2, dx = ax - cx, dy = ay - cy, d = Math.hypot(dx, dy) || 1;
+  const sp = speed * (hasV('rapidos') ? 1.25 : 1);
+  if (m.knockT > 0) m.knockT -= dt;
+  else { m.vx += (dx / d * sp * Math.min(1, d / 8) - m.vx) * Math.min(1, dt * 5); m.vy += (dy / d * sp * Math.min(1, d / 8) - m.vy) * Math.min(1, dt * 5); }
+  m.prevBottom = m.y + m.h;
+  m.x += m.vx * dt; m.y += m.vy * dt;
+  const lo = Z.start + 4, hi = (m.zone < 3 ? GATES[m.zone].x : Z.end) - m.w;
+  m.x = Math.max(lo, Math.min(hi, m.x)); m.y = Math.max(8, Math.min(GROUND - m.h - 1, m.y));
+  m.onGround = false; m.runT = 0;
+  if (m.inv > 0) m.inv -= dt;
+}
 function mobPhysics(m, dt, dir, speed) {
+  if (m.type === 'bat') { batFly(m, dt, m.x + m.w / 2 + dir * 20, m.y + m.h / 2, speed); return; }
   const Z = ZONES[m.zone];
   if (m.knockT > 0) m.knockT -= dt;
   else { const acc = (m.onGround ? 700 : 450) * dt; m.vx += Math.max(-acc, Math.min(acc, dir * speed * (hasV('rapidos') ? 1.25 : 1) - m.vx)); }
@@ -4536,7 +4935,16 @@ function playerMob(m, dt) {
     else { m.vy = -T.jump; m.onGround = false; play('salto', { rate: isSkel(m) ? 1.15 : 0.8 }); if (jOn()) { m.sx = 0.7; m.sy = 1.35; } }
   }
   if (input.down && !input.jump && m.onGround && m.surf && !m.surf.ground) m.drop = 0.25;
-  if (m.type === 'slime' || m.type === 'red') {
+  if (m.type === 'bat') {
+    // volar: salto sube, abajo baja; ataque es una picada hacia adelante
+    if (m.dive > 0) { m.dive -= dt; batFly(m, dt, m.x + m.w / 2 + m.face * 40, m.y + 40, 175); return; }
+    if (input.attackPressed && m.cool <= 0) { m.dive = 0.45; m.cool = 0.7; play('dash', { rate: 1.6, vol: 0.5 }); }
+    const vy = input.jump ? -1 : input.down ? 1 : 0;
+    batFly(m, dt, m.x + m.w / 2 + dir * 30, m.y + m.h / 2 + vy * 30, T.pspeed);
+    return;
+  }
+  if (m.type === 'pup' && input.attackPressed && m.cool <= 0 && m.onGround) { pupLunge(m); }
+  if (isSlimeMob(m)) {
     if (input.attack && m.cool <= 0) { if (!m.charging) play('menu', { rate: 0.7, vol: 0.4 }); m.charging = true; m.charge = Math.min(1, m.charge + dt / 0.7); if (jOn()) { m.sx = 1 + m.charge * 0.25; m.sy = 1 - m.charge * 0.2; } }
     if (!input.attack && m.charging) { lob(m, 0.15 + 0.85 * m.charge, true); m.charging = false; m.charge = 0; m.cool = 0.4; }
   } else if (m.type === 'skarch') { if (input.attackPressed && m.cool <= 0) mobShoot(m, true); }
@@ -4550,7 +4958,25 @@ function aiMob(m, dt) {
   let dx = 0, dist = 999, dy = 999;
   if (tgt) { dx = (tgt.x + 4) - cx; dist = Math.abs(dx); dy = (tgt.y + tgt.h) - (m.y + m.h); }
   const patrol = () => { dir = m.pdir; speed = T.speed * 0.5; m.face = m.pdir; };
-  if (m.type === 'slime') {
+  if (m.type === 'bat') {
+    // revolotea arriba del héroe más cercano y baja en picada
+    m.t2 = (m.t2 || Math.random() * 6) + dt;
+    if (m.dive > 0) { m.dive -= dt; batFly(m, dt, m.tx, m.ty, 170); return; }
+    if (tgt && dist < 180) {
+      batFly(m, dt, tgt.x + 4 + Math.sin(m.t2 * 1.3) * 30, tgt.y - 24 + Math.sin(m.t2 * 3) * 4, T.speed);
+      if (m.cool <= 0 && dist < 36) { m.dive = 0.7; m.tx = tgt.x + 4; m.ty = tgt.y + 8; m.cool = 2.2 + Math.random() * 1.5; play('dash', { rate: 1.6, vol: 0.35 }); }
+    } else batFly(m, dt, m.x + m.w / 2 + m.pdir * 20, 50 + Math.sin(m.t2) * 10, T.speed * 0.5);
+    m.face = Math.sign(m.vx) || m.face;
+    return;
+  }
+  if (m.type === 'pup') {
+    if (tgt && dist < 240) {
+      dir = Math.sign(dx); m.face = dir || m.face;
+      if (m.onGround && m.cool <= 0 && dist < 44 && Math.abs(dy) < 14) pupLunge(m);
+      m.jumpT -= dt;
+      if (m.onGround && m.jumpT <= 0 && dy < -10 && dist < 70) { m.vy = -270; m.vx = dir * T.speed * 1.3; m.onGround = false; m.jumpT = 1 + Math.random() * 0.6; }
+    } else patrol();
+  } else if (m.type === 'slime' || m.type === 'toxic') {
     patrol();
     m.hopT -= dt;
     if (m.hopT <= 0 && m.onGround) { m.vy = -150; m.onGround = false; m.hopT = 1.5 + Math.random() * 2.5; if (jOn()) { m.sx = 0.7; m.sy = 1.4; } }
@@ -4583,9 +5009,15 @@ function aiMob(m, dt) {
   if (speed < T.speed && Math.random() < 0.004) m.pdir = -m.pdir;
   mobPhysics(m, dt, dir, speed);
 }
+// mordisco del lobezno: un salto corto y rápido hacia adelante
+function pupLunge(m) {
+  m.vx = m.face * 250; m.vy = -110; m.onGround = false; m.knockT = 0.3; m.cool = 1.2 + Math.random() * 0.5; m.swingT = 0;
+  play('salto', { rate: 1.9, vol: 0.6 });
+  if (jOn()) { m.sx = 1.4; m.sy = 0.7; }
+}
 function lob(m, power, isPlayer, vx0, vy0) {
   const vx = vx0 !== undefined ? vx0 : m.face * (50 + 150 * power), vy = vy0 !== undefined ? vy0 : -(140 + 110 * power);
-  G.shots.push({ id: uid++, x: m.x + m.w / 2, y: m.y, vx, vy, player: isPlayer, red: m.type === 'red', t: 0, dead: false });
+  G.shots.push({ id: uid++, x: m.x + m.w / 2, y: m.y, vx, vy, player: isPlayer, red: m.type === 'red', toxic: m.type === 'toxic', t: 0, dead: false });
   play('salto', { rate: 1.6, vol: 0.45 });
   if (jOn()) { m.sx = 1.3; m.sy = 0.7; burst(m.x + m.w / 2, m.y, 4, m.type === 'red' ? [PAL.r, PAL.o] : [PAL.g, PAL.l], 30, 20, 200, 0.3); }
 }
@@ -4610,7 +5042,7 @@ function updateShots(dt) {
       if (m) { hitMob(m, 2, Math.sign(s.vx) || 1, 'arrow'); splat(s); continue; }
     } else {
       const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 }));
-      if (e) { hitHero(e, 1, Math.sign(s.vx) || 1, s.player); splat(s); continue; }
+      if (e) { if (hitHero(e, 1, Math.sign(s.vx) || 1, s.player) && s.toxic) e.poisonT = 1.6; splat(s); continue; }
     }
     for (const surf of SURFACES) if (s.vy > 0 && py <= surf.y + 1 && s.y >= surf.y && s.x >= surf.x && s.x <= surf.x + surf.w) { s.y = surf.y - 1; splat(s); break; }
     if (s.x < ZONES[G.z].start - 20 || s.x > ZONES[G.z].end + 20 || s.y > H + 10) s.dead = true;
@@ -4690,11 +5122,12 @@ function updateBots(dt) {
       const hb = slashBoxOf(e), sid = e.id * 10000 + swingKey(e);
       for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; m.inv = 0; hitMob(m, heroDmg(e, slashBase(e)), e.spin ? Math.sign(m.x + m.w / 2 - e.x - 4) || 1 : e.face, 'sword', e.kind === 'knight' && m.stunT > 0); }
     }
+    if (!e.net) for (const tr of TRAPS) if (trapPhase(tr, G.t) === 2 && e.inv <= 0 && overlap(e, trapBox(tr))) hitHero(e, 1, Math.sign(e.x + 4 - (tr.x + tr.w / 2)) || 1);
     // los héroes de jugadores avisan desde su pantalla qué pisaron y qué les pegó
     if (!e.net) for (const m of G.mobs) {
       if (m.dead || m.spawn > 0 || !overlap(e, m)) continue;
       if (e.vy > 20 && e.prevBottom <= m.y + 3) { kick(e, e.vx, -230, 2); if (jOn()) { e.sx = 0.8; e.sy = 1.25; } hitMob(m, 1, 0, 'stomp'); }
-      else if (e.inv <= 0) hitHero(e, 1, Math.sign((e.x + 4) - (m.x + m.w / 2)) || 1, m.player);
+      else if (e.inv <= 0) { if (hitHero(e, 1, Math.sign((e.x + 4) - (m.x + m.w / 2)) || 1, m.player) && m.type === 'toxic') e.poisonT = 1.6; }
     }
   }
   G.heroes = G.heroes.filter(e => !(e.dead && e.popped));
@@ -4769,8 +5202,12 @@ function drawMob(m) {
   if (m.stunT > 0 && !m.dead) stunStars(m.x + m.w / 2, m.y - 4);
   const left = m.face < 0, white = m.flash > 0;
   const cx = m.x + m.w / 2;
-  if (m.type === 'slime' || m.type === 'red') {
-    const set = m.type === 'red' ? RED : SLIME;
+  if (m.type === 'bat' || m.type === 'pup') {
+    const set = m.type === 'bat' ? (Math.floor(G.t * 10 + m.id) % 2 ? BAT.a : BAT.b) : (m.runT > 0 && Math.floor(m.runT * 12) % 2) || m.swingT < 0.25 ? PUP.run : PUP.n;
+    const spr = white ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
+    if (jOn()) drawScaled(spr, cx, m.y + m.h, m.sx, m.sy); else g.drawImage(spr, Math.round(m.x), Math.round(m.y - 1));
+  } else if (isSlimeMob(m)) {
+    const set = m.type === 'red' ? RED : m.type === 'toxic' ? TOXIC : SLIME;
     const spr = white ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
     const sc = m.spawn > 0 ? Math.max(0.1, 1 - m.spawn) : 1;
     const wob = jOn() && !m.dead ? 1 + Math.sin(G.t * (m.type === 'red' ? 14 : 9) + m.x) * 0.06 : 1;
@@ -4821,8 +5258,8 @@ function drawShots() {
   for (const s of G.shots) {
     const x = Math.round(s.x), y = Math.round(s.y);
     g.fillStyle = PAL.k; g.fillRect(x - 2, y - 1, 5, 3); g.fillRect(x - 1, y - 2, 3, 5);
-    g.fillStyle = s.hero ? PAL.y : s.red ? PAL.r : PAL.g; g.fillRect(x - 1, y - 1, 3, 3);
-    g.fillStyle = s.hero ? PAL.w : s.red ? PAL.o : PAL.l; g.fillRect(x - 1, y - 1, 1, 1); g.fillStyle = '#ffffff'; g.fillRect(x - 1, y - 1, 0.5, 0.5);
+    g.fillStyle = s.hero ? PAL.y : s.toxic ? PAL.p : s.red ? PAL.r : PAL.g; g.fillRect(x - 1, y - 1, 3, 3);
+    g.fillStyle = s.hero ? PAL.w : s.toxic ? PAL.l : s.red ? PAL.o : PAL.l; g.fillRect(x - 1, y - 1, 1, 1); g.fillStyle = '#ffffff'; g.fillRect(x - 1, y - 1, 0.5, 0.5);
   }
   if (G.soul) {
     const k = Math.min(1, G.soul.t / 0.6), x = Math.round(lerp(G.soul.x, G.soul.tx, k)), y = Math.round(lerp(G.soul.y, G.soul.ty, k) - Math.sin(k * Math.PI) * 30);
@@ -4872,7 +5309,41 @@ function drawSword(B, fill) {
 const ARC_BLUE = [PAL.w, PAL.c, PAL.b, PAL.B], ARC_FIRE = [PAL.w, PAL.y, PAL.o, RAMPS.r[0]];
 const BOSS_PAD = 44, BOSS_GW = BW + BOSS_PAD * 2, BOSS_GH = BH + BOSS_PAD + 40;
 let BOSS_K = null;
+function wolfPose(B) {
+  const s = B.state, a = B.atk;
+  if (s === 'drop' || (s === 'act' && a === 'slam' && !B.landed)) return 'leap';
+  if (s === 'roar' || s === 'rage' || (a === 'rain' && (s === 'tele' || s === 'act'))) return 'howl';
+  if (s === 'act' && a === 'charge') return Math.floor(G.t * 18) % 2 ? 'run1' : 'run2';
+  if (s === 'act' && a === 'sweep') return B.swing && B.swing.t < 0.12 ? 'leap' : 'crouch';
+  if (s === 'tele' || s === 'stun' || s === 'dying' || (s === 'rec' && B.crouch > 1)) return 'crouch';
+  if (B.walking) return Math.floor(G.t * 9) % 2 ? 'run1' : 'run2';
+  return 'stand';
+}
+function drawWolf(B, over, alpha) {
+  const pose = wolfPose(B), set = WOLF[pose], white = !!over || B.flash > 0;
+  const img = white ? (B.face > 0 ? set.wr : set.wl) : (B.face > 0 ? set.r : set.l);
+  const cx = B.x + BW / 2, bottom = B.y + BH + 1;
+  g.save();
+  if (alpha) g.globalAlpha = alpha;
+  if (!over) {
+    // contraluz: un borde pálido para que el lobo negro se despegue de la cueva
+    const rim = B.face > 0 ? set.wr : set.wl, a0 = g.globalAlpha;
+    g.globalAlpha = a0 * (B.phase === 2 ? 0.42 : 0.3);
+    for (const [ox, oy] of [[-0.5, 0], [0.5, 0], [0, -0.5]]) drawScaled(rim, cx + ox, bottom + oy, jOn() ? B.sx : 1, jOn() ? B.sy : 1);
+    g.globalAlpha = a0;
+  }
+  if (jOn()) drawScaled(img, cx, bottom, B.sx, B.sy); else g.drawImage(img, Math.round(cx - 25), Math.round(bottom - 30));
+  if (!over) {
+    // los ojos se prenden cuando avisa un ataque y en la furia
+    const by = 14 + (pose === 'crouch' ? 3 : 0) - (pose === 'leap' ? 4 : 0), howl = pose === 'howl';
+    const hx = howl ? 40 : 42, hy = howl ? by - 9 : by - 4 + (pose === 'crouch' ? 2 : 0) + (pose === 'leap' ? 1 : 0);
+    const ex = B.face > 0 ? cx - 25 + hx + 2 : cx + 25 - hx - 3, ey = bottom - 30 + hy - 1;
+    if (B.glow ? Math.floor(G.t * 20) % 2 : B.phase === 2) { g.fillStyle = B.glow ? PAL.w : PAL.y; g.fillRect(Math.round(ex), Math.round(ey), 1, 1); }
+  }
+  g.restore();
+}
 function drawBoss(B, over, alpha) {
+  if (isWolf(B)) return drawWolf(B, over, alpha);
   const f = B.face, bx = Math.round(B.x), by = Math.round(B.y);
   const breath = B.state === 'idle' ? (B.walking ? Math.floor(G.t * 8) % 2 : (Math.sin(G.t * 3) > 0.3 ? 1 : 0)) : 0;
   const up = by + Math.round(B.crouch) + breath;
@@ -5015,7 +5486,7 @@ function render() {
     g.fillStyle = v > 0.8 ? '#ffffff' : PAL.s; g.fillRect(s.x, s.y, 0.5, 0.5);
     if (v > 0.93) { g.fillStyle = RAMPS.s[3]; g.fillRect(s.x - 0.5, s.y, 0.5, 0.5); g.fillRect(s.x + 0.5, s.y, 0.5, 0.5); g.fillRect(s.x, s.y - 0.5, 0.5, 0.5); g.fillRect(s.x, s.y + 0.5, 0.5, 0.5); }
   }
-  for (const c of clouds) {
+  for (const c of CUR_LVL ? [] : clouds) {
     const x = ((c.x + T * c.s - camX * 0.2) % (W + 60) + W + 60) % (W + 60) - 40;
     g.drawImage(c.img, q2(x) - 4, c.y - 7);
   }
@@ -5033,6 +5504,16 @@ function render() {
   for (const t of TORCHES) {
     if (t.x < camX - 10 || t.x > camX + W + 10) continue;
     const fl = Math.floor(T * 12 + t.x) % 3;
+    if (CUR_LVL === 1) {
+      // fuegos fatuos del bosque: flotan y titilan en celeste
+      const wy = t.y + Math.sin(T * 2 + t.x) * 3;
+      g.globalCompositeOperation = 'lighter';
+      g.fillStyle = '#001a22'; glowDisc(t.x + 0.5, wy, 12 + fl * 0.5); g.fillStyle = '#00262c'; glowDisc(t.x + 0.5, wy, 5);
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = PAL.c; g.fillRect(t.x - 1, wy - 1, 3, 3); g.fillStyle = PAL.w; g.fillRect(t.x, wy, 1, 1);
+      if (G && jOn() && Math.random() < 0.05) G.parts.push({ x: t.x, y: wy, vx: (Math.random() - 0.5) * 10, vy: -12, g: -6, life: 0.7, max: 0.7, c: PAL.c, s: 1, _n: 1 });
+      continue;
+    }
     g.globalCompositeOperation = 'lighter';
     g.fillStyle = '#2a0e00'; glowDisc(t.x + 0.5, t.y - 4, 15 + fl * 0.5);
     g.fillStyle = '#3a1800'; glowDisc(t.x + 0.5, t.y - 4, 8 + fl * 0.5);
@@ -5071,6 +5552,16 @@ function render() {
     g.fillRect(h.x, h.landY - 4, 1, 1);
     if (on && !h.big) drawText(g, '!', h.x + 1, 13, PAL.r, 2, 'center');
   }
+  // pinchos: agujeritos, la punta que avisa y afuera
+  for (const tr of TRAPS) {
+    if (tr.x > camX + W + 4 || tr.x + tr.w < camX - 4) continue;
+    const ph = trapPhase(tr, G.t);
+    for (let i = tr.x + 1; i < tr.x + tr.w - 1; i += 4) {
+      g.fillStyle = PAL.k; g.fillRect(i, GROUND, 3, 1);
+      if (ph === 1 && Math.floor(G.t * 16) % 2) { g.fillStyle = PAL.s; g.fillRect(i + 1, GROUND - 1, 1, 1); }
+      if (ph === 2) { g.fillStyle = PAL.k; g.fillRect(i, GROUND - 6, 3, 6); g.fillStyle = PAL.S; g.fillRect(i + 1, GROUND - 6, 1, 6); g.fillStyle = PAL.s; g.fillRect(i, GROUND - 3, 1, 3); g.fillStyle = PAL.w; g.fillRect(i + 1, GROUND - 7, 1, 1); }
+    }
+  }
   // monedas
   for (const c of G.coins) {
     if (c.got || c.born < 0) continue;
@@ -5083,13 +5574,13 @@ function render() {
   // slimes
   for (const s of G.slimes) {
     if (s.x < camX - 20 || s.x > camX + W + 10) continue;
-    const set = s.red ? RED : SLIME;
-    const left = s.red ? (G.p.x + 4 < s.x + 5) : s.vx < 0;
+    const set = s.kind === 'toxic' ? TOXIC : s.kind === 'bat' ? (Math.floor(G.t * 10 + s.x) % 2 ? BAT.a : BAT.b) : s.kind === 'pup' ? (s.runT > 0 && Math.floor(s.runT * 12) % 2 ? PUP.run : PUP.n) : s.red ? RED : SLIME;
+    const left = s.red || s.kind === 'pup' ? (G.p.x + 4 < s.x + 5) : s.vx < 0;
     const spr = s.flash > 0 ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
     if (s.spawn > 0) { if (Math.floor(s.spawn * 20) % 2) continue; drawScaled(spr, s.x + 5, s.y + s.h, Math.max(0.1, 1 - s.spawn), Math.max(0.1, 1 - s.spawn)); continue; }
     if (s.parryT > 0 && !s.dead) stunStars(s.x + 5, s.y - 4);
-    const wob = jOn() && !s.dead ? 1 + Math.sin(G.t * (s.red ? 14 : 9) + s.x) * 0.06 : 1;
-    if (jOn()) drawScaled(spr, s.x + 5, s.y + s.h, s.sx / wob, s.sy * wob);
+    const wob = jOn() && !s.dead && s.kind !== 'bat' && s.kind !== 'pup' ? 1 + Math.sin(G.t * (s.red ? 14 : 9) + s.x) * 0.06 : 1;
+    if (jOn()) drawScaled(spr, s.x + s.w / 2, s.y + s.h, s.sx / wob, s.sy * wob);
     else g.drawImage(spr, Math.round(s.x), Math.round(s.y - 2));
   }
   for (const m of G.mobs || []) drawMob(m);
@@ -5108,10 +5599,11 @@ function render() {
     for (const tr of B.trail) drawBoss({ ...B, x: tr.x, y: tr.y, face: tr.face, angle: tr.angle, flash: 0, sx: 1, sy: 1 }, PAL.c, 0.45 * (1 - tr.t / 0.25));
     if (!(B.state === 'dying' && Math.floor(B.t * 14) % 2 && B.t > 1.6)) drawBoss(B);
     if (B.state === 'act' && B.atk === 'sweep' && jOn() && B.swing && B.swing.t < 0.24) {
-      const h = swordHand(B); drawArc(h.x, h.y, B.face, 24, 34, -165, 215, B.swing.t, 0.24);
+      if (isWolf(B)) drawArc(B.x + BW / 2 + B.face * 14, GROUND - 13, B.face, 12, 22, -120, 200, B.swing.t, 0.24, ARC_FIRE);
+      else { const h = swordHand(B); drawArc(h.x, h.y, B.face, 24, 34, -165, 215, B.swing.t, 0.24); }
     }
-    if (B.state === 'tele' && Math.floor(G.t * 10) % 2) drawText(g, '!', B.x + BW / 2 + 1, B.y - 14, B.phase === 2 ? PAL.y : PAL.r, 2, 'center');
-    if (B.state === 'stun') for (let i = 0; i < 3; i++) { const a = G.t * 5 + i * 2.1; g.fillStyle = PAL.y; g.fillRect(Math.round(B.x + BW / 2 + Math.cos(a) * 9), Math.round(B.y - 4 + Math.sin(a) * 3), 1, 1); }
+    if (B.state === 'tele' && Math.floor(G.t * 10) % 2) drawText(g, '!', B.x + BW / 2 + 1, B.y - (isWolf(B) ? 6 : 14), B.phase === 2 ? PAL.y : PAL.r, 2, 'center');
+    if (B.state === 'stun') for (let i = 0; i < 3; i++) { const a = G.t * 5 + i * 2.1; g.fillStyle = PAL.y; g.fillRect(Math.round(B.x + BW / 2 + Math.cos(a) * 9), Math.round(B.y + (isWolf(B) ? 6 : -4) + Math.sin(a) * 3), 1, 1); }
   }
   // ondas de choque
   for (const w of G.waves) {
@@ -5131,8 +5623,9 @@ function render() {
     if (h.phase === 'warn') continue;
     if (h.phase === 'stuck' && h.life < 0.4 && Math.floor(h.life * 20) % 2) continue;
     const wx = h.phase === 'stuck' && h.wob > 0 ? (Math.floor(h.wob * 40) % 2 ? 1 : -1) : 0;
-    if (h.big) g.drawImage(SWORD_DOWN, Math.round(h.x - 2) + wx, Math.round(h.y));
-    else g.drawImage(ARROW_DOWN, Math.round(h.x - 1) + wx, Math.round(h.y));
+    if (h.rock) g.drawImage(ROCK, Math.round(h.x - 4) + wx, Math.round(h.y));
+    else if (h.big) g.drawImage(SWORD_DOWN, Math.round(h.x - 2) + wx, Math.round(h.y));
+    else g.drawImage(CUR_LVL ? BRANCH_DOWN : ARROW_DOWN, Math.round(h.x - 1) + wx, Math.round(h.y));
   }
   if (G.shots) drawShots();
   // Pip y los héroes
@@ -5190,14 +5683,14 @@ function render() {
   if (NET.role === 'guest' && NET.playing && performance.now() - NET.lastSnapAt > 800 && Math.floor(performance.now() / 400) % 2) drawText(g, 'ESPERANDO AL VILLANO...', W / 2, 52, PAL.y, 1, 'center');
   if (G.z < 3 && G.kind !== 'invade') {
     const left = G.slimes.filter(s => !s.dead && s.zone === G.z).length;
-    drawText(g, 'ZONA ' + (G.z + 1) + (G.cleared ? '' : ' · SLIMES ' + left), W / 2, 4, PAL.s, 1, 'center');
+    drawText(g, 'ZONA ' + (G.z + 1) + (G.cleared ? '' : (G.lvl ? ' · ENEMIGOS ' : ' · SLIMES ') + left), W / 2, 4, PAL.s, 1, 'center');
     if (G.cleared && GATES[G.z].open > 0.5 && Math.floor(G.t * 4) % 2) drawText(g, 'SEGUÍ >', W - 6, 96, PAL.y, 1, 'right');
   }
   const Bh = G.boss;
   if (Bh && Bh.state !== 'wait' && Bh.state !== 'drop') {
     const shx = jOn() && Bh.barShake > 0 ? Math.round((Math.random() * 2 - 1) * 2) : 0;
     const bx = 68 + shx, by = 12, bw = 120;
-    drawText(g, bossCtl() ? 'VOS: MEGA CABALLERO' : 'MEGA CABALLERO', W / 2, 4, Bh.phase === 2 ? PAL.o : PAL.s, 1, 'center');
+    drawText(g, (bossCtl() ? 'VOS: ' : '') + bossName(Bh), W / 2, 4, Bh.phase === 2 ? PAL.o : PAL.s, 1, 'center');
     g.fillStyle = PAL.s; g.fillRect(bx - 1.5, by - 1.5, bw + 3, 7);
     g.fillStyle = PAL.k; g.fillRect(bx - 1, by - 1, bw + 2, 6);
     g.fillStyle = PAL.d; g.fillRect(bx, by, bw, 4);
@@ -5235,7 +5728,7 @@ function render() {
     if (G.boss && !(isTouch() && stage.classList.contains('immersive'))) {
       let x = 4;
       for (const atk of ['sweep', 'slam', 'charge', 'rain']) {
-        const lab = PB[atk].label, w = textW(lab) + 6, cd = G.boss.cd[atk], max = PB[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
+        const PP = pbOf(G.boss), lab = PP[atk].label, w = textW(lab) + 6, cd = G.boss.cd[atk], max = PP[atk].cd * (G.boss.phase === 2 ? 0.6 : 1);
         g.fillStyle = PAL.k; g.fillRect(x, 133, w, 9);
         g.fillStyle = cd <= 0 ? PAL.d : PAL.k; g.fillRect(x + 1, 134, w - 2, 7);
         if (cd > 0) { g.fillStyle = PAL.S; g.fillRect(x + 1, 140, Math.round((w - 2) * (1 - cd / max)), 1); }
@@ -5244,6 +5737,8 @@ function render() {
       }
     }
   }
+  const fd = G.nextT > 0 && G.nextT < 0.9 ? 1 - G.nextT / 0.9 : G.fadeIn > 0 ? G.fadeIn / 0.9 : 0;
+  if (fd > 0) { g.fillStyle = 'rgba(10,8,16,' + Math.min(1, fd).toFixed(3) + ')'; g.fillRect(0, 0, W, H); }
   if (G.banner) {
     const t = G.banner.t;
     let y = 46;
@@ -5259,7 +5754,7 @@ function render() {
     g.fillStyle = 'rgba(26,28,44,0.72)'; g.fillRect(0, 0, W, H);
     const heroWin = NET.role === 'guest';
     drawText(g, heroWin ? '¡VICTORIA!' : G.kind === 'boss' || G.kind === 'invade' ? 'FIN DEL REINADO' : 'FIN DEL JUEGO', W / 2, 22, heroWin ? PAL.y : PAL.r, 3, 'center', heroWin ? PAL.r : PAL.k);
-    if (G.kind === 'invade') drawText(g, 'LOS HÉROES TOMARON EL TRONO', W / 2, 66, PAL.w, 1, 'center');
+    if (G.kind === 'invade') drawText(g, G.lvl ? 'LOS HÉROES VENCIERON AL CAMPEÓN' : 'LOS HÉROES TOMARON EL TRONO', W / 2, 66, PAL.w, 1, 'center');
     if (G.kind === 'boss') drawText(g, 'OLEADA ' + G.wave + ' · ' + G.kills + ' HÉROES DERROTADOS', W / 2, 66, PAL.w, 1, 'center');
     if (!heroWin) {
       drawText(g, 'PUNTOS ' + G.score, W / 2, 46, PAL.y, 1, 'center');
@@ -5773,7 +6268,7 @@ class BinR {
 }
 const ST_LIST = ['play', 'over', 'win'];
 const HK_LIST = ['archer', 'knight', 'barb'];
-const MT_LIST = ['slime', 'red', 'skarch', 'skaxe'];
+const MT_LIST = ['slime', 'red', 'skarch', 'skaxe', 'toxic', 'bat', 'pup'];
 const BS_LIST = ['wait', 'drop', 'roar', 'idle', 'tele', 'act', 'rec', 'stun', 'rage', 'dying', 'gone'];
 const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain'];
 const HP_LIST = ['warn', 'fall', 'stuck', 'gone', 'back'];
@@ -5786,7 +6281,7 @@ const SP = {
   m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
   a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
   sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii',
-  b: 'iiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
+  b: 'iiiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
   pp: 'iisiii', rg: 'iiii',
   p: 'iiiiiiiiii',           // x y vx vy gravedad color tamaño vida max dueño
   snd: 'iiiiiis'
@@ -5797,7 +6292,7 @@ function netPack(now) {
   const w = new BinW(), B = G.boss;
   w.u32(Math.round(now));
   const flags = (G.zoom ? 1 : 0) | (G.impact ? 2 : 0) | (G.critText ? 4 : 0) | (G.banner ? 8 : 0) | (G.soul ? 16 : 0) | (B ? 32 : 0);
-  w.rec([enumOf(ST_LIST, G.state), G.z, G.score, C2(G.t % 600), C2(G.endT || 0), G.kills || 0, flags | (G.pick ? 64 : 0), G.ctrl ? G.ctrl.id : 0, G.vcm || 0], 'iiiiiiiii');
+  w.rec([enumOf(ST_LIST, G.state), G.z, G.score, C2(G.t % 600), C2(G.endT || 0), G.kills || 0, flags | (G.pick ? 64 : 0) | (G.nextT > 0 ? 128 : 0), G.ctrl ? G.ctrl.id : 0, G.vcm || 0, G.lvl || 0], 'iiiiiiiiii');
   w.rec(GATES.map(gt => C2(gt.open)), 'iii');
   w.rec([C2(Math.max(0, G.shake)), Math.round(G.shakeMag * 10), C2(G.shakeMax), C2(Math.max(0, G.flashRed))], 'iiii');
   w.rec([Music.bpm, Music.tr, G.state === 'play' && !(B && (B.state === 'dying' || B.state === 'gone')) ? 1 : 0], 'iii');
@@ -5810,11 +6305,11 @@ function netPack(now) {
   w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
   w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0) | (m.stunT > 0 ? 16 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
   w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0) | (a.power ? 8 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
-  w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), (q.red ? 1 : 0) | (q.hero ? 2 : 0)]), SP.sh);
-  w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), h.big ? 1 : 0, C2(h.life), C2(h.wob)]), SP.hz);
+  w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), (q.red ? 1 : 0) | (q.hero ? 2 : 0) | (q.toxic ? 4 : 0)]), SP.sh);
+  w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), (h.big ? 1 : 0) | (h.rock ? 2 : 0), C2(h.life), C2(h.wob)]), SP.hz);
   w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.hero ? v.dir * 2 : v.dir]), SP.wv);
   if (B) {
-    w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp], SP.b);
+    w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp, isWolf(B) ? 1 : 0], SP.b);
     w.list(B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)]), SP.tr);
   }
   w.list(G.pops.map(p => [H2(p.x), H2(p.y), p.text, cIdx(p.c), C2(p.t), p.o || 0]), SP.pp);
@@ -5838,8 +6333,11 @@ const POV = {
   'MODO ONLINE': ['MODO ONLINE', 'LLEGUEN AL TRONO'],
   'ZONA PERDIDA': ['¡PASO LIBRE!', 'SIGAN ADELANTE'],
   '¡LLEGARON AL TRONO!': ['¡EL SALÓN DEL TRONO!', 'DERROTEN AL MEGA CABALLERO'],
+  '¡LLEGARON A LA GUARIDA!': ['¡LA GUARIDA DEL LOBO!', 'DERROTEN AL CAMPEÓN'],
+  '¡CAYÓ TU JEFE!': ['¡GANARON!', 'EL MEGA CABALLERO CAYÓ · SIGAN AL BOSQUE'],
   '¡DETUVISTE A LOS HÉROES!': ['GANÓ EL VILLANO', ''],
   '¡DEFENDISTE EL TRONO!': ['GANÓ EL VILLANO', ''],
+  '¡DEFENDISTE LA GUARIDA!': ['GANÓ EL VILLANO', ''],
   'TE ELIMINARON': null, 'AHORA SOS': null
 };
 function povBanner(b) {
@@ -5851,7 +6349,7 @@ function povBanner(b) {
 function netDecode(bytes) {
   const r = new BinR(bytes), L = v => v / 2, P = v => v / 100;
   const T = r.u32();
-  const [st, z, sc, t, e, k, flags, ctl, vcm] = r.rec('iiiiiiiii');
+  const [st, z, sc, t, e, k, flags, ctl, vcm, lvl] = r.rec('iiiiiiiiii');
   const gates = r.rec('iii').map(P), fx = r.rec('iiii'), mu = r.rec('iii');
   const zo = flags & 1 ? r.rec('iii') : null, im = flags & 2 ? r.rec('iiii') : null, ct = flags & 4 ? r.rec('iii') : null;
   const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
@@ -5862,7 +6360,7 @@ function netDecode(bytes) {
   const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
     T, kind: 'invade', state: ST_LIST[st] || 'play', z, score: sc, shownScore: sc, scoreBump: 0, t: P(t), endT: P(e), kills: k,
-    gates, mu, ctrlId: ctl, vcm, pick,
+    gates, mu, ctrlId: ctl, vcm, pick, lvl, nextT: flags & 128 ? 1 : 0,
     snd: snd.map(q => [q[0], SND_LIST[q[1]] || 'menu', q[2], q[3], q[4], q[5], q[6]]),
     shake: P(fx[0]), shakeMag: fx[1] / 10, shakeMax: P(fx[2]) || 1, flashRed: P(fx[3]),
     zoom: zo ? { t: P(zo[0]), x: L(zo[1]), y: L(zo[2]) } : null,
@@ -5873,10 +6371,10 @@ function netDecode(bytes) {
     heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, cm: q[20] || 0 })),
     mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), stunT: q[5] & 16 ? 1 : 0, spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
     arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
-    shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2) })),
-    hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!q[7], life: P(q[8]), wob: P(q[9]) })),
+    shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2), toxic: !!(q[3] & 4) })),
+    hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!(q[7] & 1), rock: !!(q[7] & 2), life: P(q[8]), wob: P(q[9]) })),
     waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: Math.sign(q[2]) || 1, hero: Math.abs(q[2]) === 2 })),
-    boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
+    boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], type: b[22] ? 'wolf' : 'knight', trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
     pops: pp.map(q => ({ x: L(q[0]), y: L(q[1]), text: q[2], c: CLIST[q[3]] || PAL.w, t: P(q[4]), o: q[5] })),
     rings: rg.map(q => ({ x: L(q[0]), y: L(q[1]), t: P(q[2]), c: CLIST[q[3]] || PAL.w })),
     newParts: ps.map(q => ({ x: L(q[0]), y: L(q[1]), vx: q[2], vy: q[3], g: q[4] * 10, c: CLIST[q[5]] || PAL.w, s: q[6] & 7, star: !!(q[6] & 8), life: P(q[7]), max: P(q[8]) || 0.1, o: q[9] })),
@@ -5899,6 +6397,7 @@ function netView(now, real) {
   const al = b.T > a.T ? Math.max(0, Math.min(1, (tgt - a.T) / (b.T - a.T))) : 1;
   const mix = (la, lb) => { const m = new Map(la.map(o => [o.id, o])); return lb.map(o => { const p = o.id && m.get(o.id); return p ? Object.assign({}, o, { x: p.x + (o.x - p.x) * al, y: p.y + (o.y - p.y) * al }) : o; }); };
   const V = Object.assign({}, b);
+  if ((V.lvl || 0) !== CUR_LVL) setLevel(V.lvl || 0); // el villano pasó de nivel
   V.heroes = mix(a.heroes, b.heroes); V.mobs = mix(a.mobs, b.mobs); V.shots = mix(a.shots, b.shots);
   V.arrows = mix(a.arrows, b.arrows); V.hazards = mix(a.hazards, b.hazards); V.waves = mix(a.waves, b.waves);
   if (a.boss && b.boss) V.boss = Object.assign({}, b.boss, { x: a.boss.x + (b.boss.x - a.boss.x) * al, y: a.boss.y + (b.boss.y - a.boss.y) * al, angle: a.boss.angle + (b.boss.angle - a.boss.angle) * al });
@@ -6030,7 +6529,7 @@ function netPredict(real) {
   let onHead = false;
   if (m.vy > 20) {
     const mob = G.mobs.find(o => !o.dead && o.spawn <= 0 && overlap(m, o) && m.prevBottom <= o.y + 3);
-    const head = !mob && bossOn && m.prevBottom <= B.y + 2 && overlap(m, bossHead(B));
+    const head = !mob && bossOn && m.prevBottom <= bossHead(B).y + 4 && overlap(m, bossHead(B));
     if (mob || head) {
       m.vy = head ? -250 : -230; m.onGround = false; m.cut = true; m.bounceAt = now;
       if (jOn()) { m.sx = 0.8; m.sy = 1.25; }
@@ -6060,6 +6559,7 @@ function netPredict(real) {
       else if (!onHead && B.state !== 'stun' && overlap(m, bossBody(B))) hit = [6, 0, dirB, B.state === 'act' && B.atk === 'charge' ? 2 : 1];
     }
     if (!hit) for (const w of G.waves) if (!w.hero && overlap(m, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { hit = [9, w.id, w.dir || 1, 1]; break; }
+    if (!hit) for (const tr of TRAPS) if (trapPhase(tr, G.t) === 2 && overlap(m, trapBox(tr))) { hit = [12, tr.id, Math.sign(m.x + 4 - (tr.x + tr.w / 2)) || 1, 1]; break; }
     if (!hit) for (const h of G.hazards) if (h.phase === 'fall' && overlap(m, hazBox(h))) { hit = [10, h.id, Math.sign(m.x + 4 - h.x) || 1, 1]; break; }
     const pkey = hit && hit[0] + ':' + hit[1];
     if (hit && NET.parried.has(pkey) && now - NET.parried.get(pkey) < 1500) hit = null; // ya lo devolví
@@ -6230,12 +6730,12 @@ function netHero(e, dt) {
       if (kind !== 2 && kind !== 11 && (h[4] | 0) < 0) netParry(e, kind, id, dir); // parry: aturde o devuelve
       else if (kind !== 2 && kind !== 11 && (h[4] | 0) === 0) netBlocked(e, kind, id, dir); // lo frenó el escudo
       else if (kind === 2) { const m = G.mobs.find(o => o.id === id && !o.dead); if (m) hitMob(m, 1, 0, 'stomp'); }
-      else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); hitHero(e, 1, dir, s ? s.player : false, true); if (s) splat(s); }
+      else if (kind === 4) { const s = (G.shots || []).find(o => o.id === id); if (hitHero(e, 1, dir, s ? s.player : false, true) && s && s.toxic) e.poisonT = 1.6; if (s) splat(s); }
       else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; if (hitHero(e, 1, dir, a ? a.player : false, true) && hasV('veneno')) e.poisonT = 1.6; }
       else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir, true, true); }
       else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
       else if (kind >= 6) hitHero(e, Math.max(1, Math.min(2, h[4] | 0)), dir, true, true); // jefe: choque, tajo, salto aplastante u onda
-      else { const m = G.mobs.find(o => o.id === id); hitHero(e, kind === 3 ? (hasV('hachas') ? 3 : 2) : 1, dir, m ? m.player : false, true); }
+      else { const m = G.mobs.find(o => o.id === id); if (hitHero(e, kind === 3 ? (hasV('hachas') ? 3 : 2) : 1, dir, m ? m.player : false, true) && m && m.type === 'toxic') e.poisonT = 1.6; }
       NET.sndOwner = null;
     }
   }
@@ -6332,7 +6832,7 @@ function netHint() {
   const e = G.heroes.find(h => h.net === NET.me);
   if (!e) return 'MIRANDO LA PARTIDA';
   if (e.dead) return 'TE ELIMINARON · MIRANDO';
-  return 'SOS EL ' + KIND_NAME[e.kind] + ' · LLEGUEN AL TRONO';
+  return 'SOS EL ' + KIND_NAME[e.kind] + (G.lvl ? ' · LLEGUEN A LA GUARIDA' : ' · LLEGUEN AL TRONO');
 }
 
 /* ---- salas ---- */
