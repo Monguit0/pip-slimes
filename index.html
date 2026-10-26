@@ -3035,7 +3035,7 @@ function stunMob(m, dir) {
 }
 function stunBoss(B) {
   if (!B || B.state === 'dying' || B.state === 'gone' || B.state === 'wait' || B.state === 'drop') return;
-  B.vx = 0; B.swing = null; B.glow = false; B.landed = true; B.stunDur = 1.6; B.flash = 0.1;
+  B.vx = 0; B.swing = null; B.glow = false; B.landed = true; B.stunDur = 1.6; B.flash = 0.1; B.parried = true;
   setState(B, 'stun');
   play('metal', { rate: 0.5, vary: false }); boom(0.6);
 }
@@ -3514,10 +3514,10 @@ function updateSlash() {
   for (const s of G.slimes) {
     if (s.dead || s.spawn > 0 || s.lastSwing === key || !overlap(hb, s)) continue;
     s.lastSwing = key;
-    hitSlime(s, dmg, 'sword', p.spin ? Math.sign(s.x + 5 - p.x - 4) || 1 : p.face);
+    hitSlime(s, dmg, 'sword', p.spin ? Math.sign(s.x + 5 - p.x - 4) || 1 : p.face, G.kind === 'knight' && s.parryT > 0);
   }
   const B = G.boss;
-  if (B && B.hitSwing !== key && overlap(hb, bossBody(B))) { B.hitSwing = key; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4); }
+  if (B && B.hitSwing !== key && overlap(hb, bossBody(B))) { B.hitSwing = key; damageBoss(dmg, p.face > 0 ? Math.max(hb.x, B.x + 3) + 2 : Math.min(hb.x + hb.w, B.x + 19) - 2, p.y + 4, G.kind === 'knight' && B.state === 'stun' && B.parried); }
   if (p.big) slashClear(hb);
   for (const c of G.coins) if (!c.got && c.born >= 0 && overlap(hb, { x: c.x - 3, y: c.y - 4, w: 6, h: 8 })) collectCoin(c);
   for (const h of G.hazards) {
@@ -3645,9 +3645,10 @@ function collectCoin(c) {
   burst(c.x, c.y, 8, [PAL.y, PAL.w, PAL.o], 55, 30, 160, 0.45);
   popup(c.x, c.y - 6, '+' + pts, G.combo > 1 ? PAL.c : PAL.y);
 }
-function hitSlime(s, dmg, how, dir) {
+// force: golpe crítico seguro (el caballero contra alguien aturdido por su parry)
+function hitSlime(s, dmg, how, dir, force) {
   if (s.dead) return;
-  const isCrit = rollCrit();
+  const isCrit = force || rollCrit();
   s.hp -= isCrit ? dmg * 3 : dmg;
   if (isCrit) crit(s.x + 5, s.y + 3);
   if (s.hp <= 0) { killSlime(s, how, dir, isCrit); return; }
@@ -3790,7 +3791,7 @@ function updateBoss(dt, prevBottom) {
     case 'stun':
       B.angle = lerp(B.angle, 95, dt * 8); B.crouch = 2;
       if (B.y < GROUND - BH) { B.vy = Math.max(0, B.vy || 0) + 1400 * dt; B.y = Math.min(GROUND - BH, B.y + B.vy * dt); }
-      if (B.t > (B.stunDur || (ph2 ? 1.0 : 1.4))) { B.stunDur = 0; B.crouch = 0; setState(B, 'idle'); B.idleDur = 0.3; }
+      if (B.t > (B.stunDur || (ph2 ? 1.0 : 1.4))) { B.stunDur = 0; B.parried = false; B.crouch = 0; setState(B, 'idle'); B.idleDur = 0.3; }
       break;
     case 'rage':
       B.angle = lerp(B.angle, -90, dt * 6); B.crouch = 0;
@@ -3922,10 +3923,10 @@ function updateWaves(dt) {
   }
   G.waves = G.waves.filter(w => !w.dead);
 }
-function damageBoss(dmg, x, y) {
+function damageBoss(dmg, x, y, force) {
   const B = G.boss;
   if (!B || !bossActive(B)) return false;
-  const isCrit = rollCrit();
+  const isCrit = force || rollCrit();
   let total = isCrit ? dmg * 3 : dmg;
   if (B.state === 'stun') total = Math.ceil(total * 1.5);
   B.hp = Math.max(0, B.hp - total); B.showT = 0.45; B.barShake = 0.2; B.flash = 0.07;
@@ -4130,7 +4131,7 @@ function updatePlayerBoss(B, dt) {
     case 'stun':
       B.angle = lerp(B.angle, 95, dt * 8); B.crouch = 2;
       if (B.y < GROUND - BH) { B.vy = (B.vy || 0) + 1400 * dt; B.y = Math.min(GROUND - BH, B.y + B.vy * dt); }
-      if (B.t > (B.stunDur || 1.6)) { B.crouch = 0; setState(B, 'idle'); }
+      if (B.t > (B.stunDur || 1.6)) { B.crouch = 0; B.parried = false; setState(B, 'idle'); }
       break;
     case 'rec':
       B.angle = lerp(B.angle, 65, dt * 6); B.crouch = lerp(B.crouch, 0, dt * 10);
@@ -4215,7 +4216,7 @@ function updateHeroes(dt) {
     if (e.dead || !B || B.state === 'dying') continue;
     if (MELEE(e.kind) && slashActive(e) && e.hitKey !== swingKey(e) && overlap(slashBoxOf(e), bossBody(B))) {
       e.hitKey = swingKey(e);
-      bossTakeHit(heroDmg(e, slashBase(e)), e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4);
+      bossTakeHit(heroDmg(e, slashBase(e)), e.face > 0 ? B.x + 4 : B.x + BW - 4, e.y + 4, e.kind === 'knight' && B.state === 'stun' && B.parried);
     }
     if (e.net) continue; // pisotón y choque con el jefe los avisa la pantalla del jugador
     if (e.vy > 20 && e.prevBottom <= B.y + 2 && overlap(e, bossHead(B))) {
@@ -4322,10 +4323,10 @@ function heroDeath(e, dir, isCrit) {
   G.score += pts; G.scoreBump = 1; G.kills = (G.kills || 0) + 1;
   popup(e.x + 4, e.y - 8, '+' + pts, isCrit ? PAL.y : PAL.l);
 }
-function bossTakeHit(dmg, x, y) {
+function bossTakeHit(dmg, x, y, force) {
   const B = G.boss;
   if (!B || B.state === 'dying' || B.hurtInv > 0) return false;
-  const isCrit = Math.random() < 0.1;
+  const isCrit = force || Math.random() < 0.1;
   const total = isCrit ? dmg * 3 : dmg;
   B.hp = Math.max(0, B.hp - total); B.showT = 0.45; B.barShake = 0.25; B.flash = 0.07; B.hurtInv = 0.2;
   play('metal', { rate: 0.85 }); vib(25);
@@ -4637,9 +4638,9 @@ function mobSwing(m, isPlayer) {
   if (jOn()) { m.vx += m.face * 40; m.sx = 1.2; m.sy = 0.86; }
 }
 const axeBox = m => m.face > 0 ? { x: m.x + 5, y: m.y - 6, w: 18, h: m.h + 8 } : { x: m.x - 15, y: m.y - 6, w: 18, h: m.h + 8 };
-function hitMob(m, dmg, dir, how) {
+function hitMob(m, dmg, dir, how, force) {
   if (m.dead || m.inv > 0) return;
-  const isCrit = Math.random() < 0.1;
+  const isCrit = force || Math.random() < 0.1;
   const total = isCrit ? dmg * 3 : dmg;
   m.hp -= total; m.inv = 0.3; m.flash = 0.1; m.charging = false; m.charge = 0; m.windup = 0;
   if (how !== 'stomp') { m.knockT = 0.2; m.vx = (dir || 1) * 110; m.vy = -120; m.onGround = false; }
@@ -4687,7 +4688,7 @@ function updateBots(dt) {
     if (e.dead) continue;
     if (MELEE(e.kind) && slashActive(e)) {
       const hb = slashBoxOf(e), sid = e.id * 10000 + swingKey(e);
-      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; m.inv = 0; hitMob(m, heroDmg(e, slashBase(e)), e.spin ? Math.sign(m.x + m.w / 2 - e.x - 4) || 1 : e.face, 'sword'); }
+      for (const m of G.mobs) if (!m.dead && m.spawn <= 0 && m.lastSwing !== sid && overlap(hb, m)) { m.lastSwing = sid; m.inv = 0; hitMob(m, heroDmg(e, slashBase(e)), e.spin ? Math.sign(m.x + m.w / 2 - e.x - 4) || 1 : e.face, 'sword', e.kind === 'knight' && m.stunT > 0); }
     }
     // los héroes de jugadores avisan desde su pantalla qué pisaron y qué les pegó
     if (!e.net) for (const m of G.mobs) {
