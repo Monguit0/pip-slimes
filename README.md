@@ -34,7 +34,10 @@ Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con s
 - **Arquero · dash** (`Shift` o `V`, o el botón *Dash*): sale disparado hacia adelante y por un instante es intangible,
   así que atraviesa enemigos, flechas y espadas sin recibir daño. Un dash en el aire hasta volver a pisar el suelo.
 - **Caballero · escudo** (mantené `Shift` o `V`, o el botón *Escudo*): mientras lo sostenés no recibe daño, camina
-  más lento y no ataca. Gasta energía mientras está levantado y un poco más con cada golpe que frena; si se vacía, se rompe.
+  más lento y no ataca. Gasta energía mientras está levantado y bastante más con cada golpe que frena; si se vacía, se rompe.
+  **Parry:** si lo levantás justo antes del golpe (un quinto de segundo), no gasta nada (te devuelve un poco), el enemigo
+  queda aturdido unos segundos (también el Mega Caballero) y los proyectiles vuelven: flechas, babas, espadas que caen
+  y ondas del jefe le pegan a los enemigos.
 - **Ataques cargados** (mantené `X` y soltá cuando brille): el arquero tira un flechazo que atraviesa a todos los enemigos
   y pega más fuerte (mientras carga no se puede mover; saltar cancela la carga). El caballero hace un espadazo con más
   alcance y daño que además rompe babas, flechas, espadas que caen y ondas del jefe.
