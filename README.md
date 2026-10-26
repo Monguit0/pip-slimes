@@ -37,7 +37,7 @@ Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con s
   más lento y no ataca. Gasta energía mientras está levantado y bastante más con cada golpe que frena; si se vacía, se rompe.
   **Parry:** si lo levantás justo antes del golpe (un quinto de segundo), no gasta nada (te devuelve un poco), el enemigo
   queda aturdido unos segundos (también el Mega Caballero) y los proyectiles vuelven: flechas, babas, espadas que caen
-  y ondas del jefe le pegan a los enemigos.
+  y ondas del jefe le pegan a los enemigos. Mientras dure el aturdimiento, cada golpe del caballero a ese enemigo es crítico.
 - **Ataques cargados** (mantené `X` y soltá cuando brille): el arquero tira un flechazo que atraviesa a todos los enemigos
   y pega más fuerte (mientras carga no se puede mover; saltar cancela la carga). El caballero hace un espadazo con más
   alcance y daño que además rompe babas, flechas, espadas que caen y ondas del jefe.
