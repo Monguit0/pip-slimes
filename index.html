@@ -2310,11 +2310,27 @@ function shade(K1, w, h, K2, mono, bg) {
   }
   return out;
 }
+/* Si la placa de video se reinicia (o el navegador libera memoria), los lienzos guardados
+   quedan en blanco. Cada lienzo se anota con lo que tiene que tener para volver a pintarlo. */
+const KEEP = new Map(); // lienzo -> ImageData o función que lo pinta
+function keep(c, src) { KEEP.set(c, src); c.addEventListener('contextrestored', repaintSoon); return c; }
+function keepSnap(c) { return keep(c, c.getContext('2d').getImageData(0, 0, c.width, c.height)); }
+let repaintQ = false;
+function repaintSoon() { if (repaintQ) return; repaintQ = true; setTimeout(() => { repaintQ = false; repaintAll(); }, 0); }
+function repaintAll() {
+  for (const [c, src] of KEEP) {
+    try {
+      if (typeof src === 'function') src();
+      else { const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.putImageData(src, 0, 0); }
+    } catch (e) {}
+  }
+  try { for (const n in cards) refreshCard(n); } catch (e) {}
+}
 function hdCanvas(K1, w, h, mono, bg) {
-  const data = shade(K1, w, h, scale2x(K1, w, h, bg), mono, bg);
+  const data = shade(K1, w, h, scale2x(K1, w, h, bg), mono, bg), img = new ImageData(data, w * 2, h * 2);
   const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; c.__rs = RS;
-  c.getContext('2d').putImageData(new ImageData(data, w * 2, h * 2), 0, 0);
-  return c;
+  c.getContext('2d').putImageData(img, 0, 0);
+  return keep(c, img);
 }
 function keyGrid(rows) {
   const h = rows.length, w = Math.max(...rows.map(r => r.length)), K = new Uint8Array(w * h);
@@ -2324,8 +2340,9 @@ function keyGrid(rows) {
 function sprite(rows) { const { K, w, h } = keyGrid(rows); return hdCanvas(K, w, h, null, false); }
 function flipX(src) {
   const c = document.createElement('canvas'); c.width = src.width; c.height = src.height; c.__rs = src.__rs;
-  const x = c.getContext('2d'); x.translate(src.width, 0); x.scale(-1, 1); x.drawImage(src, 0, 0);
-  return c;
+  const paint = () => { const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); x.translate(src.width, 0); x.scale(-1, 1); x.drawImage(src, 0, 0); };
+  paint();
+  return keep(c, paint); // se pinta después del original, que está antes en la lista
 }
 function variants(rows) {
   const { K, w, h } = keyGrid(rows), base = hdCanvas(K, w, h, null, false), wht = hdCanvas(K, w, h, WHITE_RGB, false);
@@ -2499,7 +2516,7 @@ function hiRes(wl, hl) {
   c.width = w; c.height = h; c.__rs = RS;
   const x = c.getContext('2d'), img = x.createImageData(w, h), D = img.data;
   const put = (X, Y, q) => { if (X < 0 || Y < 0 || X >= w || Y >= h) return; const o = (Y * w + X) * 4; D[o] = LV[q[0]]; D[o + 1] = LV[q[1]]; D[o + 2] = LV[q[2]]; D[o + 3] = 255; };
-  return { c, w, h, put, done: () => { x.putImageData(img, 0, 0); return c; } };
+  return { c, w, h, put, done: () => { x.putImageData(img, 0, 0); return keep(c, img); } };
 }
 // cielo de noche en bandas, con estrellas y una luna con luz cenicienta
 function buildSky() {
@@ -2693,7 +2710,7 @@ function buildLevel() {
   });
   return c;
 }
-const SKY = buildSky(), FAR = buildFar(), MID = hdBitmap(buildMid()), ARENA_BG = hdBitmap(buildArena()), LEVEL = levelExtras(hdBitmap(buildLevel()));
+const SKY = buildSky(), FAR = buildFar(), MID = hdBitmap(buildMid()), ARENA_BG = hdBitmap(buildArena()), LEVEL = keepSnap(levelExtras(hdBitmap(buildLevel())));
 const clouds = [{ x: 20, y: 18, w: 26, s: 3 }, { x: 120, y: 34, w: 34, s: 2 }, { x: 230, y: 12, w: 20, s: 4 }];
 clouds.forEach(c => { c.img = buildCloud(c.w); });
 const TWINKLE = Array.from({ length: 16 }, () => ({ x: Math.round(srand() * W * RS) / RS, y: Math.round(srand() * 72 * RS) / RS, sp: 1.2 + srand() * 2.5, ph: srand() * 7 }));
@@ -4546,6 +4563,9 @@ function drawPip(p, kind, isPlayer) {
 function render() {
   const camX = G ? Math.round(G.cam * RS) / RS : 0, q2 = v => Math.round(v * RS) / RS;
   g.setTransform(RS, 0, 0, RS, 0, 0);
+  // fondo liso primero: si algún lienzo quedó en blanco, la pantalla no se ensucia con cuadros viejos
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#000024'; g.fillRect(0, 0, W, H);
   g.drawImage(SKY, 0, 0);
   const T = performance.now() / 1000;
   for (const s of TWINKLE) {
@@ -4850,7 +4870,19 @@ function step(now) {
   }
   if (NET.role === 'host') netHostFrame(now);
 }
+// el lienzo principal avisa si se perdió; cuando vuelve, se repintan los guardados
+let ctxLost = false;
+cv.addEventListener('contextrestored', repaintSoon);
+const PROBE = document.createElement('canvas'); PROBE.width = 300; PROBE.height = 150;
+const paintProbe = () => { const x = PROBE.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 2, 2); };
+paintProbe(); keep(PROBE, paintProbe);
+// al volver a la pestaña, un vistazo a un lienzo testigo: si quedó vacío, se repinta todo
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  try { if (PROBE.getContext('2d').getImageData(0, 0, 1, 1).data[3] === 0) repaintAll(); } catch (e) {}
+});
 function frame(now) {
+  if (g.isContextLost) { if (g.isContextLost()) ctxLost = true; else if (ctxLost) { ctxLost = false; repaintAll(); } }
   if (!BG_TICK.on) step(now);
   render();
   uiFrame(now);
