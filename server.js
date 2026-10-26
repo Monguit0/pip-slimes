@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const LAG = Math.max(0, +process.env.LAG_MS || 0);
 const MAX_ROOMS = 500, MAX_GUESTS = 8, MAX_MSG_PER_SEC = 150;
 const INDEX = path.join(__dirname, 'index.html');
+const STATIC = { '/portada.jpg': 'image/jpeg' };
 const rooms = new Map(); // codigo -> { host, hostPres, guests: Map(id -> { ws, pres }) }
 
 // Relé (TURN) de Cloudflare para cuando dos jugadores no se pueden conectar directo.
@@ -40,6 +41,14 @@ const server = http.createServer((req, res) => {
   if (url === '/ice') {
     const reply = j => { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'cache-control': 'no-store' }); res.end(JSON.stringify(j)); };
     iceServers().then(reply, e => { console.error('TURN:', e.message); reply(STUN_ONLY); });
+    return;
+  }
+  // imágenes que usa la página (la portada)
+  if (STATIC[url]) {
+    fs.readFile(path.join(__dirname, url.slice(1)), (e, buf) => {
+      if (e) { res.writeHead(404); res.end('no encontrado'); return; }
+      res.writeHead(200, { 'content-type': STATIC[url], 'cache-control': 'public, max-age=86400' }); res.end(buf);
+    });
     return;
   }
   if (url === '/' || url === '/index.html') {

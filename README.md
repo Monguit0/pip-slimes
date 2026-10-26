@@ -1,4 +1,6 @@
-# Pip y los Slimes · online con servidor propio
+# A Tale of Friends & Foes · online con servidor propio
+
+*Be the hero… or be their doom. To be a hero, or not to be.*
 
 Plataformas pixel art de 16 bits con juice, un jefe gigante y modo online: quien crea la sala es el
 **villano** y hasta tres amigos juegan de **arquero**, **caballero** y **bárbaro** (si falta alguno, lo maneja un bot,
@@ -19,6 +21,13 @@ Cómo se reparte el trabajo:
   avisa al villano. Los pisotones, también.
 - Si el villano cambia de pestaña, la partida sigue corriendo. Si su navegador se congela (por ejemplo, salió de la app
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
+
+## Música
+Es una sola canción que cambia de ánimo según lo que pasa: tranquila y sin batería en el título, sin melodía mientras
+se eligen cartas, un poco más rápida y en otro tono en cada zona, solo tambores cuando entra el jefe, a toda velocidad
+cuando se enfurece, lenta y apagada en la derrota, y como bajo el agua cuando estás en peligro (te queda poca vida).
+Los cambios entran a tiempo, cada medio compás. Si tocás los controles de la placa de música, mandás vos hasta la
+próxima partida.
 
 ## Habilidades de los héroes
 Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con su especial y se recarga solo de a poco.
@@ -84,5 +93,5 @@ Para ver cómo se siente con mala conexión: `LAG_MS=150 npm start` agrega 150 m
 pasa por el servidor (el camino directo entre navegadores no se ve afectado).
 
 ## Si preferís dejar el juego en Netlify
-Subí solo `index.html` a Netlify y poné la dirección del servidor en `index.html`, en la línea
+Subí `index.html` y `portada.jpg` a Netlify y poné la dirección del servidor en `index.html`, en la línea
 `var SERVER = '';`, por ejemplo `var SERVER = 'wss://algo.onrender.com/ws';`.
