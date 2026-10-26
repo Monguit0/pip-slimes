@@ -29,6 +29,9 @@ partida empieza en el nivel 2. Se recuerda para la próxima vez.
 Al vencer al Mega Caballero la aventura sigue: una noche de luna roja en el bosque (Linde del bosque, Bosque oscuro,
 Ciénaga de raíces) y al final la cueva del **Campeón**, un lobo gigante todo negro. Al empezar el nivel se vuelve a
 elegir carta (se suman a las que ya tenías).
+- **Murciélago del villano**: vuela con una barra de aguante (arriba de él). Se gasta en el aire, mucho más rápido
+  si está fuera del alcance de los héroes, y se recarga posado en el piso o una plataforma (`abajo` para posarse). Si se
+  agota cae y tiene que descansar hasta la mitad para volver a volar.
 - **Enemigos nuevos**: **slimes tóxicos** (si te tocan o te escupen, te envenenan: perdés vida de a poco hasta que se
   pasa), **murciélagos** que vuelan y se tiran en picada, y **lobeznos** que corren y te muerden de un salto.
 - **Trampas**: pinchos en el suelo que asoman (aviso) y salen cada pocos segundos. Del cielo caen ramas en vez de flechas.
@@ -49,6 +52,9 @@ elegir carta (se suman a las que ya tenías).
   camina y se rompen a golpes o solas al rato). Si el lobo embiste contra una, se la pega y queda aturdido. Las bolas
   de fuego que tocan el piso lo dejan ardiendo un rato.
 - **Muertes**: el Mega Caballero explota y su espada queda clavada en el piso; el Campeón se desploma y se deshace en humo.
+- **Combos del jefe que manejás vos** (Jefe, Villano, Online): si apretás otro ataque mientras el jefe se recupera del
+  anterior (o apenas termina), sale sin pausa y suma **COMBO x2, x3…**: desde el x2 el aviso dura la mitad y los golpes
+  directos (tajo/zarpazo, salto, embestida) sacan uno más. El contador aparece al lado de los ataques.
 - En modo villano/online, el jefe que maneja el villano también tiene su última furia (recargas aún más rápidas; el
   lobo deja fuego al embestir).
 
