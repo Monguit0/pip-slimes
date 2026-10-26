@@ -1639,24 +1639,51 @@ var units = {
 
 </script>
 <script>
-/* Online por WebSocket: reemplaza la "sala" de claude.ai cuando el juego corre en su propio servidor (server.js).
+/* Online: reemplaza la "sala" de claude.ai cuando el juego corre en su propio servidor (server.js).
    Misma interfaz que usa el juego: use('room') -> lobby; lobby.join(nombre, rol) -> sala con presence()/peers()/onPeers()/leave().
-   El servidor solo reenvía mensajes: el villano (host) simula la partida y los héroes (guests) le mandan sus controles. */
+   El villano (host) simula la partida y los héroes (guests) le mandan sus controles.
+   Camino rápido: WebRTC directo entre navegadores (el servidor solo hace de presentador).
+   Camino de respaldo: todo pasa por el servidor por WebSocket, así que siempre conecta. */
 (function () {
   // Vacío = el servidor es el mismo dominio que sirve la página. Si el juego está en otro hosting (Netlify, etc.),
   // poné acá la dirección del servidor, por ejemplo: 'wss://pip-slimes.onrender.com/ws'
   var SERVER = '';
+  var ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] };
   function wsUrl() { return SERVER ? SERVER.replace(/\/$/, '') : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'; }
   function httpUrl() { return wsUrl().replace(/^ws/, 'http').replace(/\/ws$/, ''); }
   function apply(obj, patch) { for (var k in patch) { if (patch[k] === null || patch[k] === undefined) delete obj[k]; else obj[k] = patch[k]; } }
   function err(code, message) { var e = new Error(message || code); e.code = code; e.p2p = true; return e; }
-  // Despierta el servidor si estaba dormido (planes gratuitos) mientras la persona mira el menú.
+  var open = function (c) { return !!c && c.readyState === 'open'; };
+  window.PIP_NET = { rtt: 0, path: '' };
   try { fetch(httpUrl() + '/health', { mode: 'no-cors' }).catch(function () {}); } catch (e) {}
 
   function makeRoom(role, code) {
     var me = { peer: null, sameTab: true, presence: {} };
-    var remotes = new Map(), subs = [], ws = null, closing = false, ready = false;
+    var remotes = new Map(), subs = [], ws = null, closing = false, ready = false, inSeq = 0, pingTimer = 0;
+    var stats = { sentDc: 0, sentWs: 0, gotDc: 0, gotWs: 0 };
     var fire = function () { subs.slice().forEach(function (f) { try { f(); } catch (e) {} }); };
+    var sendWs = function (o) { if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(o)); stats.sentWs++; } catch (e) {} } };
+    var sendDc = function (c, o) { try { c.send(JSON.stringify(o)); stats.sentDc++; return true; } catch (e) { return false; } };
+
+    // aplica un cambio recibido; descarta cuadros y controles viejos que llegan tarde por el otro camino
+    function applyRemote(r, p) {
+      var q = p;
+      if (p.s && r.presence.s && p.s.T <= r.presence.s.T) { q = Object.assign({}, q); delete q.s; }
+      if (p.in && r.presence.in && typeof p.in.q === 'number' && p.in.q <= r.presence.in.q) { if (q === p) q = Object.assign({}, q); delete q.in; }
+      apply(r.presence, q);
+      for (var k in q) { if (k !== 's' && k !== 'in') { fire(); break; } }
+    }
+    function onMsg(r, m, ch) {
+      if (!m) return;
+      if (m.t === 'p' && m.p && typeof m.p === 'object') { applyRemote(r, m.p); return; }
+      if (m.t === 'ping') { if (ch) sendDc(ch, { t: 'pong', ts: m.ts }); else sendWs({ t: 'pong', to: r.peer, ts: m.ts }); return; }
+      if (m.t === 'pong') {
+        var rtt = performance.now() - m.ts;
+        window.PIP_NET.rtt = window.PIP_NET.rtt ? window.PIP_NET.rtt * 0.7 + rtt * 0.3 : rtt;
+        window.PIP_NET.path = ch ? 'directo' : 'servidor';
+      }
+    }
+
     var room = {
       failed: false,
       peers: function () {
@@ -1666,13 +1693,78 @@ var units = {
       },
       presence: function (patch) {
         apply(me.presence, patch);
-        if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify({ t: 'p', p: patch })); } catch (e) {} }
+        var keys = Object.keys(patch);
+        if (role === 'host') {
+          if (keys.length === 1 && keys[0] === 's') {
+            // cuadros de partida: por el canal directo sin reintentos; a quien no lo tenga, por el servidor
+            var viaWs = [];
+            remotes.forEach(function (r) { if (!(open(r.dcU) && sendDc(r.dcU, { t: 'p', p: patch }))) viaWs.push(r.peer); });
+            if (viaWs.length) sendWs({ t: 'p', p: patch, to: viaWs });
+          } else sendWs({ t: 'p', p: patch });
+        } else {
+          var out = patch;
+          if (patch.in) out = Object.assign({}, patch, { in: Object.assign({}, patch.in, { q: ++inSeq }) });
+          var h = remotes.get('host');
+          if (keys.length === 1 && keys[0] === 'in' && h && open(h.dcR) && sendDc(h.dcR, { t: 'p', p: out })) return Promise.resolve();
+          sendWs({ t: 'p', p: out });
+        }
         return Promise.resolve();
       },
       onPeers: function (cb) { subs.push(cb); return function () { subs = subs.filter(function (f) { return f !== cb; }); }; },
       onConnection: function () { return function () {}; },
-      leave: function () { closing = true; try { ws && ws.close(); } catch (e) {} remotes.clear(); return Promise.resolve(); }
+      stats: function () { var d = 0; remotes.forEach(function (r) { if (open(r.dcR)) d++; }); return Object.assign({ direct: d }, stats); },
+      leave: function () {
+        closing = true; clearInterval(pingTimer);
+        remotes.forEach(function (r) { try { r.pc && r.pc.close(); } catch (e) {} });
+        try { ws && ws.close(); } catch (e) {} remotes.clear(); return Promise.resolve();
+      }
     };
+
+    /* ---- WebRTC directo ---- */
+    function setupChan(r, ch, kind) {
+      if (kind === 'r') r.dcR = ch; else r.dcU = ch;
+      ch.onmessage = function (ev) { var m; try { m = JSON.parse(ev.data); } catch (e) { return; } stats.gotDc++; onMsg(r, m, ch); };
+      ch.onopen = function () { if (r.peer === 'host' && kind === 'r') pingNow(); };
+    }
+    function startPc(r, initiator) {
+      if (!window.RTCPeerConnection || r.pc) return;
+      var pc;
+      try { pc = new RTCPeerConnection(ICE); } catch (e) { return; }
+      r.pc = pc;
+      pc.onicecandidate = function (e) { if (e.candidate) sendWs({ t: 'sig', to: r.peer, d: { c: e.candidate } }); };
+      if (initiator) {
+        setupChan(r, pc.createDataChannel('r', { ordered: true }), 'r');
+        setupChan(r, pc.createDataChannel('u', { ordered: false, maxRetransmits: 0 }), 'u');
+        pc.createOffer().then(function (o) { return pc.setLocalDescription(o); })
+          .then(function () { sendWs({ t: 'sig', to: r.peer, d: { sdp: pc.localDescription } }); }).catch(function () {});
+      } else {
+        pc.ondatachannel = function (ev) { setupChan(r, ev.channel, ev.channel.label === 'r' ? 'r' : 'u'); };
+      }
+      // si no se logra conectar directo, el servidor sigue llevando todo
+      setTimeout(function () { if (pc.connectionState !== 'connected') { try { pc.close(); } catch (e) {} } }, 15000);
+    }
+    function flushIce(r) { (r.pend || []).forEach(function (c) { r.pc.addIceCandidate(c).catch(function () {}); }); r.pend = []; }
+    function onSig(r, d) {
+      if (!window.RTCPeerConnection) return;
+      if (d.sdp && d.sdp.type === 'offer') {
+        startPc(r, false);
+        if (!r.pc) return;
+        r.pc.setRemoteDescription(d.sdp).then(function () { return r.pc.createAnswer(); })
+          .then(function (a) { return r.pc.setLocalDescription(a); })
+          .then(function () { sendWs({ t: 'sig', to: r.peer, d: { sdp: r.pc.localDescription } }); flushIce(r); }).catch(function () {});
+      } else if (d.sdp && d.sdp.type === 'answer') {
+        if (r.pc) r.pc.setRemoteDescription(d.sdp).then(function () { flushIce(r); }).catch(function () {});
+      } else if (d.c) {
+        if (r.pc && r.pc.remoteDescription) r.pc.addIceCandidate(d.c).catch(function () {});
+        else (r.pend = r.pend || []).push(d.c);
+      }
+    }
+    function pingNow() {
+      var h = remotes.get('host'); if (!h) return;
+      var m = { t: 'ping', ts: performance.now() };
+      if (open(h.dcR)) sendDc(h.dcR, m); else sendWs(m);
+    }
+
     room._start = function () {
       return new Promise(function (resolve, reject) {
         var settled = false;
@@ -1683,27 +1775,34 @@ var units = {
         ws.onmessage = function (ev) {
           var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
           if (!m) return;
+          stats.gotWs++;
           if (m.t === 'err') { fail(m.code === 'taken' ? err('taken') : err(m.code, m.code === 'nohost' ? 'No encontré ninguna sala con ese código.' : m.code === 'full' ? 'La sala está llena.' : 'No pude entrar a la sala.')); return; }
           if (m.t === 'hello') {
             me.peer = m.id; ready = true;
-            if (m.host) remotes.set(m.host, { peer: m.host, presence: m.full || {} });
+            if (m.host) {
+              var h = { peer: m.host, presence: m.full || {} };
+              remotes.set(m.host, h);
+              startPc(h, true);
+              pingTimer = setInterval(pingNow, 2000);
+            }
             if (!settled) { settled = true; clearTimeout(timer); resolve(room); }
             fire(); return;
           }
           if (m.t === 'join') { remotes.set(m.id, { peer: m.id, presence: {} }); fire(); return; }
-          if (m.t === 'leave') { if (remotes.delete(m.id)) fire(); return; }
-          if (m.t === 'p' && m.p && typeof m.p === 'object') {
-            var r = remotes.get(m.id);
-            if (!r) { r = { peer: m.id, presence: {} }; remotes.set(m.id, r); }
-            apply(r.presence, m.p);
-            for (var k in m.p) { if (k !== 's' && k !== 'in') { fire(); break; } }
-          }
+          if (m.t === 'leave') { var gone = remotes.get(m.id); if (gone) { try { gone.pc && gone.pc.close(); } catch (e) {} remotes.delete(m.id); fire(); } return; }
+          var r = remotes.get(m.id);
+          if (m.t === 'sig') { if (r && m.d) onSig(r, m.d); return; }
+          if (m.t === 'pong') { onMsg(remotes.get('host') || { peer: 'host', presence: {} }, m, null); return; }
+          if (!r) { if (m.t === 'ping' || m.t === 'p') { r = { peer: m.id, presence: {} }; remotes.set(m.id, r); } else return; }
+          onMsg(r, m, null);
         };
         ws.onerror = function () { if (!ready) fail(err('server', 'No pude conectar con el servidor.')); };
         ws.onclose = function () {
           if (!ready) { fail(err('server', 'No pude conectar con el servidor.')); return; }
           if (closing) return;
-          remotes.clear(); fire();
+          // sin el servidor ya no hay nadie que "presente" ni respaldo: se corta la sala
+          remotes.forEach(function (r) { try { r.pc && r.pc.close(); } catch (e) {} });
+          clearInterval(pingTimer); remotes.clear(); fire();
           try { window.dispatchEvent(new CustomEvent('pip-room-lost')); } catch (e) {}
         };
       });
@@ -1718,7 +1817,9 @@ var units = {
     onConnection: function () { return function () {}; },
     join: function (name, role) {
       var code = String(name || '').replace(/^pip-/, '').toLowerCase();
-      return makeRoom(role === 'host' ? 'host' : 'guest', code)._start();
+      var r = makeRoom(role === 'host' ? 'host' : 'guest', code);
+      window.PIP_LAST_ROOM = r;
+      return r._start();
     }
   };
   window.PIP_P2P = { use: function (name) { return Promise.resolve(name === 'room' ? lobby : null); } };
@@ -4396,6 +4497,7 @@ function render() {
   const bump = jOn() && G.scoreBump > 0.5 ? -1 : 0;
   drawText(g, sc, W - 4, 4 + bump, G.scoreBump > 0.5 && jOn() ? PAL.w : PAL.y, 1, 'right');
   if (G.combo > 1) drawText(g, 'x' + G.combo, W - 4, 12, PAL.c, 1, 'right');
+  if (NET.role === 'guest' && NET.playing && window.PIP_NET && window.PIP_NET.rtt) drawText(g, 'PING ' + Math.round(window.PIP_NET.rtt) + (window.PIP_NET.path === 'directo' ? ' DIR' : ' SRV'), W - 4, 136, window.PIP_NET.path === 'directo' ? PAL.s : PAL.y, 1, 'right');
   if (G.z < 3 && G.kind !== 'invade') {
     const left = G.slimes.filter(s => !s.dead && s.zone === G.z).length;
     drawText(g, 'ZONA ' + (G.z + 1) + (G.cleared ? '' : ' · SLIMES ' + left), W / 2, 4, PAL.s, 1, 'center');
@@ -4886,7 +4988,11 @@ function netDecode(s) {
 function netView(now, real) {
   const S = NET.snaps;
   if (!S.length) return null;
-  const tgt = now - Math.min(...NET.offs) - 110;
+  let mn = Infinity, sum = 0;
+  for (const o of NET.offs) { if (o < mn) mn = o; sum += o; }
+  const want = Math.max(60, Math.min(150, 50 + 2 * (sum / NET.offs.length - mn)));
+  NET.buf = NET.buf ? NET.buf + (want - NET.buf) * 0.05 : want;
+  const tgt = now - mn - NET.buf;
   let ia = 0;
   for (let i = 0; i < S.length; i++) if (S[i].T <= tgt) ia = i;
   const a = S[ia], b = S[Math.min(S.length - 1, ia + 1)];
@@ -4981,7 +5087,7 @@ function netHostFrame(now) {
     const want = NET.slots[e.kind] || null;
     if (e.net !== want) { e.net = want; e.jpSeen = e.apSeen = undefined; if (!want) { e.think = 0; e.seen = {}; e.move = 0; } }
   }
-  if (now - NET.sendT >= 50) {
+  if (now - NET.sendT >= 33) {
     NET.sendT = now;
     const s = netPack(now);
     if (s) r.presence({ s }).catch(() => {});

@@ -1,7 +1,9 @@
 # Pip y los Slimes · online con servidor propio
 
 Una sola app de Node: sirve el juego (`index.html`) y reparte los mensajes del online por WebSocket (`/ws`).
-Los jugadores no se conectan entre sí, solo con el servidor, así que funciona en cualquier red.
+Los jugadores intentan conectarse directo entre sí (WebRTC, el camino más rápido) y, si la red no lo permite,
+el servidor lleva todo por WebSocket, así que siempre conecta. Los héroes ven abajo a la derecha el ping y el camino:
+`DIR` = directo, `SRV` = por el servidor.
 
 ## Probarlo en tu compu
     npm install

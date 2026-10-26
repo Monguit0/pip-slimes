@@ -57,8 +57,24 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (data) => {
     if (++count > MAX_MSG_PER_SEC) { ws.close(); return; }
     let m; try { m = JSON.parse(data); } catch (e) { return; }
-    if (!m || m.t !== 'p' || !m.p || typeof m.p !== 'object') return;
+    if (!m) return;
+    // Señalización WebRTC: el servidor solo "presenta" a los jugadores para que se conecten directo.
+    if (m.t === 'sig') {
+      if (!m.d || typeof m.d !== 'object') return;
+      if (role === 'guest') send(room.host, { t: 'sig', id: me.id, d: m.d });
+      else { const g = room.guests.get(m.to); if (g) send(g.ws, { t: 'sig', id: 'host', d: m.d }); }
+      return;
+    }
+    // Ping de punta a punta (héroe -> villano -> héroe) para medir el retraso real.
+    if (m.t === 'ping' && role === 'guest') { send(room.host, { t: 'ping', id: me.id, ts: m.ts }); return; }
+    if (m.t === 'pong' && role === 'host') { const g = room.guests.get(m.to); if (g) send(g.ws, { t: 'pong', ts: m.ts }); return; }
+    if (m.t !== 'p' || !m.p || typeof m.p !== 'object') return;
     if (role === 'host') {
+      // Mensaje dirigido (cuadros de partida para quienes todavía no tienen conexión directa): no se guarda.
+      if (Array.isArray(m.to)) {
+        for (const id of m.to) { const g = room.guests.get(id); if (g && g.ws.bufferedAmount < 64 * 1024) send(g.ws, { t: 'p', id: 'host', p: m.p }); }
+        return;
+      }
       merge(room.hostPres, m.p);
       const onlySnap = Object.keys(m.p).every(k => k === 's');
       for (const g of room.guests.values()) {
