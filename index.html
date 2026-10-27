@@ -3643,6 +3643,10 @@ function update(dt, real) {
       play('salto');
       if (jOn()) { p.sx = 0.7; p.sy = 1.35; flashJ('squash'); burst(p.x + 4, p.y + p.h, 5, [PAL.s, PAL.w], 30, 10, 120, 0.3); }
     }
+  } else if (p.buffer > 0 && !p.onGround && !p.dj && !dash) {
+    p.dj = true; p.vy = -C.jump * DJ; p.buffer = 0; p.cut = false;
+    if (G.kind === 'archer' && charging(p)) p.chg = -1;
+    play('salto', { rate: 1.35 }); flashJ('squash'); djFx(p);
   }
   if (!input.jump && p.vy < -60 && !p.cut) { p.vy *= 0.45; p.cut = true; }
   if (input.down && p.onGround && p.surf && !p.surf.ground && !input.jump) { p.drop = 0.22; p.onGround = false; }
@@ -3664,6 +3668,7 @@ function update(dt, real) {
     if (p.vy >= 0 && prevBottom <= s.y + 0.5 && p.y + p.h >= s.y && p.x + p.w > s.x + 1 && p.x < s.x + s.w - 1) { p.y = s.y - p.h; p.vy = 0; p.onGround = true; p.surf = s; }
   }
   boulderCollide(p, p.x - p.vx * dt, prevBottom);
+  if (p.onGround) p.dj = false;
   if (p.onGround && !wasGround && fallV > 140 && jOn()) {
     const k = Math.min(1, (fallV - 140) / 130);
     p.sx = 1.1 + 0.4 * k; p.sy = 0.92 - 0.32 * k; flashJ('squash');
@@ -4839,6 +4844,7 @@ function heroPhysics(e, dt) {
   const acc = (e.onGround ? 800 : 500) * dt, dash = e.dashT > 0;
   if (e.inv < 0.45 && !dash) e.vx += Math.max(-acc, Math.min(acc, e.move * C.speed * (e.net ? 1 : 0.78) * skillSlow(e, e.kind) - e.vx));
   if (e.jumpNow && e.onGround && !dash) { e.vy = -C.jump; e.onGround = false; play('salto', { vol: e.own ? 1 : 0.3 }); if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
+  else if (e.jumpNow && !e.onGround && !e.dj && !dash && !e.own && e.vy > -60) { e.dj = true; e.vy = -C.jump * DJ; play('salto', { vol: 0.3, rate: 1.35 }); djFx(e); }
   e.jumpNow = false;
   if (dash) e.vy = 0; else e.vy = Math.min(e.vy + GRAV * (e.vy > 0 ? 1.25 : 1) * dt, 270);
   e.prevBottom = e.y + e.h;
@@ -4853,11 +4859,20 @@ function heroPhysics(e, dt) {
   e.onGround = false;
   for (const s of SURFACES) if (!(e.drop > 0 && !s.ground) && e.vy >= 0 && e.prevBottom <= s.y + 0.5 && e.y + e.h >= s.y && e.x + e.w > s.x + 1 && e.x < s.x + s.w - 1) { e.y = s.y - e.h; e.vy = 0; e.onGround = true; e.surf = s; }
   if (G.boulders && G.boulders.length) boulderCollide(e, px0, e.prevBottom);
+  if (e.onGround) e.dj = false;
   if (e.onGround && !was && fv > 160 && jOn()) { e.sx = 1.3; e.sy = 0.75; }
   e.sx += (1 - e.sx) * Math.min(1, dt * 14); e.sy += (1 - e.sy) * Math.min(1, dt * 14);
   if (e.inv > 0) e.inv -= dt;
   if (e.flash > 0) e.flash -= dt;
   e.runT = e.onGround && Math.abs(e.vx) > 30 ? e.runT + dt : 0;
+}
+// doble salto: un segundo impulso en el aire (uno por salto; se recupera al tocar el piso)
+const DJ = 0.86;
+function djFx(h, parts) {
+  if (!jOn()) return;
+  h.sx = 0.75; h.sy = 1.3;
+  const L = parts || G.parts, x = h.x + 4, y = h.y + h.h;
+  for (let i = 0; i < 8; i++) { const a = Math.PI * (0.15 + 0.7 * i / 7); L.push({ x, y, vx: Math.cos(a) * 55, vy: Math.sin(a) * 18 + 10, g: 0, life: 0.25, max: 0.25, c: i % 2 ? PAL.w : PAL.c, s: 1 }); }
 }
 // empujón (1) o rebote (2) que decide el villano. Lleva un número para que la pantalla del dueño lo aplique una sola vez.
 function kick(e, vx, vy, type) { e.vx = vx; e.vy = vy; e.onGround = false; e.kb = (e.kb || 0) + 1; e.kvx = vx; e.kvy = vy; e.kt = type; }
@@ -6920,6 +6935,10 @@ function netPredict(real) {
   if (m.jumpBuf > 0 && m.onGround) {
     if (input.down && m.surf && !m.surf.ground) m.dropNow = true; else { m.jumpNow = true; m.cut = false; if (m.kind === 'archer' && charging(m)) m.chg = -1; m.dashT = 0; }
     m.jumpBuf = 0;
+  } else if (m.jumpBuf > 0 && !m.onGround && !m.dj && m.dashT <= 0) {
+    m.dj = true; m.vy = -CHARS[m.kind].jump * DJ; m.cut = false; m.jumpBuf = 0;
+    if (m.kind === 'archer' && charging(m)) m.chg = -1;
+    play('salto', { rate: 1.35 }); djFx(m, NET.parts);
   }
   if (input.down && !input.jump && m.onGround && m.surf && !m.surf.ground) m.dropNow = true;
   if (!input.jump && m.vy < -60 && !m.cut) { m.vy *= 0.45; m.cut = true; }
@@ -7186,10 +7205,11 @@ function netHero(e, dt) {
   e.lastIn = inp;
   if (mine && inp.x !== undefined && (inp.kb | 0) === (e.kb | 0)) {
     if (!fresh) return false;
-    const wasGround = e.onGround;
+    const wasGround = e.onGround, vy0 = e.vy;
     e.prevBottom = e.y + e.h;
     e.x = inp.x / 2; e.y = inp.y / 2; e.vx = inp.vx; e.vy = inp.vy; e.face = inp.f || e.face; e.onGround = !!inp.og;
     if (wasGround && !e.onGround && e.vy < -150) { NET.sndOwner = e.net; play('salto', { vol: 0.3 }); NET.sndOwner = null; if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
+    else if (!wasGround && !e.onGround && e.vy < -150 && e.vy - vy0 < -120) { NET.sndOwner = e.net; play('salto', { vol: 0.3, rate: 1.35 }); NET.sndOwner = null; if (jOn()) { djFx(e); for (const q of G.parts.slice(-8)) q.o = e.id; } } // doble salto del amigo (su pantalla ya hizo la nubecita)
     e.runT = e.onGround && Math.abs(e.vx) > 30 ? e.runT + dt : 0;
     return true;
   }
