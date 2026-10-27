@@ -42,6 +42,8 @@ elegir carta (se suman a las que ya tenías).
   bichos nuevos y, en la guarida, al Campeón. Los héroes caídos vuelven con media vida y todos eligen carta de nuevo.
 
 ## Jefes
+- **El jefe que maneja una persona** (Jefe, Villano, Online) tiene menos vida que antes: 42 el Mega Caballero y 50 el
+  Campeón. Antes de entrar a pelear con él, en Villano/Online los héroes se curan del todo y los caídos vuelven con sus cartas.
 - **Presentación**: franjas de cine y una placa con el nombre cuando entran. El Campeón primero se asoma: dos ojos
   rojos en la oscuridad de la cueva, y después salta.
 - **Tres fases**: a la mitad de vida se enfurecen y al 25% viene la **última furia**. El Mega Caballero pierde el casco
@@ -52,7 +54,7 @@ elegir carta (se suman a las que ya tenías).
   camina y se rompen a golpes o solas al rato). Si el lobo embiste contra una, se la pega y queda aturdido. Las bolas
   de fuego que tocan el piso lo dejan ardiendo un rato.
 - **Muertes**: el Mega Caballero explota y su espada queda clavada en el piso; el Campeón se desploma y se deshace en humo.
-- **Combos del jefe que manejás vos** (Jefe, Villano, Online): si apretás otro ataque mientras el jefe se recupera del
+- **Combos del jefe que manejás vos** (Jefe, Villano, Online), solo con la mitad de la vida o menos: si apretás otro ataque mientras el jefe se recupera del
   anterior (o apenas termina), sale sin pausa y suma **COMBO x2, x3…**: desde el x2 el aviso dura la mitad y los golpes
   directos (tajo/zarpazo, salto, embestida) sacan uno más. El contador aparece al lado de los ataques.
 - En modo villano/online, el jefe que maneja el villano también tiene su última furia (recargas aún más rápidas; el
@@ -91,7 +93,7 @@ a que todos elijan (como mucho 30 segundos) y los bots eligen solos.
   energía más rápida, botas ligeras, carga rápida, y cartas propias: flecha triple y paso fantasma (arquero),
   escudo liviano (caballero), sangre caliente y remolino (bárbaro).
 - Villano: slimes con más vida, flechas venenosas, hachas dobles, enemigos veloces, baba ácida, refuerzos,
-  regeneración, armadura del jefe y jefe furioso.
+  regeneración, armadura del jefe (+12 de vida) y jefe furioso.
 
 En el online todo esto se decide en la pantalla de cada héroe, igual que los golpes: si en tu pantalla el escudo frenó
 la flecha o tu espadazo rompió la baba, para el villano también.

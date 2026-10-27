@@ -3431,7 +3431,7 @@ const VILLAIN_CARDS = [
   { id: 'acida', mobs: true, name: 'BABA ÁCIDA', desc: 'LAS BABAS SALPICAN EL DOBLE', col: 'g' },
   { id: 'refuerzos', mobs: true, name: 'REFUERZOS', desc: '2 ENEMIGOS MÁS POR ZONA', col: 'r' },
   { id: 'regen', name: 'REGENERACIÓN', desc: 'ENEMIGOS Y JEFE SE CURAN', col: 'l' },
-  { id: 'armadura', name: 'ARMADURA DEL JEFE', desc: 'EL JEFE TIENE +20 DE VIDA', col: 's' },
+  { id: 'armadura', name: 'ARMADURA DEL JEFE', desc: 'EL JEFE TIENE +12 DE VIDA', col: 's' },
   { id: 'jfuria', name: 'JEFE FURIOSO', desc: 'EL JEFE RECARGA 30% MÁS RÁPIDO', col: 'o' }
 ];
 // dibujitos de las cartas (12x12, pasan por el mismo remaster que los personajes)
@@ -4053,7 +4053,7 @@ function bestScore() { try { return +(localStorage.getItem('pip-best') || 0); } 
    ========================================================= */
 const BW = 22, BH = 30, BOSS_HP = 40;
 // el Campeón (nivel 2) es un lobo: más largo y más bajo; se lo pisa en el lomo
-const WOLF_HP = 50, PW_HP = 70;
+const WOLF_HP = 50, PW_HP = 50; // PW: el Campeón que maneja una persona
 const isWolf = B => !!B && B.type === 'wolf';
 const bossName = B => isWolf(B) ? 'CAMPEÓN' : 'MEGA CABALLERO';
 const bossBody = B => isWolf(B) ? { x: B.x + BW / 2 - 17, y: B.y + 13, w: 34, h: 17 } : { x: B.x + 3, y: B.y + 4, w: 16, h: 26 };
@@ -4544,7 +4544,7 @@ const PB = {
   charge: { key: 'charge', cd: 3.2, tele: 0.32, label: 'Z CARGA' },
   rain: { key: 'rain', cd: 6.5, tele: 0.45, label: 'V LLUVIA' }
 };
-const PB_HP = 60;
+const PB_HP = 42; // el jefe que maneja una persona (antes 60: se sentía demasiado fuerte)
 // el Campeón: mismas teclas, otros nombres; embiste más seguido y más rápido
 const PBW = {
   sweep: { key: 'attack', cd: 0.7, tele: 0.2, label: 'X ZARPAZO' },
@@ -4677,7 +4677,7 @@ function updatePlayerBoss(B, dt) {
       // combo: otro ataque mientras se recupera (o apenas termina) sale sin pausa
       const pick = pbPick(B);
       if (pick) pbStart(B, pick, dir, true);
-      else if (B.t > B.recDur) { setState(B, 'idle'); B.chainT = 0.35; }
+      else if (B.t > B.recDur) { setState(B, 'idle'); B.chainT = pbCombo(B) ? 0.35 : 0; if (!B.chainT) B.combo = 0; }
       break;
     }
     case 'dying': bossDying(B, dt); break;
@@ -4688,10 +4688,14 @@ function updatePlayerBoss(B, dt) {
 // qué ataque pidió el jugador (con la recarga lista)
 function pbPick(B) {
   const P = pbOf(B);
+  if (B.state === 'rec' && !pbCombo(B)) return null; // sin furia hay que esperar a que se recupere
   for (const atk of Object.keys(P)) if (input[P[atk].key + 'Pressed'] && B.cd[atk] <= 0 && !(B.state === 'rec' && atk === B.atk)) return atk;
   return null;
 }
+// los combos solo con la mitad de la vida o menos
+const pbCombo = B => B.hp <= B.maxHp / 2;
 function pbStart(B, pick, dir, chain) {
+  chain = chain && pbCombo(B);
   const P = pbOf(B);
   B.combo = chain ? (B.combo || 1) + 1 : 1; B.chainT = 0;
   B.atk = pick; B.rep = B.phase >= 2 && pick === 'rain' ? 2 : 1; B.attackId++;
@@ -4912,7 +4916,7 @@ function bossTakeHit(dmg, x, y, force) {
   if (B.hp <= 0) bossDie(B);
   else if (B.phase === 1 && B.hp <= B.maxHp / 2) {
     B.phase = 2; play('rugido', { rate: 1.15, vary: false }); duck(); setTempo(168, -2);
-    G.banner = { text: '¡FURIA!', sub: 'RECARGAS MÁS RÁPIDAS', t: 0 };
+    G.banner = { text: '¡FURIA!', sub: 'RECARGAS MÁS RÁPIDAS · COMBOS', t: 0 };
     if (jOn()) { hitstop(0.2); G.flashRed = 0.3; shake(4, 0.4); burst(B.x + BW / 2, B.y + 10, 30, [PAL.r, PAL.o, PAL.y], 140, 40, 120, 0.8); }
   } else if (B.phase === 2 && B.hp <= B.maxHp * 0.25) {
     B.phase = 3; setTempo(184, -2);
@@ -5030,11 +5034,25 @@ function enterInvadeZone(n) {
   G.z = n; G.zoneLost = false;
   GATES[n - 1].want = 0;
   G.mobs = G.mobs.filter(m => m.zone === n && !m.dead); G.shots = []; G.arrows = [];
-  for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); e.cureUsed = false; popup(e.x + 4, e.y - 8, '+2', PAL.l); }
+  if (n < 3) for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); e.cureUsed = false; popup(e.x + 4, e.y - 8, '+2', PAL.l); }
   if (n === 3) {
     G.ctrl = null;
+    // antes del jefe: todos con la vida llena y los caídos vuelven (con sus cartas)
+    const old = new Map(G.heroes.map(e => [e.kind, e])), base = { archer: 8, knight: 10, barb: 9 };
+    G.heroes = ['archer', 'knight', 'barb'].map((kind, i) => {
+      const prev = old.get(kind);
+      if (prev && !prev.dead) { prev.hp = prev.max; prev.poisonT = 0; prev.cureUsed = false; popup(prev.x + 4, prev.y - 8, 'VIDA LLENA', PAL.l); return prev; }
+      const src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
+      e.max = src ? src.max : base[kind]; e.cm = src ? src.cm || 0 : 0; e.hp = e.max;
+      e.x = 1544 + i * 12; e.inv = 1.2; e.vx = 0;
+      e.net = NET.role === 'host' ? NET.slots[kind] || null : null;
+      e.kb = (prev ? prev.kb || 0 : 0) + 1;
+      popup(e.x + 4, e.y - 10, '¡VOLVIÓ!', PAL.y);
+      if (jOn()) burst(e.x + 4, e.y + 5, 14, [PAL.y, PAL.w, PAL.l], 70, 40, 0, 0.5);
+      return e;
+    });
     G.boss = makePlayerBoss(G.lvl ? 'wolf' : 'knight');
-    if (hasV('armadura')) { G.boss.hp += 20; G.boss.maxHp += 20; G.boss.show = G.boss.hp; }
+    if (hasV('armadura')) { G.boss.hp += 12; G.boss.maxHp += 12; G.boss.show = G.boss.hp; }
     for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = 1; }
     G.banner = G.lvl ? { text: '¡LLEGARON A LA GUARIDA!', sub: 'AHORA SOS EL CAMPEÓN', t: 0, long: true } : { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
     play('rugido', { vary: false, rate: G.lvl ? 0.75 : 1 });
