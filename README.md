@@ -68,6 +68,8 @@ Los cambios entran a tiempo, cada medio compás. Si tocás los controles de la p
 próxima partida.
 
 ## Habilidades de los héroes
+Todos tienen **doble salto**: apretá salto otra vez en el aire para un segundo impulso (uno por salto, se recupera al
+tocar el piso). Corta la carga del arquero. Los bots también lo usan para esquivar, y online sale al instante en tu pantalla.
 Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con su especial y se recarga solo de a poco.
 - **Arquero · dash** (`Shift` o `V`, o el botón *Dash*): sale disparado hacia adelante y por un instante es intangible,
   así que atraviesa enemigos, flechas y espadas sin recibir daño. Un dash en el aire hasta volver a pisar el suelo.
