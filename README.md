@@ -23,7 +23,7 @@ Cómo se reparte el trabajo:
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
 ## Nivel 2 · El Bosque Oscuro
-En el menú hay un **selector de nivel** (*Nivel 1 · El Reino* / *Nivel 2 · El Bosque*, o la tecla `N`) que vale para
+En el menú hay un **selector de nivel** (*Nivel 1 · El Reino* / *Nivel 2 · El Bosque* / *Nivel 3 · La Montaña*, o la tecla `N`) que vale para
 todos los modos: la campaña arranca directo en el bosque, en **Jefe** sos el Campeón y en **Villano**/**Online** la
 partida empieza en el nivel 2. Se recuerda para la próxima vez.
 Al vencer al Mega Caballero la aventura sigue: una noche de luna roja en el bosque (Linde del bosque, Bosque oscuro,
@@ -40,6 +40,28 @@ elegir carta (se suman a las que ya tenías).
   devuelve) y un **aullido** que hace caer rocas del techo de la cueva. Se le pega pisándole el lomo.
 - **Villano y online**: si los héroes vencen al Mega Caballero, el villano tiene revancha en el bosque: maneja a los
   bichos nuevos y, en la guarida, al Campeón. Los héroes caídos vuelven con media vida y todos eligen carta de nuevo.
+
+## Nivel 3 · La Montaña Helada
+Después del Campeón se sube a la montaña (Falda nevada, Glaciar, Cumbre helada) con nieve, aurora y carámbanos que
+caen. Al final, en su cueva de hielo, espera el **Yeti**.
+- **Enemigos nuevos**: **slimes de hielo** y **muñecos de nieve** que tiran bolas en arco (los dos te **enfrían**: andás
+  más lento un rato) y **lobos blancos**, más rápidos que los lobeznos. Los pinchos del piso son de hielo.
+- **El Yeti**: manotazo, salto con ondas, **rodada** hecho bola de nieve de pared a pared, **avalancha** de rocas de
+  hielo (algunas quedan como obstáculos) y **bolas de nieve** gigantes (tres en la furia). En la última furia llama a
+  dos lobos blancos y su rodada deja hielo filoso en el piso. Al morir se derrite en nieve.
+- En villano/online, si los héroes vencen al Campeón, la revancha es en la montaña y el villano maneja al Yeti.
+
+## Experiencia y evoluciones
+Monedas, enemigos y jefes dan **experiencia** (barra dorada debajo de la energía). Al llenarla el héroe **evoluciona**
+y queda así toda la partida. En villano/online la experiencia es del equipo y evolucionan los tres juntos. Si arrancás
+en el nivel 2 ya tenés media barra, y en el nivel 3 empezás evolucionado.
+- **Cazador** (arquero): ballesta que tira **dos flechas seguidas** y mantiene el dash. Con `C` (o `E`, o el botón
+  *Veneno*) prende el **veneno**: mientras está prendido gasta energía y sus flechas envenenan; el enemigo pierde vida
+  cada un ratito durante 3 segundos y cada flecha envenenada vuelve a arrancar el contador.
+- **Paladín** (caballero): espada más larga (más alcance) y su **parry manda una onda que cura** a los aliados cerca
+  (en la campaña, un corazón).
+- **Warlord** (bárbaro): **martillo** más grande y con más alcance. En **furia**, su golpe cargado **aturde** a los
+  enemigos (también al jefe), y la furia **acelera los golpes** suyos y de los aliados cerca (el aro rojo).
 
 ## Jefes
 - **El jefe que maneja una persona** (Jefe, Villano, Online) tiene menos vida que antes: 42 el Mega Caballero y 50 el
