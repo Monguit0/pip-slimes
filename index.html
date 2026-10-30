@@ -2640,6 +2640,10 @@ const ICE = variants(['...kkkk...', '..kcwcck..', '.kcccwcck.', 'kcckcckcck', 'k
 const SNOWMAN_ROWS = ['...kkkk...', '...kddk...', '..kkkkkk..', '..kwkwwk..', '..kwwwook.', '...kwwk...', '.k.kwwk.k.', '..kwwwwk..', 'kkwwkwwwkk', '.kwwwwwwk.', 'kwwwwkwwwk', 'kwwwwwwwwk', '.kkkkkkkk.'];
 const SNOWMAN = { n: variants(SNOWMAN_ROWS), alt: variants(SNOWMAN_ROWS.map((r, i) => i === 6 ? '.k.kwwk.kw' : i === 5 ? '...kwwk.kw' : i === 8 ? 'kkwwkwwwk.' : r)) };
 const SWOLF = { n: variants(PUP_ROWS.n.map(r => r.replace(/d/g, 'w').replace(/r/g, 'c'))), run: variants(PUP_ROWS.run.map(r => r.replace(/d/g, 'w').replace(/r/g, 'c'))) };
+// pingüino (camina y se tira de panza) y espíritu helado (flota y suelta una onda de frío)
+const PENGUIN = variants(['...kkkk...', '..kddddk..', '.kddwwkdk.', '.kdwwwwook', '.kdwwwwdk.', 'kddwwwwddk', 'kdkwwwwkdk', '.kdwwwwdk.', '..kddddk..', '..ookkoo..']);
+const PENGUIN_SLIDE = variants(['....kkkkk...', '..kkdddddkk.', '.kdddwwwwdok', 'kddwwwwwwwdk', 'kdwwwwwwwwk.', '.kkkkkkkkk..']);
+const SPIRIT = variants(['...kkkk...', '..kccwck..', '.kcwwwwck.', 'kcwkwwkwck', 'kcwwwwwwck', 'kccwwwwcck', '.kcccccck.', '.kc.cc.ck.', '..k.c..k..', '....c.....']);
 const ICICLE_DOWN = sprite(['kck', 'kwk', 'kck', 'kck', '.c.', '.c.', '.b.', '.b.']);
 const ICE_ROCK = sprite(['..kkkkk..', '.kwwccck.', 'kwwcccbbk', 'kwcccbcbk', 'kccccbbbk', '.kbcbbbbk', '..kkkkkk.']);
 const BRANCH_DOWN = sprite(['g.g', 'gpg', '.p.', '.p.', 'gp.', '.p.', '.pg', '.k.']);
@@ -2996,9 +3000,9 @@ const LEVELS = [
     img: null, build: () => buildLevel2Images() },
   // nivel 3: la montaña helada y la cueva del Yeti
   { zones: [
-      { start: 0, end: 512, name: 'FALDA NEVADA', slimes: [3, 0], haz: 0.6, mix: ['green', 'ice', 'snowman', 'ice', 'bat'] },
-      { start: 512, end: 1024, name: 'GLACIAR', slimes: [3, 1], haz: 0.9, mix: ['ice', 'swolf', 'snowman', 'ice', 'bat', 'swolf'] },
-      { start: 1024, end: 1536, name: 'CUMBRE HELADA', slimes: [3, 2], haz: 1.1, mix: ['swolf', 'snowman', 'ice', 'swolf', 'snowman', 'ice', 'bat'] },
+      { start: 0, end: 512, name: 'FALDA NEVADA', slimes: [3, 0], haz: 0.6, mix: ['ice', 'penguin', 'snowman', 'ice', 'penguin'] },
+      { start: 512, end: 1024, name: 'GLACIAR', slimes: [3, 1], haz: 0.9, mix: ['ice', 'swolf', 'snowman', 'penguin', 'spirit', 'ice'] },
+      { start: 1024, end: 1536, name: 'CUMBRE HELADA', slimes: [3, 2], haz: 1.1, mix: ['swolf', 'snowman', 'spirit', 'penguin', 'ice', 'spirit', 'swolf'] },
       { start: 1536, end: 1792, name: 'CUEVA DEL YETI', boss: true, mix: null }
     ],
     plats: [
@@ -3295,7 +3299,7 @@ const input = { left: false, right: false, jump: false, down: false, attack: fal
 let G = null;
 let uid = 1;
 // estado del modo online (la lógica está en la sección "Online", más abajo)
-const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null, barb: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0, killed: new Set(), parried: new Map(), kl: [], klSeq: 0, sentKl: 0, sentAc: 0 };
+const NET = { status: 'off', note: '', lobby: null, room: null, role: null, code: '', me: null, busy: false, playing: false, want: 'archer', slots: { archer: null, knight: null, barb: null }, nicks: {}, nicksKey: '', inputs: null, spect: 0, snaps: [], offs: [], lastT: 0, lastSnd: -1, sq: [], seq: 0, sendT: 0, cam: 0, jp: 0, ap: 0, sentIn: '', hostSeen: false, hostPres: null, hostT: 0, joinT: 0, mine: null, sentAt: 0, sentAk: 0, sentHit: 0, sndOwner: null, hits: [], hitSeq: 0, foeHit: new Set(), myArrows: [], parts: [], fxq: [], sndq: [], lastSnapAt: 0, tgt: 0, buf: 0, killed: new Set(), parried: new Map(), kl: [], klSeq: 0, sentKl: 0, sentAc: 0 };
 
 function newGame(kind, atBoss) {
   const C = CHARS[kind];
@@ -3337,7 +3341,7 @@ function spawnCoins(n) {
   G.coins = spots.map((s, i) => ({ x: s.x, y: s.y, t: Math.random() * 6, born: -i * 0.06, got: false }));
 }
 const ENEMY = { green: { w: 10, h: 6, hp: 1 }, red: { w: 10, h: 6, hp: 2 }, toxic: { w: 10, h: 6, hp: 1 }, bat: { w: 12, h: 7, hp: 1 }, pup: { w: 12, h: 8, hp: 2 },
-  ice: { w: 10, h: 6, hp: 2 }, snowman: { w: 10, h: 13, hp: 3 }, swolf: { w: 12, h: 8, hp: 3 } };
+  ice: { w: 10, h: 6, hp: 2 }, snowman: { w: 10, h: 13, hp: 3 }, swolf: { w: 12, h: 8, hp: 3 }, penguin: { w: 10, h: 10, hp: 2 }, spirit: { w: 10, h: 10, hp: 2 } };
 function spawnSlimes(n) {
   const Z = ZONES[n], [ng, nr] = Z.slimes;
   const kinds = Z.mix || [...Array(ng).fill('green'), ...Array(nr).fill('red')];
@@ -3349,8 +3353,8 @@ function spawnSlimes(n) {
     const surf = Math.random() < 0.45 ? ground : plats[Math.floor(Math.random() * plats.length)];
     const x = surf.x + 4 + Math.random() * (surf.w - 18);
     if (Math.abs(x - G.p.x) < 90) continue;
-    const y = kind === 'bat' ? surf.y - 34 - Math.random() * 16 : surf.y - T.h;
-    G.slimes.push({ x, y, w: T.w, h: T.h, vx: (Math.random() < 0.5 ? -1 : 1), vy: 0, surf, onGround: kind !== 'bat', red, kind, hp: T.hp, stun: 0, jumpT: 0.6 + Math.random(), spawn: 0.5 + Math.random() * 0.4, hopT: 1 + Math.random() * 3, sx: 1, sy: 1, dead: false, deadT: 0, flash: 0, lastSwing: -1, zone: n, cool: 1 + Math.random() * 2, dive: 0, t2: Math.random() * 6 });
+    const y = kind === 'bat' || kind === 'spirit' ? surf.y - 34 - Math.random() * 16 : surf.y - T.h;
+    G.slimes.push({ x, y, w: T.w, h: T.h, vx: (Math.random() < 0.5 ? -1 : 1), vy: 0, surf, onGround: kind !== 'bat' && kind !== 'spirit', red, kind, hp: T.hp, stun: 0, jumpT: 0.6 + Math.random(), spawn: 0.5 + Math.random() * 0.4, hopT: 1 + Math.random() * 3, sx: 1, sy: 1, dead: false, deadT: 0, flash: 0, lastSwing: -1, zone: n, cool: 1 + Math.random() * 2, dive: 0, t2: Math.random() * 6 });
     made++;
   }
 }
@@ -3375,19 +3379,74 @@ function updatePup(s, dt) {
 // muñeco de nieve: se queda en su lugar y tira bolas de nieve en arco
 function updateSnowman(s, dt) {
   const p = G.p, dx = (p.x + 4) - (s.x + 5), dy = (p.y + 5) - (s.y + 4);
-  s.face = Math.sign(dx) || 1;
-  if (s.stun > 0) s.stun -= dt;
-  else {
+  if (s.stun > 0) { s.stun -= dt; s.inhale = 0; }
+  else if (s.inhale > 0) { // toma aire... y sopla
+    s.inhale -= dt;
+    if (jOn()) { s.sx = 0.85 + Math.sin(G.t * 40) * 0.03; s.sy = 1.12; if (Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; G.parts.push({ x: s.x + 5 + s.face * 4 + Math.cos(a) * 14, y: s.y + 4 + Math.sin(a) * 10, vx: -Math.cos(a) * 50, vy: -Math.sin(a) * 40, g: 0, life: 0.25, max: 0.25, c: PAL.w, s: 1 }); } }
+    if (s.inhale <= 0) { startBreath(s.x + 5 + s.face * 5, s.y + 4, s.face, s); s.throwT = BREATH_DUR; if (jOn()) { s.sx = 1.2; s.sy = 0.9; } }
+  } else if (!(s.throwT > 0)) {
+    s.face = Math.sign(dx) || 1;
     s.cool -= dt;
-    if (s.cool <= 0 && Math.abs(dx) < 150 && Math.abs(dy) < 90) { s.cool = 2.2 + Math.random() * 0.9; s.throwT = 0.25; throwSnowball(s.x + 5, s.y + 2, p.x + 4 + p.vx * 0.25, p.y + 6, 1); }
+    if (s.cool <= 0 && Math.abs(dx) < 66 && Math.abs(dy) < 26) { s.cool = 2.6 + Math.random() * 0.8; s.inhale = 0.45; play('menu', { rate: 0.5, vol: 0.5 }); play('alerta', { rate: 1.4, vol: 0.35 }); }
+    else if (s.onGround && Math.abs(dx) > 44 && Math.abs(dx) < 170 && Math.abs(dy) < 40) { // se arrastra hacia vos
+      const nx = s.x + s.face * 4, sf = s.surf;
+      if (!sf || sf.ground || (nx > sf.x && nx + s.w < sf.x + sf.w)) s.vx = s.face * 16;
+    }
   }
   if (s.throwT > 0) s.throwT -= dt;
   const prevB = s.y + s.h;
   s.vy = Math.min(s.vy + GRAV * dt, 280); s.x += s.vx * dt; s.y += s.vy * dt;
-  if (s.onGround) s.vx *= Math.max(0, 1 - 10 * dt);
+  if (s.onGround && !(s.vx && Math.abs(s.vx) <= 16 && !(s.stun > 0) && !(s.inhale > 0) && !(s.throwT > 0))) s.vx *= Math.max(0, 1 - 10 * dt);
   const Z = ZONES[s.zone]; s.x = Math.max(Z.start + 6, Math.min(Z.end - 6 - s.w, s.x));
   s.onGround = false;
   for (const surf of SURFACES) if (s.vy >= 0 && prevB <= surf.y + 0.5 && s.y + s.h >= surf.y && s.x + s.w > surf.x + 1 && s.x < surf.x + surf.w - 1) { s.y = surf.y - s.h; s.vy = 0; s.onGround = true; s.surf = surf; }
+}
+// pingüino: camina despacio y, si te tiene a tiro, se tira de panza a toda velocidad
+function updatePenguin(s, dt) {
+  const p = G.p, dx = (p.x + 4) - (s.x + s.w / 2), dy = (p.y + p.h) - (s.y + s.h);
+  if (s.stun > 0) { s.stun -= dt; s.slideT = 0; s.wind = 0; if (s.onGround) s.vx *= Math.max(0, 1 - 8 * dt); }
+  else if (s.slideT > 0) {
+    s.slideT -= dt; s.vx = s.face * 215;
+    if (jOn() && s.onGround && Math.random() < 0.7) G.parts.push({ x: s.x + s.w / 2 - s.face * 5, y: s.y + s.h - 1, vx: -s.face * (30 + Math.random() * 40), vy: -30 - Math.random() * 40, g: 300, life: 0.35, max: 0.35, c: Math.random() < 0.5 ? PAL.w : PAL.c, s: 1 });
+    if (s.slideT <= 0) { s.vx *= 0.3; s.cool = 1.5 + Math.random() * 0.6; }
+  } else if (s.wind > 0) {
+    s.wind -= dt; s.vx = 0; if (jOn()) { s.sx = 1.2; s.sy = 0.8; }
+    if (s.wind <= 0) { s.slideT = 0.85; play('dash', { rate: 0.75, vol: 0.6 }); play('salto', { rate: 1.6, vol: 0.4 }); if (jOn()) { s.sx = 1.5; s.sy = 0.6; burst(s.x + s.w / 2, s.y + s.h, 8, [PAL.w, PAL.c], 50, 30, 200, 0.3); } }
+  } else {
+    s.face = Math.sign(dx) || s.face || 1; s.cool -= dt;
+    if (s.onGround && s.cool <= 0 && Math.abs(dx) < 125 && Math.abs(dy) < 14) { s.wind = 0.38; play('alerta', { rate: 1.3, vol: 0.4 }); }
+    else if (s.onGround) { const want = Math.abs(dx) > 200 ? 0 : Math.sign(dx) * 22; s.vx += Math.sign(want - s.vx) * Math.min(Math.abs(want - s.vx), 300 * dt); }
+  }
+  const prevB = s.y + s.h, Z = ZONES[s.zone];
+  s.vy = Math.min(s.vy + GRAV * dt, 280); s.x += s.vx * dt; s.y += s.vy * dt;
+  const lo = Z.start + 6, hi = Z.end - 6 - s.w;
+  if (s.x < lo) { s.x = lo; s.vx = 0; s.slideT = 0; } if (s.x > hi) { s.x = hi; s.vx = 0; s.slideT = 0; }
+  s.onGround = false;
+  for (const surf of SURFACES) if (s.vy >= 0 && prevB <= surf.y + 0.5 && s.y + s.h >= surf.y && s.x + s.w > surf.x + 1 && s.x < surf.x + surf.w - 1) { s.y = surf.y - s.h; s.vy = 0; s.onGround = true; s.surf = surf; }
+  s.runT = s.onGround && Math.abs(s.vx) > 10 ? (s.runT || 0) + dt : 0;
+}
+// espíritu helado: flota a tu costado, junta frío y suelta una onda; después se teletransporta
+function updateSpirit(s, dt) {
+  const p = G.p, Z = ZONES[s.zone], cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+  s.t2 += dt; if (s.fadeIn > 0) s.fadeIn -= dt;
+  let tx = cx, ty = cy, spd = 44;
+  if (s.stun > 0) { s.stun -= dt; s.nova = 0; ty = cy + 16; spd = 20; }
+  else if (s.nova > 0) {
+    s.nova -= dt; spd = 0;
+    if (jOn() && Math.random() < 0.7) { const a = Math.random() * Math.PI * 2; G.parts.push({ x: cx + Math.cos(a) * 18, y: cy + Math.sin(a) * 18, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 70, g: 0, life: 0.22, max: 0.22, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 }); }
+    if (s.nova <= 0) { startNova(cx, cy); s.after = 0.45; }
+  } else if (s.after > 0) { s.after -= dt; spd = 0; if (s.after <= 0) spiritBlink(s, p); }
+  else {
+    if (!s.side) s.side = Math.random() < 0.5 ? -1 : 1;
+    tx = p.x + 4 + s.side * 24; ty = p.y - 6 + Math.sin(s.t2 * 2) * 4;
+    s.cool -= dt;
+    if (s.cool <= 0 && Math.hypot(p.x + 4 - cx, p.y + 5 - cy) < 40) { s.nova = 0.65; s.cool = 3 + Math.random(); play('poder', { rate: 1.6, vol: 0.5 }); play('alerta', { rate: 1.5, vol: 0.3 }); }
+  }
+  const dx = tx - cx, dy = ty - cy, d = Math.hypot(dx, dy) || 1, k = spd ? Math.min(1, d / 10) : 0;
+  s.vx += (dx / d * spd * k - s.vx) * Math.min(1, dt * 4); s.vy += (dy / d * spd * k - s.vy) * Math.min(1, dt * 4);
+  s.x += s.vx * dt; s.y += s.vy * dt;
+  s.x = Math.max(Z.start + 4, Math.min(Z.end - 4 - s.w, s.x)); s.y = Math.max(10, Math.min(GROUND - s.h - 1, s.y));
+  s.face = Math.sign(p.x + 4 - cx) || 1;
 }
 // bola de nieve en arco (enemigos y Yeti): pega, enfría y se deshace al tocar algo
 function throwSnowball(x, y, tx, ty, big) {
@@ -3510,6 +3569,16 @@ function evolveHero(h, kind, team) {
     burst(h.x + 4, h.y + 5, 30, [PAL.y, PAL.w, PAL.c, PAL.o], 140, 60, 60, 0.9, 1, true);
     for (let i = 0; i < 3; i++) G.rings.push({ x: h.x + 4, y: h.y + 5, t: -0.1 * i, c: [PAL.w, PAL.y, PAL.c][i] });
   }
+}
+// frío: anda más lento; se nota con escarcha, un tinte celeste y (en tu pantalla) los bordes congelados
+function chill(h, t = 1.6) {
+  if (!h || h.dead) return;
+  const fresh = !(h.chillT > 0);
+  h.chillT = Math.max(h.chillT || 0, t);
+  if (!fresh) return;
+  play('escudo', { rate: 1.9, vol: 0.45 }); play('moneda', { rate: 0.45, vol: 0.25, vary: false });
+  popup(h.x + 4, h.y - 10, '¡LENTO!', PAL.c);
+  if (jOn()) { h.sx = 1.2; h.sy = 0.85; for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2; G.parts.push({ x: h.x + 4, y: h.y + 5, vx: Math.cos(a) * 45, vy: Math.sin(a) * 45, g: 40, life: 0.45, max: 0.45, c: i % 2 ? PAL.w : PAL.c, s: 1, star: i % 3 === 0 }); } }
 }
 const heroKind = h => h === (G && G.p) ? G.kind : h.kind;
 const hasteMul = h => h.hasteT > 0 ? 0.6 : 1; // la furia del Warlord acelera los golpes
@@ -3669,7 +3738,7 @@ function parryFx(h, dir, own) {
 // lo que el parry le hace a quien pegó
 function stunMob(m, dir) {
   if (!m || m.dead) return;
-  m.stunT = 2; m.windup = 0; m.charging = false; m.charge = 0; m.knockT = 0.25; m.vx = dir * 110; m.vy = -140; m.onGround = false; m.flash = 0.12;
+  m.stunT = 2; m.windup = 0; m.charging = false; m.charge = 0; m.inhale = 0; m.wind = 0; m.nova = 0; m.after = 0; m.slideT = 0; m.knockT = 0.25; m.vx = dir * 110; m.vy = -140; m.onGround = false; m.flash = 0.12;
   play(isSkel(m) ? 'huesos' : 'acierto', { rate: 0.8 });
 }
 function stunBoss(B) {
@@ -4033,7 +4102,7 @@ function update(dt, real) {
   if (MELEE(G.kind) && slashActive(p)) updateSlash();
   updateHazards(dt);
   if (G.boss) updateBoss(dt, prevBottom);
-  updateWaves(dt); updateFires(dt); updateArena(dt);
+  updateWaves(dt); updateFires(dt); updateArena(dt); updateFoes(dt);
   if (G.state !== 'play') return;
 
   // monedas
@@ -4055,7 +4124,7 @@ function update(dt, real) {
     if (s.parryT > 0) s.parryT -= dt;
     venomTick(s, dt, () => venomSlime(s));
     if (s.dead) continue;
-    if (s.kind === 'pup' || s.kind === 'swolf') updatePup(s, dt); else if (s.kind === 'bat') updateBat(s, dt); else if (s.kind === 'snowman') updateSnowman(s, dt); else if (s.red) updateRed(s, dt); else updateGreen(s, dt);
+    if (s.kind === 'pup' || s.kind === 'swolf') updatePup(s, dt); else if (s.kind === 'bat') updateBat(s, dt); else if (s.kind === 'snowman') updateSnowman(s, dt); else if (s.kind === 'penguin') updatePenguin(s, dt); else if (s.kind === 'spirit') updateSpirit(s, dt); else if (s.red) updateRed(s, dt); else updateGreen(s, dt);
     if (G.state !== 'play') continue;
     if (overlap(p, s)) {
       if (descending && prevBottom <= s.y + 4) {
@@ -4117,6 +4186,11 @@ function updateCamera(real) {
 
 function updateGreen(s, dt) {
   const speed = 18 + s.zone * 4;
+  if (s.kind === 'ice') { // el slime de hielo escupe una baba helada que te ralentiza
+    const p = G.p, dx = (p.x + 4) - (s.x + 5);
+    if (s.spitT > 0) { s.spitT -= dt; if (jOn()) { s.sx = 1.25; s.sy = 0.75; } if (s.spitT <= 0) { throwSnowball(s.x + 5, s.y, p.x + 4 + p.vx * 0.2, p.y + 6, 1); const f = G.fires[G.fires.length - 1]; f.icy = true; play('baba', { rate: 1.4, vol: 0.6 }); if (jOn()) { s.sx = 0.7; s.sy = 1.35; burst(s.x + 5, s.y, 5, [PAL.c, PAL.w], 40, 20, 100, 0.3); } } }
+    else if (s.stun <= 0) { s.cool -= dt; if (s.cool <= 0 && Math.abs(dx) < 120 && Math.abs(p.y - s.y) < 70) { s.cool = 2.6 + Math.random(); s.spitT = 0.35; play('menu', { rate: 1.6, vol: 0.35 }); } }
+  }
   if (s.stun > 0) s.stun -= dt; else s.x += s.vx * speed * dt;
   const minX = s.surf.x + 1, maxX = s.surf.x + s.surf.w - s.w - 1;
   if (s.x < minX) { s.x = minX; s.vx = 1; } if (s.x > maxX) { s.x = maxX; s.vx = -1; }
@@ -4362,11 +4436,11 @@ function killSlime(s, how, dir, isCrit) {
     if (how === 'stomp') { s.sx = 1.8; s.sy = 0.35; hitstop(0.055); shake(2, 0.14); }
     else { s.sx = 0.6; s.sy = 1.45; s.x += dir * 3; hitstop(0.04); shake(1.5, 0.1); }
     play('explotar', { delay: 0.05, vol: 0.9 });
-    const goo = s.red ? [PAL.r, PAL.o, PAL.p] : s.kind === 'ice' || s.kind === 'snowman' || s.kind === 'swolf' ? [PAL.w, PAL.c, PAL.b] : [PAL.g, PAL.l, PAL.G];
+    const goo = s.red ? [PAL.r, PAL.o, PAL.p] : ['ice', 'snowman', 'swolf', 'spirit'].includes(s.kind) ? [PAL.w, PAL.c, PAL.b] : s.kind === 'penguin' ? [PAL.k, PAL.w, PAL.o] : [PAL.g, PAL.l, PAL.G];
     burst(s.x + 5, s.y + 3, isCrit ? 24 : 14, goo, isCrit ? 120 : 80, 50, 260, 0.6, 1);
   }
   popup(s.x + 5, s.y - (isCrit ? 12 : 4), '+' + pts, isCrit ? PAL.y : PAL.l);
-  gainXP(s.red || s.kind === 'pup' || s.kind === 'snowman' || s.kind === 'swolf' ? 5 : 4, s.x + 5, s.y - 4);
+  gainXP(s.red || ['pup', 'snowman', 'swolf', 'penguin', 'spirit'].includes(s.kind) ? 5 : 4, s.x + 5, s.y - 4);
 }
 function hurt(dir, src = {}) {
   const p = G.p;
@@ -4395,7 +4469,7 @@ function hurt(dir, src = {}) {
     return;
   }
   G.hearts--; p.inv = 1.4; p.vx = dir * 140; p.vy = -170; p.onGround = false; p.chg = -1;
-  if (src.chill) { p.chillT = 1.6; popup(p.x + 4, p.y - 8, '¡FRÍO!', PAL.c); }
+  if (src.chill) chill(p);
   play('dano'); vib(60);
   if (jOn()) { p.flash = 0.09; hitstop(0.09); shake(5, 0.28); G.flashRed = 0.18; flashJ('flash'); burst(p.x + 4, p.y + 5, 10, [PAL.r, PAL.o, PAL.w], 70, 40, 200, 0.5); p.sx = 1.3; p.sy = 0.75; }
   if (G.hearts <= 0) gameOver(); else tryCure(p);
@@ -4709,7 +4783,7 @@ function updateFires(dt) {
       if (B && B.state !== 'dying' && B.state !== 'gone' && overlap(box, bossBody(B))) { fireBurst(f); if (bossCtl()) bossTakeHit(3, f.x, f.y); else damageBoss(3, f.x, f.y); continue; }
     } else if (bossCtl()) {
       const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box));
-      if (e) { if (hitHero(e, 1, Math.sign(f.vx) || 1) && f.snow) e.chillT = 1.6; fireBurst(f); continue; }
+      if (e) { if (hitHero(e, 1, Math.sign(f.vx) || 1) && f.snow) chill(e); fireBurst(f); continue; }
     } else if (p && G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) {
       hurt(Math.sign(f.vx) || 1, { fire: f, chill: f.snow }); if (!f.hero) fireBurst(f); continue;
     }
@@ -4775,7 +4849,7 @@ function updateArena(dt) {
     f.life -= dt;
     if (jOn() && Math.random() < (f.ice ? 0.15 : 0.5)) G.parts.push({ x: f.x + (Math.random() - 0.5) * f.w, y: GROUND - 2 - Math.random() * 4, vx: 0, vy: f.ice ? -8 : -25 - Math.random() * 20, g: -10, life: 0.35, max: 0.35, c: f.ice ? PAL.w : Math.random() < 0.5 ? PAL.o : PAL.y, s: 1 });
     const box = flameBox(f);
-    if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e && hitHero(e, 1, Math.sign(e.x + 4 - f.x) || 1) && f.ice) e.chillT = 1.6; }
+    if (bossCtl()) { const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, box)); if (e && hitHero(e, 1, Math.sign(e.x + 4 - f.x) || 1) && f.ice) chill(e); }
     else if (p && G.state === 'play' && p.inv <= 0 && p.ghostT <= 0 && overlap(p, box)) { hurt(Math.sign(p.x + 4 - f.x) || 1, { chill: f.ice }); if (!p.shield) p.vy = -200; }
   }
   if (G.flames) G.flames = G.flames.filter(f => f.life > 0);
@@ -4785,6 +4859,52 @@ function chargeFlames(B, dt) {
   if (!isBeast(B) || B.phase < 3) return;
   B.fireT = (B.fireT || 0) - Math.abs(B.vx) * dt;
   if (B.fireT <= 0) { B.fireT = 34; addFlame(B.x + BW / 2 - B.face * 12, 14, 2.2, isYeti(B)); } // el lobo deja fuego; el Yeti, hielo
+}
+/* ---- aliento helado (muñeco de nieve): un cono frente a él que enfría y lastima ---- */
+const BREATH_LEN = 62, BREATH_DUR = 0.8;
+function startBreath(x, y, face, src, pl) {
+  (G.breaths || (G.breaths = [])).push({ id: uid++, x, y, face, t: 0, hit: [], src, player: !!pl });
+  play('dash', { rate: 0.45, vol: 0.7 }); play('tajo', { rate: 0.4, vol: 0.5 });
+  if (jOn()) shake(1.2, 0.2);
+}
+const breathReach = b => BREATH_LEN * Math.min(1, b.t / 0.15);
+function inBreath(b, e) {
+  const cx = e.x + (e.w || 8) / 2, cy = e.y + (e.h || 11) / 2, dx = (cx - b.x) * b.face;
+  return b.t < BREATH_DUR && dx >= -3 && dx <= breathReach(b) && Math.abs(cy - b.y) <= dx * 0.42 + 6;
+}
+/* ---- onda helada (espíritu): un anillo que explota alrededor ---- */
+const NOVA_R = 34;
+function startNova(x, y, pl) {
+  (G.novas || (G.novas = [])).push({ id: uid++, x, y, t: 0, hit: [], player: !!pl });
+  play('explotar', { rate: 1.8, vol: 0.6 }); play('escudo', { rate: 1.5, vol: 0.6 }); boom(0.3);
+  if (jOn()) { shake(2, 0.15); hitstop(0.03); for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; G.parts.push({ x, y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, g: 0, life: 0.3, max: 0.3, c: i % 2 ? PAL.w : PAL.c, s: 1, star: i % 3 === 0 }); } G.rings.push({ x, y, t: 0, c: PAL.c }, { x, y, t: -0.08, c: PAL.w }); }
+}
+const inNova = (n, e) => n.t < 0.15 && Math.hypot(e.x + (e.w || 8) / 2 - n.x, e.y + (e.h || 11) / 2 - n.y) < NOVA_R;
+function updateFoes(dt) {
+  const p = G.p;
+  for (const b of G.breaths || []) {
+    b.t += dt;
+    if (b.src) { if (b.src.dead || b.src.stunT > 0 || b.src.stun > 0) b.t = Math.max(b.t, BREATH_DUR); else { b.face = b.src.face || b.face; b.x = b.src.x + b.src.w / 2 + b.face * 5; b.y = b.src.y + 4; } } // sigue al muñeco: puede barrer
+    if (jOn() && b.t < BREATH_DUR) for (let i = 0; i < 3; i++) { const r = breathReach(b) * (0.3 + Math.random() * 0.7), spread = (Math.random() - 0.5) * 0.8; G.parts.push({ x: b.x + b.face * 2, y: b.y, vx: b.face * (120 + Math.random() * 60), vy: spread * 70, g: 0, life: r / 160, max: r / 160, c: Math.random() < 0.5 ? PAL.w : PAL.c, s: Math.random() < 0.3 ? 2 : 1 }); }
+    if (p && G.state === 'play' && !b.hit.includes('p') && p.inv <= 0 && p.ghostT <= 0 && inBreath(b, p)) { b.hit.push('p'); hurt(b.face, { chill: true }); }
+    if (!p) for (const e of G.heroes || []) if (!e.dead && !e.net && !b.hit.includes(e.id) && e.inv <= 0 && inBreath(b, e)) { b.hit.push(e.id); if (hitHero(e, 1, b.face, b.player)) chill(e); }
+  }
+  if (G.breaths) G.breaths = G.breaths.filter(b => b.t < BREATH_DUR + 0.2);
+  for (const n of G.novas || []) {
+    n.t += dt;
+    if (p && G.state === 'play' && !n.hit.includes('p') && p.inv <= 0 && p.ghostT <= 0 && inNova(n, p)) { n.hit.push('p'); hurt(Math.sign(p.x + 4 - n.x) || 1, { chill: true }); }
+    if (!p) for (const e of G.heroes || []) if (!e.dead && !e.net && !n.hit.includes(e.id) && e.inv <= 0 && inNova(n, e)) { n.hit.push(e.id); if (hitHero(e, 1, Math.sign(e.x + 4 - n.x) || 1, n.player)) chill(e); }
+  }
+  if (G.novas) G.novas = G.novas.filter(n => n.t < 0.45);
+}
+// el espíritu desaparece y aparece al costado del héroe
+function spiritBlink(s, tgt) {
+  const ox = s.x + s.w / 2, oy = s.y + s.h / 2, side = Math.random() < 0.5 ? -1 : 1;
+  const Z = ZONES[s.zone], lo = Z.start + 6, hi = (s.zone < 3 && !G.p ? GATES[s.zone].x : Z.end) - 6 - s.w;
+  s.x = Math.max(lo, Math.min(hi, tgt.x + 4 + side * (46 + Math.random() * 30) - s.w / 2)); s.y = Math.max(14, Math.min(GROUND - 30, tgt.y - 14 - Math.random() * 20));
+  s.vx = 0; s.vy = 0; s.fadeIn = 0.3;
+  play('dash', { rate: 1.9, vol: 0.5 });
+  if (jOn()) { burst(ox, oy, 10, [PAL.c, PAL.w, PAL.b], 60, 20, 0, 0.35); burst(s.x + s.w / 2, s.y + s.h / 2, 10, [PAL.c, PAL.w, PAL.b], 60, 20, 0, 0.35); }
 }
 function updateWaves(dt) {
   const p = G.p;
@@ -5357,15 +5477,17 @@ const MOB = {
   bat: { w: 12, h: 7, hp: 2, speed: 62, pspeed: 84, jump: 0, name: 'MURCIÉLAGO', hint: 'SALTO SUBE · ABAJO SE POSA · ATAQUE: PICADA' },
   pup: { w: 12, h: 8, hp: 3, speed: 66, pspeed: 86, jump: 250, name: 'LOBEZNO', hint: 'ATAQUE: MORDISCO' },
   ice: { w: 10, h: 6, hp: 2, speed: 40, pspeed: 58, jump: 235, name: 'SLIME DE HIELO', hint: 'MANTENÉ ATAQUE Y SOLTÁ · CONGELA' },
-  snowman: { w: 10, h: 13, hp: 3, speed: 24, pspeed: 48, jump: 220, name: 'MUÑECO DE NIEVE', hint: 'ATAQUE: BOLA DE NIEVE' },
+  snowman: { w: 10, h: 13, hp: 3, speed: 24, pspeed: 48, jump: 220, name: 'MUÑECO DE NIEVE', hint: 'ATAQUE: ALIENTO HELADO (CONO)' },
+  penguin: { w: 10, h: 10, hp: 3, speed: 30, pspeed: 56, jump: 220, name: 'PINGÜINO', hint: 'ATAQUE: DESLIZARSE DE PANZA' },
+  spirit: { w: 10, h: 10, hp: 2, speed: 46, pspeed: 72, jump: 0, name: 'ESPÍRITU HELADO', hint: 'SALTO SUBE · ATAQUE: ONDA HELADA Y PARPADEO' },
   swolf: { w: 12, h: 8, hp: 3, speed: 80, pspeed: 98, jump: 262, name: 'LOBO BLANCO', hint: 'ATAQUE: MORDISCO' }
 };
 const isSlimeMob = m => m.type === 'slime' || m.type === 'red' || m.type === 'toxic' || m.type === 'ice';
 const isWolfMob = m => m.type === 'pup' || m.type === 'swolf';
 const INVADE_MOBS3 = [
-  ['ice', 'snowman', 'ice', 'bat', 'swolf'],
-  ['swolf', 'snowman', 'ice', 'bat', 'swolf'],
-  ['swolf', 'snowman', 'snowman', 'ice', 'skaxe', 'swolf']
+  ['ice', 'penguin', 'snowman', 'ice', 'penguin'],
+  ['swolf', 'snowman', 'spirit', 'penguin', 'ice'],
+  ['swolf', 'snowman', 'spirit', 'penguin', 'spirit', 'swolf']
 ];
 const invadeList = z => (G.lvl === 2 ? INVADE_MOBS3 : G.lvl ? INVADE_MOBS2 : INVADE_MOBS)[z];
 const INVADE_MOBS2 = [
@@ -5415,7 +5537,7 @@ function campaignNextLevel() {
   const n = Math.min(2, (G.lvl || 0) + 1);
   setLevel(n); G.lvl = n;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, camV: 0, boss: null, slimes: [], coins: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], breaths: [], novas: [], arrows: [], rings: [], combo: 0, comboT: 0, fadeIn: 0.9 });
   Object.assign(G.p, { x: 40, y: GROUND - 11, vx: 0, vy: 0, onGround: true, face: 1, inv: 1, stompInv: 0, poisonT: 0, drop: 0, surf: null, chg: -1, dashT: 0 });
   G.hearts = G.maxHearts;
   enterZone(0, true);
@@ -5426,7 +5548,7 @@ function invadeNextLevel() {
   const n = Math.min(2, (G.lvl || 0) + 1);
   setLevel(n); G.lvl = n;
   GATES.forEach(gt => { gt.open = 0; gt.want = 0; });
-  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
+  Object.assign(G, { z: 0, cam: 0, boss: null, mobs: [], shots: [], arrows: [], hazards: [], waves: [], fires: [], flames: [], boulders: [], breaths: [], novas: [], ctrl: null, zoneLost: false, soul: null, soulFrom: null, fadeIn: 0.9 });
   const old = new Map(G.heroes.map(e => [e.kind, e])), base = { archer: 8, knight: 10, barb: 9 };
   G.heroes = ['archer', 'knight', 'barb'].map((kind, i) => {
     const prev = old.get(kind), src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
@@ -5452,12 +5574,12 @@ function spawnMob(z, type, i, late) {
   {
     const T = MOB[type];
     let surf = ground;
-    const usePlat = type === 'slime' || type === 'toxic' || type === 'ice' || type === 'snowman' ? Math.random() < 0.7 : type === 'skarch' ? Math.random() < 0.6 : Math.random() < 0.25;
+    const usePlat = type === 'slime' || type === 'toxic' || type === 'ice' || type === 'snowman' || type === 'penguin' ? Math.random() < 0.7 : type === 'skarch' ? Math.random() < 0.6 : Math.random() < 0.25;
     const farPlats = plats.filter(p => p.x > Z.start + 90);
     if (usePlat && farPlats.length) surf = farPlats[Math.floor(Math.random() * farPlats.length)];
     const x = surf.x + 4 + Math.random() * Math.max(1, surf.w - T.w - 8);
     const extra = (type === 'slime' || type === 'red' || type === 'toxic' || type === 'ice') && hasV('gordos') ? 2 : 0;
-    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h - (type === 'bat' ? 30 + Math.random() * 20 : 0), w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp + extra, max: T.hp + extra, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: (late ? 0.8 : 0.3) + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false, regT: 0 });
+    G.mobs.push({ id: uid++, type, zone: z, x, y: surf.y - T.h - (type === 'bat' || type === 'spirit' ? 30 + Math.random() * 20 : 0), w: T.w, h: T.h, vx: 0, vy: 0, onGround: true, surf, face: -1, pdir: Math.random() < 0.5 ? -1 : 1, hp: T.hp + extra, max: T.hp + extra, inv: 0, flash: 0, cool: 1 + Math.random() * 1.5, charge: 0, charging: false, swingT: 9, swingId: 0, twang: 0, windup: 0, sx: 1, sy: 1, dead: false, deadT: 0, spawn: (late ? 0.8 : 0.3) + i * 0.12, knockT: 0, drop: 0, hopT: 1 + Math.random() * 2, jumpT: 0.6, runT: 0, prevBottom: surf.y, lastSwing: -1, player: false, regT: 0 });
   }
 }
 function enterInvadeZone(n) {
@@ -5497,7 +5619,7 @@ function possessNext(first) {
   if (!alive.length) { G.ctrl = null; return; }
   const bots = G.heroes.filter(e => !e.dead);
   const bx = bots.length ? bots.reduce((s, e) => s + e.x, 0) / bots.length : 0;
-  const pref = (G.lvl === 2 ? ['ice', 'snowman', 'swolf'] : G.lvl ? ['toxic', 'bat', 'pup'] : ['slime', 'skarch', 'skaxe'])[G.z];
+  const pref = (G.lvl === 2 ? ['penguin', 'snowman', 'spirit'] : G.lvl ? ['toxic', 'bat', 'pup'] : ['slime', 'skarch', 'skaxe'])[G.z];
   const host = first ? (alive.find(m => m.type === pref) || alive[0]) : alive.slice().sort((a, b) => Math.abs(a.x - bx) - Math.abs(b.x - bx))[0];
   for (const m of G.mobs) m.player = false;
   host.player = true; host.charge = 0; host.charging = false; host.windup = 0; G.ctrl = host;
@@ -5526,7 +5648,7 @@ function updateInvade(dt) {
     updateHeroes(dt); updateArrows(dt); updateHazards(dt); updateWaves(dt); updateFires(dt); updateArena(dt);
     if (G.state === 'play' && G.boss && G.boss.state !== 'dying' && G.heroes.every(e => e.dead)) invadeWin(G.lvl === 2 ? '¡DEFENDISTE LA CUEVA!' : G.lvl ? '¡DEFENDISTE LA GUARIDA!' : '¡DEFENDISTE EL TRONO!');
   } else {
-    updateMobs(dt); updateBots(dt); updateShots(dt); updateArrows(dt);
+    updateMobs(dt); updateBots(dt); updateShots(dt); updateArrows(dt); updateFoes(dt);
     const alive = G.mobs.filter(m => !m.dead && m.zone === G.z).length;
     if (!alive && !G.zoneLost && G.state === 'play') {
       G.zoneLost = true; GATES[G.z].want = 1;
@@ -5617,13 +5739,18 @@ function batFly(m, dt, ax, ay, speed) {
   const lo = Z.start + 4, hi = (m.zone < 3 ? GATES[m.zone].x : Z.end) - m.w;
   m.x = Math.max(lo, Math.min(hi, m.x)); m.y = Math.max(8, Math.min(GROUND - m.h - 1, m.y));
   // techo: no puede volar más alto que lo que un héroe alcanza saltando desde el piso o la plataforma de abajo
-  const ceil = m.player ? -99 : batCeiling(m);
+  const ceil = m.player && m.type === 'bat' ? -99 : batCeiling(m);
   if (m.y < ceil) { m.y = Math.min(ceil, m.y + 140 * dt); m.vy = Math.max(m.vy, 0); }
   m.onGround = false; m.runT = 0;
   if (m.inv > 0) m.inv -= dt;
 }
 function mobPhysics(m, dt, dir, speed) {
-  if (m.type === 'bat') { batFly(m, dt, m.x + m.w / 2 + dir * 20, m.y + m.h / 2, speed); return; }
+  if (m.type === 'bat' || m.type === 'spirit') { batFly(m, dt, m.x + m.w / 2 + dir * 20, m.y + m.h / 2, speed); return; }
+  if (m.slideT > 0) { // panzazo del pingüino: no frena hasta que termina o choca
+    m.slideT -= dt; m.knockT = 0.05; m.vx = m.face * 230;
+    if (jOn() && m.onGround && Math.random() < 0.7) G.parts.push({ x: m.x + m.w / 2 - m.face * 5, y: m.y + m.h - 1, vx: -m.face * (30 + Math.random() * 40), vy: -30 - Math.random() * 40, g: 300, life: 0.35, max: 0.35, c: Math.random() < 0.5 ? PAL.w : PAL.c, s: 1 });
+    if (m.slideT <= 0) { m.knockT = 0; m.vx *= 0.3; }
+  }
   const Z = ZONES[m.zone];
   if (m.knockT > 0) m.knockT -= dt;
   else { const acc = (m.onGround ? 700 : 450) * dt; m.vx += Math.max(-acc, Math.min(acc, dir * speed * (hasV('rapidos') ? 1.25 : 1) - m.vx)); }
@@ -5631,7 +5758,7 @@ function mobPhysics(m, dt, dir, speed) {
   m.prevBottom = m.y + m.h;
   m.x += m.vx * dt; m.y += m.vy * dt;
   const lo = Z.start + 4, hi = (m.zone < 3 ? GATES[m.zone].x : Z.end) - m.w;
-  if (m.x < lo) { m.x = lo; m.vx = 0; m.pdir = 1; } if (m.x > hi) { m.x = hi; m.vx = 0; m.pdir = -1; }
+  if (m.x < lo) { m.x = lo; m.vx = 0; m.pdir = 1; m.slideT = 0; } if (m.x > hi) { m.x = hi; m.vx = 0; m.pdir = -1; m.slideT = 0; }
   if (m.drop > 0) m.drop -= dt;
   const was = m.onGround, fv = m.vy;
   m.onGround = false;
@@ -5642,6 +5769,33 @@ function mobPhysics(m, dt, dir, speed) {
   if (m.onGround && !was && fv > 140 && jOn()) { m.sx = 1.35; m.sy = 0.7; }
   if (m.inv > 0) m.inv -= dt;
   m.runT = m.onGround && Math.abs(m.vx) > 20 ? m.runT + dt : 0;
+}
+// ataques con aviso de los enemigos helados (lo usan el jugador y la compu)
+function frostMobStep(m, dt) {
+  if (m.inhale > 0) { // muñeco: toma aire
+    m.inhale -= dt;
+    if (jOn()) { m.sx = 0.85; m.sy = 1.12; if (Math.random() < 0.6) { const a = Math.random() * Math.PI * 2; G.parts.push({ x: m.x + 5 + m.face * 4 + Math.cos(a) * 14, y: m.y + 4 + Math.sin(a) * 10, vx: -Math.cos(a) * 50, vy: -Math.sin(a) * 40, g: 0, life: 0.25, max: 0.25, c: PAL.w, s: 1 }); } }
+    if (m.inhale <= 0) { startBreath(m.x + 5 + m.face * 5, m.y + 4, m.face, m, m.player); m.swingT = 0; if (jOn()) { m.sx = 1.2; m.sy = 0.9; } }
+    return true;
+  }
+  if (m.wind > 0) { // pingüino: se agacha y sale disparado
+    m.wind -= dt; if (jOn()) { m.sx = 1.2; m.sy = 0.8; }
+    if (m.wind <= 0) { m.slideT = m.player ? 0.7 : 0.85; play('dash', { rate: 0.75, vol: 0.6 }); play('salto', { rate: 1.6, vol: 0.4 }); if (jOn()) { m.sx = 1.5; m.sy = 0.6; burst(m.x + m.w / 2, m.y + m.h, 8, [PAL.w, PAL.c], 50, 30, 200, 0.3); } }
+    return true;
+  }
+  if (m.nova > 0) { // espíritu: junta frío...
+    m.nova -= dt; m.vx *= 0.8; m.vy *= 0.8;
+    const cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+    if (jOn() && Math.random() < 0.7) { const a = Math.random() * Math.PI * 2; G.parts.push({ x: cx + Math.cos(a) * 18, y: cy + Math.sin(a) * 18, vx: -Math.cos(a) * 70, vy: -Math.sin(a) * 70, g: 0, life: 0.22, max: 0.22, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 }); }
+    if (m.nova <= 0) { startNova(cx, cy, m.player); m.after = m.player ? 0.2 : 0.45; }
+    return true;
+  }
+  if (m.after > 0) { // ...y después se esfuma
+    m.after -= dt; m.vx *= 0.8; m.vy *= 0.8;
+    if (m.after <= 0) { const tgt = m.player ? null : nearestBot(m); if (tgt) spiritBlink(m, tgt); else { const Z = ZONES[m.zone], ox = m.x + m.w / 2, oy = m.y + m.h / 2; m.x = Math.max(Z.start + 4, Math.min((m.zone < 3 ? GATES[m.zone].x : Z.end) - m.w - 4, m.x + m.face * 48)); m.fadeIn = 0.3; play('dash', { rate: 1.9, vol: 0.5 }); if (jOn()) { burst(ox, oy, 10, [PAL.c, PAL.w, PAL.b], 60, 20, 0, 0.35); burst(m.x + m.w / 2, m.y + m.h / 2, 10, [PAL.c, PAL.w, PAL.b], 60, 20, 0, 0.35); } } }
+    return true;
+  }
+  return false;
 }
 function playerMob(m, dt) {
   const T = MOB[m.type];
@@ -5676,7 +5830,23 @@ function playerMob(m, dt) {
     return;
   }
   if (isWolfMob(m) && input.attackPressed && m.cool <= 0 && m.onGround) { pupLunge(m); }
-  if (m.type === 'snowman') { if (input.attackPressed && m.cool <= 0) { lob(m, 0.55, true); m.cool = 0.75; m.swingT = 0; } mobPhysics(m, dt, dir, T.pspeed); return; }
+  if (m.fadeIn > 0) m.fadeIn -= dt;
+  if (m.type === 'snowman' || m.type === 'penguin' || m.type === 'spirit') {
+    const busy = frostMobStep(m, dt);
+    if (m.type === 'spirit') {
+      if (!busy && input.attackPressed && m.cool <= 0) { m.nova = 0.4; m.cool = 1.8; play('poder', { rate: 1.6, vol: 0.5 }); }
+      const vy = input.jump ? -1 : input.down ? 1 : 0;
+      batFly(m, dt, m.x + m.w / 2 + (busy ? 0 : dir) * 30, m.y + m.h / 2 + (busy ? 0 : vy) * 30, T.pspeed);
+      return;
+    }
+    if (!busy && input.attackPressed && m.cool <= 0) {
+      if (m.type === 'snowman') { m.inhale = 0.25; m.cool = 1.5; play('menu', { rate: 0.5, vol: 0.5 }); }
+      else if (m.onGround) { m.wind = 0.15; m.cool = 1.1; play('alerta', { rate: 1.3, vol: 0.4 }); }
+    }
+    const blowing = m.type === 'snowman' && m.swingT < BREATH_DUR;
+    mobPhysics(m, dt, busy || m.slideT > 0 ? 0 : dir, T.pspeed * (blowing ? 0.35 : 1));
+    return;
+  }
   if (isSlimeMob(m)) {
     if (input.attack && m.cool <= 0) { if (!m.charging) play('menu', { rate: 0.7, vol: 0.4 }); m.charging = true; m.charge = Math.min(1, m.charge + dt / 0.7); if (jOn()) { m.sx = 1 + m.charge * 0.25; m.sy = 1 - m.charge * 0.2; } }
     if (!input.attack && m.charging) { lob(m, 0.15 + 0.85 * m.charge, true); m.charging = false; m.charge = 0; m.cool = 0.4; }
@@ -5703,10 +5873,39 @@ function aiMob(m, dt) {
     m.face = Math.sign(m.vx) || m.face;
     return;
   }
-  if (m.type === 'snowman') {
-    if (tgt && dist < 160) { m.face = Math.sign(dx) || m.face; if (m.cool <= 0) { aiLob(m, tgt); m.cool = 2.2 + Math.random(); m.swingT = 0; } }
-    else patrol();
-    mobPhysics(m, dt, tgt && dist < 160 ? 0 : dir, speed);
+  if (m.fadeIn > 0) m.fadeIn -= dt;
+  if (m.type === 'snowman' || m.type === 'penguin' || m.type === 'spirit') {
+    const stunned = m.stunT > 0;
+    if (stunned) { m.stunT -= dt; m.inhale = m.wind = m.nova = m.after = 0; m.slideT = 0; }
+    const busy = !stunned && frostMobStep(m, dt);
+    if (m.type === 'spirit') {
+      m.t2 = (m.t2 || Math.random() * 6) + dt;
+      if (busy || stunned) { batFly(m, dt, m.x + m.w / 2, m.y + m.h / 2 + (stunned ? 16 : 0), stunned ? 20 : 0); return; }
+      if (tgt && dist < 200) {
+        if (!m.side) m.side = Math.random() < 0.5 ? -1 : 1;
+        batFly(m, dt, tgt.x + 4 + m.side * 24, tgt.y - 6 + Math.sin(m.t2 * 2) * 4, T.speed);
+        m.face = Math.sign(dx) || m.face;
+        if (m.cool <= 0 && Math.hypot(dx, (tgt.y + 5) - (m.y + m.h / 2)) < 40) { m.nova = 0.65; m.cool = 3 + Math.random(); play('poder', { rate: 1.6, vol: 0.5 }); play('alerta', { rate: 1.5, vol: 0.3 }); }
+      } else batFly(m, dt, m.x + m.w / 2 + m.pdir * 20, 60 + Math.sin(m.t2) * 10, T.speed * 0.5);
+      return;
+    }
+    if (busy || stunned || m.slideT > 0) { mobPhysics(m, dt, 0, speed); return; }
+    if (m.type === 'snowman') {
+      const blowing = m.swingT < BREATH_DUR;
+      if (tgt && dist < 170) {
+        if (!blowing) m.face = Math.sign(dx) || m.face;
+        dir = blowing ? 0 : dist > 40 ? m.face : 0;
+        if (m.cool <= 0 && dist < 64 && Math.abs(dy) < 26) { m.inhale = 0.45; m.cool = 2.6 + Math.random() * 0.8; play('menu', { rate: 0.5, vol: 0.5 }); play('alerta', { rate: 1.4, vol: 0.35 }); }
+      } else patrol();
+    } else {
+      if (tgt && dist < 200) {
+        m.face = Math.sign(dx) || m.face;
+        dir = dist > 30 ? m.face : 0; speed = T.speed;
+        if (m.onGround && m.cool <= 0 && dist < 125 && Math.abs(dy) < 14) { m.wind = 0.38; m.cool = 1.8 + Math.random() * 0.8; play('alerta', { rate: 1.3, vol: 0.4 }); }
+      } else patrol();
+    }
+    if (m.onGround && m.surf && !m.surf.ground && dir) { const nx = m.x + dir * 3; if (nx < m.surf.x || nx + m.w > m.surf.x + m.surf.w) { if (speed < T.speed) { m.pdir = -m.pdir; m.face = m.pdir; } dir = 0; } }
+    mobPhysics(m, dt, dir, speed);
     return;
   }
   if (isWolfMob(m)) {
@@ -5782,7 +5981,7 @@ function updateShots(dt) {
       if (m) { hitMob(m, 2, Math.sign(s.vx) || 1, 'arrow'); splat(s); continue; }
     } else {
       const e = G.heroes.find(e => !e.dead && !e.net && e.inv <= 0 && overlap(e, { x: s.x - 2, y: s.y - 2, w: 4, h: 4 }));
-      if (e) { if (hitHero(e, 1, Math.sign(s.vx) || 1, s.player)) { if (s.toxic) e.poisonT = 1.6; if (s.snow) e.chillT = 1.6; } splat(s); continue; }
+      if (e) { if (hitHero(e, 1, Math.sign(s.vx) || 1, s.player)) { if (s.toxic) e.poisonT = 1.6; if (s.snow) chill(e); } splat(s); continue; }
     }
     for (const surf of SURFACES) if (s.vy > 0 && py <= surf.y + 1 && s.y >= surf.y && s.x >= surf.x && s.x <= surf.x + surf.w) { s.y = surf.y - 1; splat(s); break; }
     if (s.x < ZONES[G.z].start - 20 || s.x > ZONES[G.z].end + 20 || s.y > H + 10) s.dead = true;
@@ -5816,7 +6015,8 @@ function hitMob(m, dmg, dir, how, force) {
   const isCrit = !ven && (force || Math.random() < 0.1);
   const total = isCrit ? dmg * 3 : dmg;
   m.hp -= total; if (!ven) m.inv = 0.3; m.flash = 0.1; m.charging = false; m.charge = 0; m.windup = 0;
-  if (how !== 'stomp' && !ven) { m.knockT = 0.2; m.vx = (dir || 1) * 110; m.vy = -120; m.onGround = false; }
+  if (!ven) { m.inhale = 0; m.wind = 0; m.nova = 0; } // un golpe corta el aliento, el panzazo o la onda que estaba juntando
+  if (how !== 'stomp' && !ven) { m.knockT = 0.2; m.slideT = 0; m.vx = (dir || 1) * 110; m.vy = -120; m.onGround = false; }
   const skel = isSkel(m);
   play(skel ? 'huesos' : (how === 'stomp' ? 'pisoton' : 'acierto'));
   if (isCrit) crit(m.x + m.w / 2, m.y + 3);
@@ -5871,7 +6071,7 @@ function updateBots(dt) {
     if (!e.net) for (const m of G.mobs) {
       if (m.dead || m.spawn > 0 || !overlap(e, m)) continue;
       if (e.vy > 20 && e.prevBottom <= m.y + 3) { kick(e, e.vx, -230, 2); if (jOn()) { e.sx = 0.8; e.sy = 1.25; } hitMob(m, 1, 0, 'stomp'); }
-      else if (e.inv <= 0) { if (hitHero(e, 1, Math.sign((e.x + 4) - (m.x + m.w / 2)) || 1, m.player)) { if (m.type === 'toxic') e.poisonT = 1.6; if (m.type === 'ice') e.chillT = 1.6; } }
+      else if (e.inv <= 0) { if (hitHero(e, 1, Math.sign((e.x + 4) - (m.x + m.w / 2)) || 1, m.player)) { if (m.type === 'toxic') e.poisonT = 1.6; if (m.type === 'ice') chill(e); } }
     }
   }
   G.heroes = G.heroes.filter(e => !(e.dead && e.popped));
@@ -5946,9 +6146,21 @@ function drawMob(m) {
   if (m.stunT > 0 && !m.dead) stunStars(m.x + m.w / 2, m.y - 4);
   const left = m.face < 0, white = m.flash > 0;
   const cx = m.x + m.w / 2;
-  if (m.type === 'snowman') {
-    const set = m.swingT < 0.25 ? SNOWMAN.alt : SNOWMAN.n, spr = white ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
-    if (jOn()) drawScaled(spr, cx, m.y + m.h, m.sx, m.sy); else g.drawImage(spr, Math.round(m.x), Math.round(m.y - 1));
+  if (m.type === 'snowman' || m.type === 'penguin' || m.type === 'spirit') {
+    const set = m.type === 'snowman' ? (m.swingT < BREATH_DUR || m.inhale > 0 ? SNOWMAN.alt : SNOWMAN.n) : m.type === 'penguin' ? (m.slideT > 0 ? PENGUIN_SLIDE : PENGUIN) : SPIRIT;
+    const spr = white ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
+    if (m.type === 'spirit' && !m.dead) {
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = m.nova > 0 ? '#0a3a4a' : '#06202a'; glowDisc(cx, m.y + 5, m.nova > 0 ? 12 + Math.sin(G.t * 30) : 9); g.globalCompositeOperation = 'source-over';
+      if (m.nova > 0) pxCircle(cx, m.y + 5, 4 + 22 * Math.min(1, m.nova / 0.65), Math.floor(G.t * 20) % 2 ? PAL.w : PAL.c, 36);
+      g.globalAlpha = m.fadeIn > 0 ? Math.max(0.15, 1 - m.fadeIn / 0.3) : 0.85;
+    }
+    const waddle = m.type === 'penguin' && !(m.slideT > 0) && m.runT > 0 ? Math.sin(G.t * 18) * 0.12 : 0;
+    if (waddle) { g.save(); g.translate(cx, m.y + m.h); g.rotate(waddle); g.translate(-cx, -(m.y + m.h)); }
+    const fy = m.type === 'spirit' ? Math.sin(G.t * 4 + m.id) * 1.5 : 0;
+    if (jOn()) drawScaled(spr, cx, m.y + m.h + fy, m.sx, m.sy); else g.drawImage(spr, Math.round(m.x), Math.round(m.y - 1 + fy));
+    if (waddle) g.restore();
+    g.globalAlpha = 1;
+    if ((m.inhale > 0 || m.wind > 0) && !m.dead && Math.floor(G.t * 10) % 2) drawText(g, '!', cx, m.y - 12, PAL.r, 1, 'center');
   } else if (m.type === 'bat' || isWolfMob(m)) {
     const WS = m.type === 'swolf' ? SWOLF : PUP;
     const set = m.type === 'bat' ? (m.perch ? BAT.b : Math.floor(G.t * (m.tired ? 22 : 10) + m.id) % 2 ? BAT.a : BAT.b) : (m.runT > 0 && Math.floor(m.runT * 12) % 2) || m.swingT < 0.25 ? WS.run : WS.n;
@@ -6006,6 +6218,26 @@ function drawMob(m) {
         if (vy > 0 && SURFACES.some(s => py <= s.y + 1 && y >= s.y && x >= s.x && x <= s.x + s.w)) { g.fillStyle = PAL.r; g.fillRect(Math.round(x) - 2, Math.round(y) - 1, 5, 1); g.fillRect(Math.round(x), Math.round(y) - 3, 1, 5); break; }
       }
     }
+  }
+}
+// el cono del aliento helado y el destello de la onda del espíritu
+function drawFrostFx() {
+  for (const b of G.breaths || []) {
+    if (b.t >= BREATH_DUR) continue;
+    const r = breathReach(b), fade = b.t > BREATH_DUR - 0.2 ? (BREATH_DUR - b.t) / 0.2 : 1;
+    g.globalAlpha = 0.22 * fade; g.fillStyle = PAL.c;
+    g.beginPath(); g.moveTo(b.x, b.y - 2); g.lineTo(b.x + b.face * r, b.y - r * 0.42 - 6); g.lineTo(b.x + b.face * r, b.y + r * 0.42 + 6); g.lineTo(b.x, b.y + 2); g.fill();
+    g.globalAlpha = 0.3 * fade; g.fillStyle = PAL.w;
+    g.beginPath(); g.moveTo(b.x, b.y - 1); g.lineTo(b.x + b.face * r * 0.7, b.y - r * 0.18 - 2); g.lineTo(b.x + b.face * r * 0.7, b.y + r * 0.18 + 2); g.lineTo(b.x, b.y + 1); g.fill();
+    g.globalAlpha = fade; g.fillStyle = PAL.w;
+    for (let i = 0; i < 10; i++) { const k = ((b.t * 3 + i * 0.137) % 1), d = r * k, sp = (Math.sin(i * 12.9 + b.id) * 0.9) * (d * 0.42 + 4); g.fillRect(Math.round(b.x + b.face * d), Math.round(b.y + sp), 1, 1); }
+    g.globalAlpha = 1;
+  }
+  for (const n of G.novas || []) {
+    if (n.t > 0.25) continue;
+    const k = n.t / 0.25;
+    g.globalAlpha = 0.35 * (1 - k); g.fillStyle = PAL.c; g.beginPath(); g.arc(n.x, n.y, NOVA_R * (0.4 + 0.6 * k), 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1; pxCircle(n.x, n.y, NOVA_R * (0.4 + 0.6 * k), k < 0.5 ? PAL.w : PAL.c, 48);
   }
 }
 function drawShots() {
@@ -6248,7 +6480,13 @@ function drawPip(p, kind, isPlayer) {
   if (p.evo && kind === 'barb' && p.rageT > 0 && !p.dead && jOn()) pxCircle(p.x + 4, p.y + 6, 62 + Math.sin(G.t * 8) * 2, Math.floor(G.t * 10) % 2 ? PAL.r : PAL.o, 70);
   if (p.hasteT > 0 && !p.dead && Math.floor(G.t * 20) % 2) { g.fillStyle = PAL.o; g.fillRect(Math.round(p.x - p.face * 3), Math.round(p.y + 3 + (G.t * 37 % 6)), 2, 1); }
   // frío: escarcha alrededor y anda más lento
-  if (p.chillT > 0 && !p.dead) { g.fillStyle = Math.floor(G.t * 8) % 2 ? PAL.c : PAL.w; g.fillRect(Math.round(p.x - 1), Math.round(p.y + 2), 1, 1); g.fillRect(Math.round(p.x + 9), Math.round(p.y + 6), 1, 1); g.fillRect(Math.round(p.x + 3), Math.round(p.y - 2), 1, 1); }
+  if (p.chillT > 0 && !p.dead) {
+    g.globalAlpha = 0.22 + 0.1 * Math.sin(G.t * 10); g.globalCompositeOperation = 'lighter';
+    if (jOn()) drawScaled(p.face < 0 ? v.wl : v.wr, p.x + 4 + p.face, p.y + p.h + bob, p.sx, p.sy); else g.drawImage(p.face < 0 ? v.wl : v.wr, Math.round(p.face > 0 ? p.x - 1 : p.x - 3), Math.round(p.y - 1 + bob));
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    g.fillStyle = Math.floor(G.t * 8) % 2 ? PAL.c : PAL.w; g.fillRect(Math.round(p.x - 1), Math.round(p.y + 2), 1, 1); g.fillRect(Math.round(p.x + 9), Math.round(p.y + 6), 1, 1); g.fillRect(Math.round(p.x + 3), Math.round(p.y - 2), 1, 1);
+    if (jOn() && Math.random() < 0.15) G.parts.push({ x: p.x + Math.random() * 8, y: p.y + Math.random() * 10, vx: 0, vy: 12, g: 0, life: 0.4, max: 0.4, c: PAL.w, s: 1, _n: 1 });
+  }
   // Cazador con veneno: gotitas verdes en la ballesta
   if (p.venom && !p.dead && Math.floor(G.t * 6) % 2) { g.fillStyle = PAL.l; g.fillRect(Math.round(p.x + 4 + p.face * 7), Math.round(p.y + 9), 1, 2); }
   // carga: un anillo que se cierra sobre el arco o la espada, y un destello cuando está lista
@@ -6390,14 +6628,24 @@ function render() {
   for (const s of G.slimes) {
     if (s.x < camX - 20 || s.x > camX + W + 10) continue;
     const wolfS = s.kind === 'pup' || s.kind === 'swolf', WS = s.kind === 'swolf' ? SWOLF : PUP;
-    const set = s.kind === 'toxic' ? TOXIC : s.kind === 'ice' ? ICE : s.kind === 'snowman' ? (s.throwT > 0 ? SNOWMAN.alt : SNOWMAN.n) : s.kind === 'bat' ? (Math.floor(G.t * 10 + s.x) % 2 ? BAT.a : BAT.b) : wolfS ? (s.runT > 0 && Math.floor(s.runT * 12) % 2 ? WS.run : WS.n) : s.red ? RED : SLIME;
-    const left = s.red || wolfS || s.kind === 'snowman' ? (G.p.x + 4 < s.x + 5) : s.vx < 0;
+    const set = s.kind === 'toxic' ? TOXIC : s.kind === 'ice' ? ICE : s.kind === 'penguin' ? (s.slideT > 0 ? PENGUIN_SLIDE : PENGUIN) : s.kind === 'spirit' ? SPIRIT : s.kind === 'snowman' ? (s.throwT > 0 || s.inhale > 0 ? SNOWMAN.alt : SNOWMAN.n) : s.kind === 'bat' ? (Math.floor(G.t * 10 + s.x) % 2 ? BAT.a : BAT.b) : wolfS ? (s.runT > 0 && Math.floor(s.runT * 12) % 2 ? WS.run : WS.n) : s.red ? RED : SLIME;
+    const left = ['snowman', 'penguin', 'spirit'].includes(s.kind) ? s.face < 0 : s.red || wolfS ? (G.p.x + 4 < s.x + 5) : s.vx < 0;
+    if (s.kind === 'spirit' && !s.dead) { // brillo frío y, cuando junta la onda, un anillo que se cierra
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = s.nova > 0 ? '#0a3a4a' : '#06202a'; glowDisc(s.x + 5, s.y + 5, s.nova > 0 ? 12 + Math.sin(G.t * 30) : 9); g.globalCompositeOperation = 'source-over';
+      if (s.nova > 0) pxCircle(s.x + 5, s.y + 5, 4 + 22 * (s.nova / 0.65), Math.floor(G.t * 20) % 2 ? PAL.w : PAL.c, 36);
+      g.globalAlpha = s.fadeIn > 0 ? 1 - s.fadeIn / 0.3 : 0.85;
+    }
+    if ((s.wind > 0 || s.inhale > 0) && !s.dead && Math.floor(G.t * 10) % 2) drawText(g, '!', s.x + 5, s.y - 10, PAL.r, 1, 'center');
     const spr = s.flash > 0 ? (left ? set.wl : set.wr) : (left ? set.l : set.r);
     if (s.spawn > 0) { if (Math.floor(s.spawn * 20) % 2) continue; drawScaled(spr, s.x + 5, s.y + s.h, Math.max(0.1, 1 - s.spawn), Math.max(0.1, 1 - s.spawn)); continue; }
     if (s.parryT > 0 && !s.dead) stunStars(s.x + 5, s.y - 4);
-    const wob = jOn() && !s.dead && s.kind !== 'bat' && !wolfS && s.kind !== 'snowman' ? 1 + Math.sin(G.t * (s.red ? 14 : 9) + s.x) * 0.06 : 1;
-    if (jOn()) drawScaled(spr, s.x + s.w / 2, s.y + s.h, s.sx / wob, s.sy * wob);
+    const wob = jOn() && !s.dead && !['bat', 'snowman', 'penguin', 'spirit'].includes(s.kind) && !wolfS ? 1 + Math.sin(G.t * (s.red ? 14 : 9) + s.x) * 0.06 : 1;
+    const waddle = s.kind === 'penguin' && !(s.slideT > 0) && s.runT > 0 ? Math.sin(G.t * 18) * 0.12 : 0;
+    if (waddle) { g.save(); g.translate(s.x + s.w / 2, s.y + s.h); g.rotate(waddle); g.translate(-(s.x + s.w / 2), -(s.y + s.h)); }
+    if (jOn()) drawScaled(spr, s.x + s.w / 2, s.y + s.h + (s.kind === 'spirit' ? Math.sin(G.t * 4 + s.x) * 1.5 : 0), s.sx / wob, s.sy * wob);
     else g.drawImage(spr, Math.round(s.x), Math.round(s.y - 2));
+    if (waddle) g.restore();
+    g.globalAlpha = 1;
   }
   for (const m of G.mobs || []) drawMob(m);
   // jefe
@@ -6439,7 +6687,7 @@ function render() {
   }
   // bolas de fuego (las devueltas por un parry, en celeste): una bola redonda a media resolución con su cola
   for (const f of G.fires || []) {
-    const cols = f.hero ? [PAL.w, PAL.c, PAL.b, RAMPS.b ? RAMPS.b[0] : PAL.B] : f.snow ? [PAL.w, PAL.w, PAL.s, PAL.c] : [PAL.w, PAL.y, PAL.o, PAL.r], sp = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / sp, uy = f.vy / sp;
+    const cols = f.hero ? [PAL.w, PAL.c, PAL.b, RAMPS.b ? RAMPS.b[0] : PAL.B] : f.icy ? [PAL.w, PAL.c, PAL.b, PAL.B] : f.snow ? [PAL.w, PAL.w, PAL.s, PAL.c] : [PAL.w, PAL.y, PAL.o, PAL.r], sp = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / sp, uy = f.vy / sp;
     const fl = (Math.floor(G.t * 24 + f.id) % 3) * 0.25, hp = 1 / RS;
     const ball = (cx, cy, r, core) => {
       for (let y = -r; y <= r; y += hp) for (let x = -r; x <= r; x += hp) {
@@ -6448,7 +6696,10 @@ function render() {
         g.fillRect(Math.round((cx + x) * RS) / RS, Math.round((cy + y) * RS) / RS, hp, hp);
       }
     };
-    if (f.snow && !f.hero) { ball(f.x, f.y, f.big ? 4.5 : 3, 0.45); continue; }
+    if (f.snow && !f.hero) {
+      if (f.icy) { g.globalAlpha = 0.35; g.fillStyle = PAL.c; g.beginPath(); g.arc(f.x, f.y, 4, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; ball(f.x, f.y, 2.4, 0.4); continue; }
+      ball(f.x, f.y, f.big ? 4.5 : 3, 0.45); continue;
+    }
     g.globalAlpha = 0.28; g.fillStyle = cols[2]; g.beginPath(); g.arc(f.x, f.y, 6.5 + fl * 2, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
     for (let k = 3; k >= 1; k--) ball(f.x - ux * k * 2.6, f.y - uy * k * 2.6 + Math.sin(G.t * 30 + k + f.id) * 0.5, 3.4 - k * 0.8, -1);
     ball(f.x, f.y, 3.6 + fl, 0.3);
@@ -6493,6 +6744,7 @@ function render() {
     else g.drawImage(CUR_LVL === 2 ? ICICLE_DOWN : CUR_LVL ? BRANCH_DOWN : ARROW_DOWN, Math.round(h.x - 1) + wx, Math.round(h.y));
   }
   if (G.shots) drawShots();
+  drawFrostFx();
   // Pip y los héroes
   if (G.p) drawPip(G.p, G.kind, true);
   for (const e of G.heroes || []) if (!e.popped) drawPip(e, e.kind, false);
@@ -6510,6 +6762,15 @@ function render() {
 
   // ---- pantalla ----
   g.setTransform(RS, 0, 0, RS, 0, 0);
+  // tu héroe con frío: los bordes de la pantalla se congelan
+  { const me = NET.role === 'guest' ? NET.mine : G.p, ck = me && me.chillT > 0 ? Math.min(1, me.chillT / 0.6) : 0;
+    if (ck > 0) {
+      const T3 = performance.now() / 1000;
+      for (let i = 0; i < 4; i++) { g.globalAlpha = ck * (0.3 - i * 0.065); g.fillStyle = i % 2 ? PAL.c : PAL.b; g.fillRect(0, i * 2, W, 2); g.fillRect(0, H - 2 - i * 2, W, 2); g.fillRect(i * 2, 0, 2, H); g.fillRect(W - 2 - i * 2, 0, 2, H); }
+      g.globalAlpha = ck * 0.8; g.fillStyle = PAL.w;
+      for (let i = 0; i < 26; i++) { const e = i % 4, k = ((i * 37.7 + Math.floor(T3 * 3) * 0) % 1); const along = (i * 53.3) % (e < 2 ? W : H), d = (i * 7) % 6; const x = e === 0 ? along : e === 1 ? along : e === 2 ? d : W - 1 - d, y = e === 0 ? d : e === 1 ? H - 1 - d : along; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
+      g.globalAlpha = 1;
+    } }
   // nevada en la montaña
   if (CUR_LVL === 2) {
     const T2 = performance.now() / 1000;
@@ -7180,7 +7441,7 @@ class BinR {
 }
 const ST_LIST = ['play', 'over', 'win'];
 const HK_LIST = ['archer', 'knight', 'barb'];
-const MT_LIST = ['slime', 'red', 'skarch', 'skaxe', 'toxic', 'bat', 'pup', 'ice', 'snowman', 'swolf'];
+const MT_LIST = ['slime', 'red', 'skarch', 'skaxe', 'toxic', 'bat', 'pup', 'ice', 'snowman', 'swolf', 'penguin', 'spirit'];
 const BS_LIST = ['wait', 'drop', 'roar', 'idle', 'tele', 'act', 'rec', 'stun', 'rage', 'dying', 'gone'];
 const BA_LIST = ['', 'sweep', 'slam', 'charge', 'rain', 'fire'];
 const HP_LIST = ['warn', 'fall', 'stuck', 'gone', 'back'];
@@ -7192,7 +7453,7 @@ const SP = {
   h: 'iiiiiiiiiiiiiiisiiiii', // id tipo x y mira flags corre inv destello sx sy vida max tajo arco jugador kb kvx kvy kt cartas
   m: 'iiiiiiiiiiiiiiiii',    // id tipo x y mira flags aparece destello sx sy corre tajo arco amague vida max carga
   a: 'iiiiiiiii',            // id x y mira flags vida tiembla dueño número
-  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii', fb: 'iiii', bo: 'iiii', fl: 'iiiiii',
+  sh: 'iiii', hz: 'iiiiiiiiii', wv: 'iii', fb: 'iiii', bo: 'iiii', fl: 'iiiiii', br: 'iiiii', nv: 'iiii',
   b: 'iiiiiiiiiiiiiiiiiiiiiii', tr: 'iiiii',
   pp: 'iisiii', rg: 'iiii',
   p: 'iiiiiiiiii',           // x y vx vy gravedad color tamaño vida max dueño
@@ -7215,14 +7476,16 @@ function netPack(now) {
   if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
   if (G.pick) { const pk = G.pick; w.s(JSON.stringify({ r: pk.r, t: Math.round(pk.t * 10) / 10, mx: pk.mx, o: pk.o, c: Object.keys(pk.c) })); }
   w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0) | (e.evo ? 16384 : 0) | (e.hasteT > 0 ? 32768 : 0) | (e.venom ? 65536 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
-  w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0) | (m.stunT > 0 ? 16 : 0) | (m.perch ? 32 : 0) | (m.tired ? 64 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
+  w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0) | (m.stunT > 0 ? 16 : 0) | (m.perch ? 32 : 0) | (m.tired ? 64 : 0) | (m.slideT > 0 ? 128 : 0) | (m.inhale > 0 || m.wind > 0 ? 256 : 0) | (m.nova > 0 ? 512 : 0) | (m.fadeIn > 0 ? 1024 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
   w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0) | (a.power ? 8 : 0) | (a.venom ? 16 : 0) | (a.delay > 0 ? 32 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
   w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), (q.red ? 1 : 0) | (q.hero ? 2 : 0) | (q.toxic ? 4 : 0) | (q.snow ? 8 : 0)]), SP.sh);
   w.list(G.hazards.map(h => [h.id, enumOf(HP_LIST, h.phase), H2(h.x), H2(h.y), h.landY, C2(h.warn), C2(h.warnMax), (h.big ? 1 : 0) | (h.rock ? 2 : 0), C2(h.life), C2(h.wob)]), SP.hz);
   w.list(G.waves.map(v => [v.id || 0, H2(v.x), v.hero ? v.dir * 2 : v.dir]), SP.wv);
-  w.list((G.fires || []).map(f => [f.id, H2(f.x), H2(f.y), (f.hero ? 1 : 0) | (f.snow ? 2 : 0) | (f.big ? 4 : 0)]), SP.fb);
+  w.list((G.fires || []).map(f => [f.id, H2(f.x), H2(f.y), (f.hero ? 1 : 0) | (f.snow ? 2 : 0) | (f.big ? 4 : 0) | (f.icy ? 8 : 0)]), SP.fb);
   w.list((G.boulders || []).map(r => [r.id, r.x, r.hp, C2(Math.max(0, r.life - r.t))]), SP.bo);
   w.list((G.flames || []).map(f => [f.id, H2(f.x), f.w, C2(f.life), C2(f.max), f.ice ? 1 : 0]), SP.fl);
+  w.list((G.breaths || []).map(b => [b.id, H2(b.x), H2(b.y), b.face, C2(b.t)]), SP.br);
+  w.list((G.novas || []).map(n => [n.id, H2(n.x), H2(n.y), C2(n.t)]), SP.nv);
   if (B) {
     w.rec([H2(B.x), H2(B.y), B.face, Math.round(B.angle), C2(Math.max(0, B.flash)), C2(B.sx), C2(B.sy), C2(B.crouch), B.walking ? 1 : 0, B.phase, B.glow ? 1 : 0, enumOf(BS_LIST, B.state), enumOf(BA_LIST, B.atk || ''), B.landed ? 1 : 0, H2(B.targetX), C2(Math.min(B.t, 99)), B.swing ? C2(B.swing.t) : -1, C2(Math.max(0, B.barShake)), Math.round(B.show * 10), C2(B.fill), B.hp, B.maxHp, Math.max(0, BOSS_TYPES.indexOf(B.type))], SP.b);
     w.list(B.trail.map(tr => [H2(tr.x), H2(tr.y), tr.face, Math.round(tr.angle), C2(tr.t)]), SP.tr);
@@ -7275,7 +7538,7 @@ function netDecode(bytes) {
   const bn = flags & 8 ? r.rec('ssii') : null, so = flags & 16 ? r.rec('iiiii') : null;
   let pick = null;
   if (flags & 64) { try { pick = JSON.parse(r.s()); } catch (err) { pick = null; } }
-  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv), fb = r.list(SP.fb), bo = r.list(SP.bo), fl = r.list(SP.fl);
+  const h = r.list(SP.h), m = r.list(SP.m), a = r.list(SP.a), sh = r.list(SP.sh), hz = r.list(SP.hz), wv = r.list(SP.wv), fb = r.list(SP.fb), bo = r.list(SP.bo), fl = r.list(SP.fl), br = r.list(SP.br), nv = r.list(SP.nv);
   const b = flags & 32 ? r.rec(SP.b) : null, tr = flags & 32 ? r.list(SP.tr) : [];
   const pp = r.list(SP.pp), rg = r.list(SP.rg), ps = r.list(SP.p), snd = r.list(SP.snd);
   return {
@@ -7289,13 +7552,15 @@ function netDecode(bytes) {
     banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!(bn[3] & 1), card: !!(bn[3] & 2) }) : null,
     soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
     heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, evo: !!(q[5] & 16384), hasteT: q[5] & 32768 ? 0.2 : 0, venom: !!(q[5] & 65536), cm: q[20] || 0 })),
-    mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), stunT: q[5] & 16 ? 1 : 0, perch: !!(q[5] & 32), tired: !!(q[5] & 64), spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
+    mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), stunT: q[5] & 16 ? 1 : 0, perch: !!(q[5] & 32), tired: !!(q[5] & 64), slideT: q[5] & 128 ? 0.1 : 0, inhale: q[5] & 256 ? 0.1 : 0, nova: q[5] & 512 ? 0.4 : 0, fadeIn: q[5] & 1024 ? 0.15 : 0, spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
     arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), venom: !!(q[4] & 16), delay: q[4] & 32 ? 0.05 : 0, life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2), toxic: !!(q[3] & 4), snow: !!(q[3] & 8) })),
     hazards: hz.map(q => ({ id: q[0], phase: HP_LIST[q[1]] || 'warn', x: L(q[2]), y: L(q[3]), landY: q[4], warn: P(q[5]), warnMax: P(q[6]) || 1, big: !!(q[7] & 1), rock: !!(q[7] & 2), life: P(q[8]), wob: P(q[9]) })),
-    fires: fb.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), hero: !!(q[3] & 1), snow: !!(q[3] & 2), big: !!(q[3] & 4), vx: 1, vy: 0 })),
+    fires: fb.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), hero: !!(q[3] & 1), snow: !!(q[3] & 2), big: !!(q[3] & 4), icy: !!(q[3] & 8), vx: 1, vy: 0 })),
     boulders: bo.map(q => ({ id: q[0], x: q[1], hp: q[2], t: 0, life: P(q[3]), flash: 0 })),
     flames: fl.map(q => ({ id: q[0], x: L(q[1]), w: q[2], life: P(q[3]), max: P(q[4]) || 1, ice: !!q[5] })),
+    breaths: br.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], t: P(q[4]) })),
+    novas: nv.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), t: P(q[3]) })),
     waves: wv.map(q => ({ id: q[0], x: L(q[1]), dir: Math.sign(q[2]) || 1, hero: Math.abs(q[2]) === 2 })),
     boss: b ? { x: L(b[0]), y: L(b[1]), face: b[2], angle: b[3], flash: P(b[4]), sx: P(b[5]), sy: P(b[6]), crouch: P(b[7]), walking: !!b[8], phase: b[9], glow: !!b[10], state: BS_LIST[b[11]] || 'idle', atk: BA_LIST[b[12]] || '', landed: !!b[13], targetX: L(b[14]), t: P(b[15]), swing: b[16] >= 0 ? { t: P(b[16]) } : null, barShake: P(b[17]), show: b[18] / 10, fill: P(b[19]), hp: b[20], maxHp: b[21], type: BOSS_TYPES[b[22]] || 'knight', trail: tr.map(q => ({ x: L(q[0]), y: L(q[1]), face: q[2], angle: q[3], t: P(q[4]) })) } : null,
     pops: pp.map(q => ({ x: L(q[0]), y: L(q[1]), text: q[2], c: CLIST[q[3]] || PAL.w, t: P(q[4]), o: q[5] })),
@@ -7490,6 +7755,9 @@ function netPredict(real) {
     }
     if (!hit) for (const w of G.waves) if (!w.hero && overlap(m, { x: w.x - 4, y: GROUND - 7, w: 8, h: 7 })) { hit = [9, w.id, w.dir || 1, 1]; break; }
     if (!hit) for (const f of G.flames || []) if (overlap(m, flameBox(f))) { hit = [14, f.id, Math.sign(m.x + 4 - f.x) || 1, 1]; break; }
+    if (!hit) for (const b of G.breaths || []) if (!NET.foeHit.has('b' + b.id) && inBreath(b, m)) { hit = [15, b.id, b.face || 1, 1]; NET.foeHit.add('b' + b.id); break; }
+    if (!hit) for (const n of G.novas || []) if (!NET.foeHit.has('n' + n.id) && inNova(n, m)) { hit = [16, n.id, Math.sign(m.x + 4 - n.x) || 1, 1]; NET.foeHit.add('n' + n.id); break; }
+    if (NET.foeHit.size > 60) NET.foeHit.delete(NET.foeHit.values().next().value);
     if (!hit) for (const tr of TRAPS) if (trapPhase(tr, G.t) === 2 && overlap(m, trapBox(tr))) { hit = [12, tr.id, Math.sign(m.x + 4 - (tr.x + tr.w / 2)) || 1, 1]; break; }
     if (!hit) for (const h of G.hazards) if (h.phase === 'fall' && overlap(m, hazBox(h))) { hit = [10, h.id, Math.sign(m.x + 4 - h.x) || 1, 1]; break; }
     const pkey = hit && hit[0] + ':' + hit[1];
@@ -7512,7 +7780,7 @@ function netPredict(real) {
     } else if (hit) {
       netHitReport(hit[0], hit[1], hit[2], hit[3] || 1);
       const fid = (L, id) => (L || []).find(o => o.id === id) || {};
-      if ((hit[0] === 1 && fid(G.mobs, hit[1]).type === 'ice') || (hit[0] === 4 && fid(G.shots, hit[1]).snow) || (hit[0] === 13 && fid(G.fires, hit[1]).snow) || (hit[0] === 14 && fid(G.flames, hit[1]).ice)) m.chillT = 1.6;
+      if ((hit[0] === 1 && fid(G.mobs, hit[1]).type === 'ice') || (hit[0] === 4 && fid(G.shots, hit[1]).snow) || (hit[0] === 13 && fid(G.fires, hit[1]).snow) || (hit[0] === 14 && fid(G.flames, hit[1]).ice) || hit[0] === 15 || hit[0] === 16) chill(m);
       m.hurtAt = now; m.knockAt = now; m.invL = 0.75; m.chg = -1;
       m.vx = hit[2] * 170; m.vy = -200; m.onGround = false; m.cut = true;
       play('dano', { rate: 1.3, vol: 0.8 });
@@ -7672,6 +7940,7 @@ function netHero(e, dt) {
       else if (kind === 5) { const a = G.arrows.find(o => o.id === id); if (a) a.dead = true; if (hitHero(e, 1, dir, a ? a.player : false, true) && hasV('veneno')) e.poisonT = 1.6; }
       else if (kind === 10) { const hz = G.hazards.find(o => o.id === id); if (hz && hz.phase === 'fall') hz.phase = 'gone'; hitHero(e, 1, dir, true, true); }
       else if (kind === 13) { const f = (G.fires || []).find(o => o.id === id && !o.dead); if (f) fireBurst(f); hitHero(e, 1, dir, true, true); }
+      else if (kind === 15 || kind === 16) { const o = ((kind === 15 ? G.breaths : G.novas) || []).find(q => q.id === id); if (o) o.hit.push(e.id); if (hitHero(e, 1, dir, o ? o.player : false, true)) chill(e); }
       else if (kind === 11) { const B = G.boss; if (B && B.state !== 'dying' && B.state !== 'gone') { play('pisoton', { rate: 0.8 }); bossTakeHit(1, e.x + 4, B.y); } }
       else if (kind >= 6) { const d = Math.max(1, Math.min(2, h[4] | 0)), Bc = G.boss; hitHero(e, d + (kind <= 8 && d >= 2 && Bc && Bc.player && Bc.combo >= 2 ? 1 : 0), dir, true, true); } // jefe: choque, tajo, salto aplastante u onda
       else { const m = G.mobs.find(o => o.id === id); if (hitHero(e, kind === 3 ? (hasV('hachas') ? 3 : 2) : 1, dir, m ? m.player : false, true) && m && m.type === 'toxic') e.poisonT = 1.6; }
