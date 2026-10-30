@@ -44,8 +44,18 @@ elegir carta (se suman a las que ya tenías).
 ## Nivel 3 · La Montaña Helada
 Después del Campeón se sube a la montaña (Falda nevada, Glaciar, Cumbre helada) con nieve, aurora y carámbanos que
 caen. Al final, en su cueva de hielo, espera el **Yeti**.
-- **Enemigos nuevos**: **slimes de hielo** y **muñecos de nieve** que tiran bolas en arco (los dos te **enfrían**: andás
-  más lento un rato) y **lobos blancos**, más rápidos que los lobeznos. Los pinchos del piso son de hielo.
+- **Enemigos nuevos** (todos con aviso antes de atacar, y un golpe les corta el ataque):
+  - **Slime de hielo**: se infla y **escupe una baba helada** en arco que te **ralentiza**.
+  - **Muñeco de nieve**: se arrastra hacia vos, toma aire (`!`) y suelta un **aliento helado** en **cono** hacia
+    adelante que lastima y enfría a todos los que agarre (mientras sopla puede girar y barrer).
+  - **Pingüino**: camina bamboleándose, se agacha (`!`) y se tira **de panza** a toda velocidad por el piso.
+  - **Espíritu helado**: flota a tu costado, junta frío (un aro que se cierra) y explota en una **onda helada**
+    alrededor; después se esfuma y reaparece en otro lado.
+  - **Lobo blanco**, más rápido que los lobeznos. Los pinchos del piso son de hielo.
+- **Frío**: andás más lento un rato. Se nota en el héroe (tinte celeste y escarcha), con un *¡LENTO!* y, en tu
+  pantalla, con los bordes congelados.
+- En villano/online podés manejar a todos: el muñeco sopla el cono con ataque (y camina lento mientras sopla), el
+  pingüino se tira de panza, y el espíritu vuela (salto sube) y con ataque suelta la onda y parpadea hacia adelante.
 - **El Yeti**: manotazo, salto con ondas, **rodada** hecho bola de nieve de pared a pared, **avalancha** de rocas de
   hielo (algunas quedan como obstáculos) y **bolas de nieve** gigantes (tres en la furia). En la última furia llama a
   dos lobos blancos y su rodada deja hielo filoso en el piso. Al morir se derrite en nieve.
