@@ -22,6 +22,13 @@ Cómo se reparte el trabajo:
 - Si el villano cambia de pestaña, la partida sigue corriendo. Si su navegador se congela (por ejemplo, salió de la app
   en el celu), los héroes ven "ESPERANDO AL VILLANO".
 
+## Slimes en 32 bits
+Los slimes (verde, rojo, tóxico y de hielo) están redibujados con luz 3D: degradado de gelatina, brillo, luz rebotada
+en el borde y burbujas adentro, en los píxeles HD del remaster. Respiran y parpadean, entrecierran los ojos al cargar,
+abren la boca al escupir, ponen cara de `> <` cuando les pegás y se aplastan al reventar. Se ven en la campaña, en el
+modo villano (también online) y en la pantalla de título. La hoja sale de las herramientas de PixelForge
+(`export_game_slimes.py`) y va incrustada en `index.html`.
+
 ## Nivel 2 · El Bosque Oscuro
 En el menú hay un **selector de nivel** (*Nivel 1 · El Reino* / *Nivel 2 · El Bosque* / *Nivel 3 · La Montaña*, o la tecla `N`) que vale para
 todos los modos: la campaña arranca directo en el bosque, en **Jefe** sos el Campeón y en **Villano**/**Online** la
