@@ -4216,6 +4216,9 @@ function updateGates(dt) {
 function updateCamera(real) {
   const p = G.p, z = G.z;
   let minX = ZONES[z].start, maxX = ZONES[z].end - W;
+  // recién pasado el portón la cámara todavía está atrás: no la empujamos de golpe (el jugador parecía saltar
+  // para atrás); sigue al jugador y desde ahí ya no vuelve a mostrar la zona anterior
+  if (z < 3 && G.cam < minX) minX = G.cam;
   if (z < 3 && GATES[z].open > 0.5) maxX = ZONES[z + 1].end - W;
   if (z === 3) minX = maxX = ZONES[3].start;
   const look = jOn() ? p.face * 26 : 0;
@@ -5713,6 +5716,7 @@ function updateCameraInvade(real) {
   if (G.ctrl && !G.ctrl.dead) { fx = G.ctrl.x + G.ctrl.w / 2; face = G.ctrl.face; }
   else { const al = G.heroes.filter(e => !e.dead); fx = al.length ? al.reduce((s, e) => s + e.x, 0) / al.length + 4 : G.cam + W / 2; }
   let minX = ZONES[z].start, maxX = ZONES[z].end - W;
+  if (G.cam < minX) minX = G.cam; // al pasar de zona la cámara no da un tirón hacia adelante
   if (GATES[z].open > 0.5) maxX = ZONES[z + 1].end - W;
   const target = Math.max(minX, Math.min(maxX, fx - W / 2 + (jOn() ? face * 20 : 0)));
   const before = G.cam;
@@ -7661,7 +7665,8 @@ function netCam(V, real) {
   if (z < 3) {
     const fx = mine ? mine.x + 4 + (jOn() ? mine.face * 22 : 0) : NET.cam + W / 2;
     const maxX = V.gates[z] > 0.5 ? ZONES[z + 1].end - W : ZONES[z].end - W;
-    target = Math.max(ZONES[z].start, Math.min(maxX, fx - W / 2));
+    const minX = NET.cam < ZONES[z].start && NET.cam > ZONES[z].start - 300 ? NET.cam : ZONES[z].start; // sin tirón al pasar de zona
+    target = Math.max(minX, Math.min(maxX, fx - W / 2));
   }
   if (Math.abs(target - NET.cam) > 300 || !jOn()) NET.cam = target;
   else NET.cam += (target - NET.cam) * Math.min(1, real * 5);
