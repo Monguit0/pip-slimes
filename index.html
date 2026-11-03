@@ -3777,6 +3777,43 @@ function parryFx(h, dir, own) {
   sparks(x, y, 14, [PAL.w, PAL.y, PAL.c, PAL.w], NET.role === 'host' ? h.id : undefined);
   if (NET.role !== 'guest') for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; G.parts.push({ x, y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, g: 0, life: 0.25, max: 0.25, c: PAL.w, s: 1, star: true, o: NET.role === 'host' ? h.id : undefined }); }
 }
+// el parry además empuja a todos los enemigos que estén cerca y deja al caballero inmune un ratito
+// (así no pasa que paró a uno y otro le pegó enseguida)
+const PARRY_R = 36, PARRY_INV = 1.5;
+function parryPush(h, dir, fxOnly) {
+  const cx = h.x + 4, cy = h.y + 5;
+  h.inv = Math.max(h.inv || 0, PARRY_INV); h.parryInv = PARRY_INV;
+  const away = (ox, oy) => { const dx = ox - cx, dy = oy - cy; return Math.hypot(dx, dy) < PARRY_R ? (Math.sign(dx) || dir) : 0; };
+  if (!fxOnly) for (const s of G.slimes || []) {
+    if (s.dead || s.spawn > 0) continue;
+    const d = away(s.x + s.w / 2, s.y + s.h / 2); if (!d) continue;
+    // empuje genérico (s.kb): cada bicho interpreta vx a su manera, así que el empujón va aparte
+    s.kb = d * 170; s.vy = -150; s.onGround = false; s.stun = Math.max(s.stun || 0, 0.7); s.parryT = Math.max(s.parryT || 0, 0.7); s.flash = 0.1;
+    s.vx = s.red || SLIME_PHYS.includes(s.kind) ? 0 : d; s.slideT = 0; s.wind = 0; s.inhale = 0; s.nova = 0; s.spitT = 0; s.dive = 0;
+  }
+  if (!fxOnly) for (const m of G.mobs || []) {
+    if (m.dead || m.spawn > 0) continue;
+    const d = away(m.x + m.w / 2, m.y + m.h / 2); if (!d) continue;
+    m.vx = d * 135; m.vy = -150; m.onGround = false; m.knockT = 0.22; m.stunT = Math.max(m.stunT || 0, 0.7); m.flash = 0.1;
+    m.windup = 0; m.charging = false; m.charge = 0; m.inhale = 0; m.wind = 0; m.nova = 0; m.slideT = 0; m.dive = 0;
+  }
+  // onda de choque: anillos, polvo y un golpe grave
+  play('dash', { rate: 0.55, vol: 0.8 }); boom(0.45);
+  if (!jOn()) return;
+  const o = NET.role === 'host' ? h.id : undefined;
+  G.rings.push({ x: cx, y: cy, t: 0, c: PAL.w }, { x: cx, y: cy, t: -0.06, c: PAL.y }, { x: cx, y: cy, t: -0.12, c: PAL.c });
+  for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; G.parts.push({ x: cx + Math.cos(a) * 6, y: cy + Math.sin(a) * 4, vx: Math.cos(a) * 170, vy: Math.sin(a) * 90, g: 0, life: 0.28, max: 0.28, c: i % 2 ? PAL.y : PAL.w, s: 1, o }); }
+  for (let i = 0; i < 10; i++) G.parts.push({ x: cx + (Math.random() - 0.5) * 10, y: h.y + h.h - 1, vx: (i % 2 ? 1 : -1) * (60 + Math.random() * 70), vy: -20 - Math.random() * 30, g: 160, life: 0.4, max: 0.4, c: PAL.S, s: 1, o });
+  shake(2.2, 0.16);
+}
+const SLIME_PHYS = ['pup', 'swolf', 'bat', 'snowman', 'penguin', 'spirit'];
+// el empujón del parry, igual para todos los bichos de la campaña
+function slimeKnock(s, dt) {
+  s.x += s.kb * dt; s.kb *= Math.max(0, 1 - 6 * dt); if (Math.abs(s.kb) < 6) s.kb = 0;
+  const Z = ZONES[s.zone], sf = !s.red && !SLIME_PHYS.includes(s.kind) && s.surf;
+  const lo = sf ? sf.x + 1 : Z.start + 6, hi = sf ? sf.x + sf.w - s.w - 1 : Z.end - 6 - s.w;
+  if (s.x < lo) { s.x = lo; s.kb = 0; } if (s.x > hi) { s.x = hi; s.kb = 0; }
+}
 // lo que el parry le hace a quien pegó
 function stunMob(m, dir) {
   if (!m || m.dead) return;
@@ -3803,6 +3840,7 @@ function netParry(e, kind, id, dir) {
   else if (kind === 13) { const f = (G.fires || []).find(o => o.id === id && !o.dead && !o.hero); if (f) reflectFire(f); }
   else if (kind >= 6 && kind <= 8) stunBoss(G.boss);
   parryFx(e, dir, false);
+  parryPush(e, dir);
   popup(e.x + 4, e.y - 8, '¡PARRY!', PAL.y, e.id);
   if (e.evo && e.kind === 'knight') healWave(e);
 }
@@ -4127,6 +4165,7 @@ function update(dt, real) {
   else p.runT = 0;
   const k = Math.min(1, dt * 14); p.sx += (1 - p.sx) * k; p.sy += (1 - p.sy) * k;
   if (p.inv > 0) p.inv -= dt;
+  if (p.parryInv > 0) p.parryInv -= dt;
   if (p.stompInv > 0) p.stompInv -= dt;
   if (p.flash > 0) p.flash -= dt;
 
@@ -4167,6 +4206,7 @@ function update(dt, real) {
     venomTick(s, dt, () => venomSlime(s));
     if (s.dead) continue;
     if (s.kind === 'pup' || s.kind === 'swolf') updatePup(s, dt); else if (s.kind === 'bat') updateBat(s, dt); else if (s.kind === 'snowman') updateSnowman(s, dt); else if (s.kind === 'penguin') updatePenguin(s, dt); else if (s.kind === 'spirit') updateSpirit(s, dt); else if (s.red) updateRed(s, dt); else updateGreen(s, dt);
+    if (s.kb) slimeKnock(s, dt);
     if (G.state !== 'play') continue;
     if (overlap(p, s)) {
       if (descending && prevBottom <= s.y + 4) {
@@ -4500,6 +4540,7 @@ function hurt(dir, src = {}) {
     if (src.fire) reflectFire(src.fire);
     if (src.boss) stunBoss(G.boss);
     parryFx(p, dir, true);
+    parryPush(p, dir);
     if (p.evo && G.kind === 'knight') healWave(p);
     if (jOn()) { hitstop(0.13); G.slowmo = Math.max(G.slowmo, 0.25); if (!RM) G.zoom = { x: p.x + 4, y: p.y + 5, t: 0.3 }; }
     return;
@@ -5428,6 +5469,7 @@ function heroPhysics(e, dt) {
   if (e.onGround && !was && fv > 160 && jOn()) { e.sx = 1.3; e.sy = 0.75; }
   e.sx += (1 - e.sx) * Math.min(1, dt * 14); e.sy += (1 - e.sy) * Math.min(1, dt * 14);
   if (e.inv > 0) e.inv -= dt;
+  if (e.parryInv > 0) e.parryInv -= dt;
   if (e.flash > 0) e.flash -= dt;
   e.runT = e.onGround && Math.abs(e.vx) > 30 ? e.runT + dt : 0;
 }
@@ -5445,6 +5487,7 @@ function kick(e, vx, vy, type) { e.vx = vx; e.vy = vy; e.onGround = false; e.kb 
 function heroTimers(e, dt) {
   e.sx += (1 - e.sx) * Math.min(1, dt * 14); e.sy += (1 - e.sy) * Math.min(1, dt * 14);
   if (e.inv > 0) e.inv -= dt;
+  if (e.parryInv > 0) e.parryInv -= dt;
   if (e.flash > 0) e.flash -= dt;
 }
 function heroShoot(e) {
@@ -6485,7 +6528,14 @@ function drawHoop(p, front) {
   if (front || Math.sin(head) < 0) { const [x, y] = pt(head), k = p.evo ? 2.6 : 1.5; g.fillStyle = PAL.s; g.fillRect(x - k, y - k - 0.5, k * 2, k * 2); g.fillStyle = PAL.w; g.fillRect(x - 1, y - 1.5, 1, 1); }
 }
 function drawPip(p, kind, isPlayer) {
-  if (p.inv > 0 && !p.dead && (!isPlayer || p.inv < 1.3) && Math.floor(p.inv * 16) % 2) return;
+  const parryAura = !p.dead && (p.parryInv > 0 || (p.parryUntil && performance.now() < p.parryUntil));
+  if (p.inv > 0 && !p.dead && !parryAura && (!isPlayer || p.inv < 1.3) && Math.floor(p.inv * 16) % 2) return;
+  if (parryAura && jOn()) { // aura dorada de la inmunidad del parry
+    const pul = 8 + Math.sin(G.t * 16) * 1.2;
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = '#2a2208'; glowDisc(p.x + 4, p.y + 6, pul); g.globalCompositeOperation = 'source-over';
+    pxCircle(p.x + 4, p.y + 6, pul + 1, Math.floor(G.t * 12) % 2 ? PAL.y : PAL.w, 30);
+    if (Math.random() < 0.3) G.parts.push({ x: p.x + Math.random() * 9, y: p.y + 10 - Math.random() * 4, vx: 0, vy: -26, g: 0, life: 0.35, max: 0.35, c: PAL.y, s: 1, _n: 1 });
+  }
   const H2 = (p.evo ? HEROES_EVO : HEROES)[kind];
   let set = H2.idle;
   if (!p.onGround) set = H2.air; else if (p.runT > 0 && Math.floor(p.runT * 10) % 2) set = H2.run;
@@ -7530,7 +7580,7 @@ function netPack(now) {
   if (G.banner) w.rec([G.banner.text, G.banner.sub || '', C2(G.banner.t), (G.banner.long ? 1 : 0) | (G.banner.card ? 2 : 0)], 'ssii');
   if (G.soul) w.rec([H2(G.soul.x), H2(G.soul.y), H2(G.soul.tx), H2(G.soul.ty), C2(G.soul.t)], 'iiiii');
   if (G.pick) { const pk = G.pick; w.s(JSON.stringify({ r: pk.r, t: Math.round(pk.t * 10) / 10, mx: pk.mx, o: pk.o, c: Object.keys(pk.c) })); }
-  w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0) | (e.evo ? 16384 : 0) | (e.hasteT > 0 ? 32768 : 0) | (e.venom ? 65536 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
+  w.list(G.heroes.map(e => [e.id, enumOf(HK_LIST, e.kind), H2(e.x), H2(e.y), e.face, (e.onGround ? 1 : 0) | (e.dead ? 2 : 0) | (e.popped ? 4 : 0) | (e.shield ? 8 : 0) | (e.ghostT > 0 ? 16 : 0) | (e.dashT > 0 ? 32 : 0) | (charging(e) ? 64 : 0) | (charged(e) ? 128 : 0) | (e.big ? 256 : 0) | (e.blockT > 0 ? 512 : 0) | (e.rageT > 0 ? 1024 : 0) | (e.poisonT > 0 ? 2048 : 0) | (e.spin ? 4096 : 0) | ((e.spinN || 2) > 2 ? 8192 : 0) | (e.evo ? 16384 : 0) | (e.hasteT > 0 ? 32768 : 0) | (e.venom ? 65536 : 0) | (e.parryInv > 0 ? 131072 : 0), C2(Math.min(e.runT, 9)), C2(Math.max(0, e.inv)), C2(Math.max(0, e.flash)), C2(e.sx), C2(e.sy), e.hp, e.max, C2(Math.min(e.swingT, 9)), C2(Math.max(-1, e.twang)), e.net || '', e.kb || 0, e.kvx || 0, e.kvy || 0, e.kt || 0, e.cm || 0]), SP.h);
   w.list(G.mobs.map(m => [m.id, enumOf(MT_LIST, m.type), H2(m.x), H2(m.y), m.face, (m.onGround ? 1 : 0) | (m.dead ? 2 : 0) | (m.player ? 4 : 0) | (m.charging ? 8 : 0) | (m.stunT > 0 ? 16 : 0) | (m.perch ? 32 : 0) | (m.tired ? 64 : 0) | (m.slideT > 0 ? 128 : 0) | (m.inhale > 0 || m.wind > 0 ? 256 : 0) | (m.nova > 0 ? 512 : 0) | (m.fadeIn > 0 ? 1024 : 0), C2(Math.max(0, m.spawn)), C2(Math.max(0, m.flash)), C2(m.sx), C2(m.sy), C2(Math.min(m.runT, 9)), C2(Math.min(m.swingT, 9)), C2(Math.max(-1, m.twang)), C2(Math.max(0, m.windup)), m.hp, m.max, C2(m.charge)]), SP.m);
   w.list(G.arrows.map(a => [a.id || 0, H2(a.x), H2(a.y), a.face, (a.stuck ? 1 : 0) | (a.mob ? 2 : 0) | (a.hero ? 4 : 0) | (a.power ? 8 : 0) | (a.venom ? 16 : 0) | (a.delay > 0 ? 32 : 0), C2(a.life), C2(a.wob), a.o || 0, a.n || 0]), SP.a);
   w.list((G.shots || []).map(q => [q.id, H2(q.x), H2(q.y), (q.red ? 1 : 0) | (q.hero ? 2 : 0) | (q.toxic ? 4 : 0) | (q.snow ? 8 : 0)]), SP.sh);
@@ -7606,7 +7656,7 @@ function netDecode(bytes) {
     critText: ct ? { t: P(ct[0]), x: L(ct[1]), y: L(ct[2]) } : null,
     banner: bn ? povBanner({ text: bn[0], sub: bn[1], t: P(bn[2]), long: !!(bn[3] & 1), card: !!(bn[3] & 2) }) : null,
     soul: so ? { x: L(so[0]), y: L(so[1]), tx: L(so[2]), ty: L(so[3]), t: P(so[4]) } : null,
-    heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, evo: !!(q[5] & 16384), hasteT: q[5] & 32768 ? 0.2 : 0, venom: !!(q[5] & 65536), cm: q[20] || 0 })),
+    heroes: h.map(q => ({ id: q[0], kind: HK_LIST[q[1]] || 'archer', x: L(q[2]), y: L(q[3]), w: 8, h: 11, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), popped: !!(q[5] & 4), runT: P(q[6]), inv: P(q[7]), flash: P(q[8]), sx: P(q[9]), sy: P(q[10]), hp: q[11], max: q[12], swingT: P(q[13]), twang: P(q[14]), net: q[15] || null, kb: q[16], kvx: q[17], kvy: q[18], kt: q[19], shield: !!(q[5] & 8), ghostT: q[5] & 16 ? 0.1 : 0, dashT: q[5] & 32 ? 0.1 : 0, chg: q[5] & 128 ? SK.chgFull : q[5] & 64 ? SK.chgOn : -1, big: !!(q[5] & 256), blockT: q[5] & 512 ? 0.1 : 0, rageT: q[5] & 1024 ? 0.1 : 0, poisonT: q[5] & 2048 ? 0.1 : 0, spin: !!(q[5] & 4096), spinN: q[5] & 8192 ? 3 : 2, evo: !!(q[5] & 16384), hasteT: q[5] & 32768 ? 0.2 : 0, venom: !!(q[5] & 65536), parryInv: q[5] & 131072 ? 0.3 : 0, cm: q[20] || 0 })),
     mobs: m.map(q => { const type = MT_LIST[q[1]] || 'slime'; return { id: q[0], type, zone: z, x: L(q[2]), y: L(q[3]), w: MOB[type].w, h: MOB[type].h, face: q[4], onGround: !!(q[5] & 1), dead: !!(q[5] & 2), player: !!(q[5] & 4), charging: !!(q[5] & 8), stunT: q[5] & 16 ? 1 : 0, perch: !!(q[5] & 32), tired: !!(q[5] & 64), slideT: q[5] & 128 ? 0.1 : 0, inhale: q[5] & 256 ? 0.1 : 0, nova: q[5] & 512 ? 0.4 : 0, fadeIn: q[5] & 1024 ? 0.15 : 0, spawn: P(q[6]), flash: P(q[7]), sx: P(q[8]), sy: P(q[9]), runT: P(q[10]), swingT: P(q[11]), twang: P(q[12]), windup: P(q[13]), hp: q[14], max: q[15], charge: P(q[16]) }; }),
     arrows: a.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), face: q[3], stuck: !!(q[4] & 1), mob: !!(q[4] & 2), hero: !!(q[4] & 4), power: !!(q[4] & 8), venom: !!(q[4] & 16), delay: q[4] & 32 ? 0.05 : 0, life: P(q[5]), wob: P(q[6]), o: q[7], n: q[8] })),
     shots: sh.map(q => ({ id: q[0], x: L(q[1]), y: L(q[2]), red: !!(q[3] & 1), hero: !!(q[3] & 2), toxic: !!(q[3] & 4), snow: !!(q[3] & 8) })),
@@ -7788,7 +7838,7 @@ function netPredict(real) {
     }
   }
   // lo que te pega en esta pantalla, te pega
-  if (m.inv <= 0 && now - m.hurtAt > 400 && m.ghostT <= 0) {
+  if (m.inv <= 0 && now - m.hurtAt > 400 && m.ghostT <= 0 && now > (m.parryUntil || 0)) {
     let hit = null;
     for (const o of G.mobs) {
       if (o.dead || o.spawn > 0) continue;
@@ -7824,6 +7874,7 @@ function netPredict(real) {
         m.en = Math.min(SK.max, m.en + 12);
         netHitReport(hit[0], hit[1], hit[2], -1);
         parryFx(m, hit[2], true);
+        parryPush(m, hit[2], true); m.parryUntil = now + PARRY_INV * 1000;
       }
     } else if (hit && m.shield) {
       // el escudo lo frena: no hay daño, y si era un proyectil se rompe
