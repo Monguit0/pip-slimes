@@ -68,6 +68,30 @@ caen. Al final, en su cueva de hielo, espera el **Yeti**.
   dos lobos blancos y su rodada deja hielo filoso en el piso. Al morir se derrite en nieve.
 - En villano/online, si los héroes vencen al Campeón, la revancha es en la montaña y el villano maneja al Yeti.
 
+## Nivel 4 · El Barco Pirata
+Después del Yeti se baja al mar: **El Muelle**, **La Cubierta** y **Los Mástiles** de un barco pirata, de noche y con
+tormenta (lluvia en diagonal, relámpagos que iluminan la pantalla, faroles que se mecen, olas, un faro y barcos lejanos).
+Desde el cielo caen **balas de cañón** con aviso y de la cubierta saltan **tablones con clavos**. Al final, en la proa,
+sale del mar el **Kraken**.
+- **Bichos nuevos** (todos avisan antes de atacar y un golpe les corta el ataque):
+  - **Cangrejo**: camina de costado, abre las pinzas (`!`, chasquido) y se lanza de costado en un **tijeretazo**.
+  - **Pirata**: guarda distancia y **apunta**: una mira roja que titila cada vez más rápido y un pitido; después
+    dispara una **bala rápida y recta**. Se esquiva saltando, y el escudo la frena (con parry vuelve y le pega a los bichos).
+  - **Pez globo**: anda a los saltitos; si te acercás **se infla** (le asoman las púas) y revienta en **8 púas** que
+    salen para todos lados.
+  - **Gaviota**: vuela alto, se pone encima tuyo, suelta un **huevo-bomba** que explota al tocar algo y baja en picada
+    (ahí es cuando la podés alcanzar).
+- **El Kraken**: un pulpo gigante dibujado por partes (manto, ojo de rendija y seis tentáculos que se mueven todo el
+  tiempo). Ataques: **latigazo** (un tentáculo largo barre el piso adelante: saltalo), **salto** con ondas,
+  **chorro** (se estira y cruza la cubierta a toda velocidad soltando tinta), **tentáculos** que salen de la cubierta
+  donde burbujea (siempre queda un hueco libre) y **tinta**: escupe gotas en arco que te **manchan la pantalla**, te
+  **frenan** y dejan **charcos** que lastiman y frenan. En la furia tira cinco gotas; en la última furia llama a dos
+  cangrejos y su chorro deja tinta. Al morir se hunde en el mar.
+- En villano/online se manejan todos: el cangrejo con ataque hace el tijeretazo, el pirata apunta y dispara, el pez
+  globo se infla, y la gaviota vuela (salto sube, abajo baja) y con ataque suelta la bomba. Si los héroes vencen al
+  Yeti, la revancha es en el barco y el villano maneja al Kraken (`X` latigazo, `Espacio` salto, `Z` chorro,
+  `V` tentáculos, `Shift` tinta). En el modo jefe también podés ser el Kraken (elegí el nivel 4).
+
 ## Experiencia y evoluciones
 Monedas, enemigos y jefes dan **experiencia** (barra dorada debajo de la energía). Al llenarla el héroe **evoluciona**
 y queda así toda la partida. En villano/online la experiencia es del equipo y evolucionan los cuatro juntos. Si arrancás
