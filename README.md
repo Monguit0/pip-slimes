@@ -3,7 +3,7 @@
 *Be the hero… or be their doom. To be a hero, or not to be.*
 
 Plataformas pixel art de 16 bits con juice, un jefe gigante y modo online: quien crea la sala es el
-**villano** y hasta tres amigos juegan de **arquero**, **caballero** y **bárbaro** (si falta alguno, lo maneja un bot,
+**villano** y hasta cuatro amigos juegan de **arquero**, **caballero**, **bárbaro** y **mago** (si falta alguno, lo maneja un bot,
 y cualquiera puede tomarlo desde el panel de la sala con **Jugar con este** / **Cambiar a este**, incluso en plena partida).
 
 Una sola app de Node: sirve el juego (`index.html`) y reparte los mensajes del online por WebSocket (`/ws`).
@@ -70,7 +70,7 @@ caen. Al final, en su cueva de hielo, espera el **Yeti**.
 
 ## Experiencia y evoluciones
 Monedas, enemigos y jefes dan **experiencia** (barra dorada debajo de la energía). Al llenarla el héroe **evoluciona**
-y queda así toda la partida. En villano/online la experiencia es del equipo y evolucionan los tres juntos. Si arrancás
+y queda así toda la partida. En villano/online la experiencia es del equipo y evolucionan los cuatro juntos. Si arrancás
 en el nivel 2 ya tenés media barra, y en el nivel 3 empezás evolucionado.
 - **Cazador** (arquero): ballesta que tira **dos flechas seguidas** y mantiene el dash. Con `C` (o `E`, o el botón
   *Veneno*) prende el **veneno**: mientras está prendido gasta energía y sus flechas envenenan; el enemigo pierde vida
@@ -79,6 +79,11 @@ en el nivel 2 ya tenés media barra, y en el nivel 3 empezás evolucionado.
   (en la campaña, un corazón).
 - **Warlord** (bárbaro): **martillo** más grande y con más alcance. En **furia**, su golpe cargado **aturde** a los
   enemigos (también al jefe), y la furia **acelera los golpes** suyos y de los aliados cerca (el aro rojo).
+- **Nigromante** (mago): capucha y cara de calavera; su bola de fuego pasa a ser verde. Con `C` (o `E`, o el botón
+  *Huesos*, cuesta media barra de energía) **invoca dos esqueletos aliados al azar**: pueden salir dos de hacha, dos de
+  arco o uno de cada uno. Salen de la tierra a sus costados, buscan al enemigo más cercano (los de hacha van al cuerpo a
+  cuerpo, los arqueros guardan distancia y disparan), siguen a su dueño entre zonas y duran 15 segundos o hasta que los
+  rompan (4 golpes). Si invocás de nuevo, los viejos se deshacen y salen dos nuevos.
 
 ## Jefes
 - **El jefe que maneja una persona** (Jefe, Villano, Online) tiene menos vida que antes: 42 el Mega Caballero y 50 el
@@ -124,6 +129,12 @@ Cada héroe tiene un medidor de energía (la barrita celeste) que se gasta con s
   y pega más fuerte (mientras carga no se puede mover; saltar cancela la carga). El caballero hace un espadazo con más
   alcance y daño que además rompe babas, flechas, espadas que caen y ondas del jefe.
 
+- **Mago** (botón *Mago*): pega con el **bastón** (corto, 1 de daño, y cargado un bastonazo de fuego que rompe proyectiles).
+  Su especial (`Shift` o `V`, o el botón *Fuego*) es la **bola de fuego** (un poco menos de un tercio de la energía):
+  sale derecho, explota al tocar un enemigo, el jefe, una pared o el piso, pega 2 al que toca y 1 a todos alrededor, y
+  **quema**: los que agarra la explosión pierden 1 de vida cada 0,8 segundos durante 2,4 segundos (se ven las llamitas).
+  Juice: fogonazo en el orbe del bastón, estela de brasas, luz, anillos, chispas, humo, temblor y un golpe grave.
+  En villano y online el equipo pasa a ser de cuatro (el mago tiene 7 de vida) y en el modo jefe también llegan magos.
 - **Bárbaro** (`5` o el botón *Bárbaro*): más rápido que el caballero, hachazos lentos pero fuertes.
   Su especial es la **furia**: unos segundos de más daño, y cuanto menos vida tenga al activarla, más fuerte
   (de x1,15 con la vida llena a x1,6 casi muerto). Su ataque cargado es un **hachazo circular**: el hacha gira
@@ -135,7 +146,7 @@ elige una por cada héroe. Duran toda la partida. En la campaña también elige 
 a que todos elijan (como mucho 30 segundos) y los bots eligen solos.
 - Héroes: más vida, +1 de daño (arco reforzado, espada afilada, hacha pesada), poción que te cura al bajar de la mitad,
   energía más rápida, botas ligeras, carga rápida, y cartas propias: flecha triple y paso fantasma (arquero),
-  escudo liviano (caballero), sangre caliente y remolino (bárbaro).
+  escudo liviano (caballero), sangre caliente y remolino (bárbaro), gran bola y brasas eternas (mago).
 - Villano: slimes con más vida, flechas venenosas, hachas dobles, enemigos veloces, baba ácida, refuerzos,
   regeneración, armadura del jefe (+12 de vida) y jefe furioso.
 
