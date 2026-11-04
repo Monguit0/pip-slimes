@@ -78,7 +78,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 44px
 .px.primary.barb { background: var(--hurt); }
 .px.primary.barb:hover { background: #ea7f90; }
 .px.primary.mage { background: #b98cf0; }
-.pad-hint { flex-basis: 100%; margin: 0; text-align: center; font-family: var(--f-label); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #8fd6c8; text-shadow: 0 1px 0 #000; }
+.pad-hint { flex-basis: auto; margin: 0 auto; padding: 3px 8px; background: #000b; text-align: center; font-family: var(--f-label); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #8fd6c8; text-shadow: 0 1px 0 #000; }
 .px.primary.local { background: #8fd6c8; }
 .px.primary.local:hover { background: #b2e6dc; }
 .px.primary.mage:hover { background: #cfaef7; }
@@ -112,11 +112,23 @@ html.imm-on, html.imm-on body { overflow: hidden; overscroll-behavior: none; }
 .stage.immersive .screen { padding: 0; border-radius: 0; box-shadow: none; background: transparent; }
 .stage.immersive .stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; }
 .px.tiny { font-size: 10px; padding: 9px 11px; }
-.lvl-pick { flex-basis: 100%; display: flex; justify-content: center; gap: 6px; }
-.lvl-pick .px { padding: 6px 9px; background: #1a1c2ceb; color: #f4f4f4; box-shadow: 0 2px 0 #000a; }
+.overlay > .menu { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.overlay > .menu[hidden] { display: none; }
+.overlay > .menu[data-screen="level"], .overlay > .menu[data-screen="hero"] { background: #12131fe0; padding: 10px 12px 12px; clip-path: var(--notch); }
+.menu-title { flex-basis: 100%; margin: 0; text-align: center; font-family: var(--f-label); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--coin); text-shadow: 0 2px 0 #000, 0 0 6px #000; }
+.lvl-pick { flex-basis: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); justify-content: center; gap: 8px; }
+.lvl-pick .px { padding: 11px 14px; font-size: 14px; justify-content: center; background: #1a1c2ceb; color: #f4f4f4; box-shadow: 0 2px 0 #000a; }
 .lvl-pick .px[aria-pressed="true"] { background: var(--coin); color: var(--ink); }
-.stage.net-guest .lvl-pick { display: none; }
-@media (max-width: 560px) { .lvl-pick .lvl-name { display: none; } }
+.menu-back { background: #1a1c2ceb; color: #f4f4f4; box-shadow: 0 2px 0 #000a; }
+.overlay.menu-online, .stage.title .overlay.menu-online { top: 50%; width: min(640px, calc(100% - 16px)); max-height: calc(100% - 12px); overflow-y: auto; }
+.menu-net { background: #12131ff2; padding: 14px; clip-path: var(--notch); display: grid !important; gap: 10px; justify-items: stretch; text-align: left; }
+.menu-net[hidden] { display: none !important; }
+.menu-net .menu-back { justify-self: start; }
+.net-help { margin: 0; font-size: 13px; color: var(--muted); }
+.menu-net .net-box { padding: 0; background: transparent; clip-path: none; gap: 10px; }
+.menu-net .net-code { font-size: 40px; }
+.stage.net-host .menu-net .menu-back, .stage.net-guest .menu-net .menu-back { display: none; }
+@media (max-width: 560px) { .lvl-pick .lvl-name { display: none; } .menu-net { padding: 10px; } .net-help { display: none; } }
 .rot-hint { font-family: var(--f-label); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; }
 .bar-sw { display: flex; gap: 6px; }
 .bar-sw .ico { display: none; font-size: 14px; }
@@ -207,10 +219,7 @@ html.has-touch .stage.immersive .touch { display: block; position: relative; tou
 /* Online */
 .px.primary.online { background: var(--fg); }
 .px.primary.online:hover { background: #fff; }
-#start-net, .net-wait { display: none; }
-.stage.net-host #start-net { display: inline-flex; }
-.stage.net-host .overlay .px.primary:not(#start-net) { display: none; }
-.stage.net-guest .overlay > .px { display: none; }
+.net-wait { display: none; }
 .stage.net-guest .net-wait { display: block; }
 .net-wait { margin: 0; font-family: var(--f-label); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; background: var(--ink); color: var(--coin); padding: 10px 14px; clip-path: var(--notch); }
 .net-box { background: var(--panel); padding: 18px; display: grid; gap: 16px; clip-path: var(--notch); }
@@ -260,22 +269,62 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
         <canvas id="game" width="512" height="288" tabindex="0" aria-label="Pantalla del juego"></canvas>
         <img class="cover" id="cover" src="portada.jpg" alt="A Tale of Friends &amp; Foes" decoding="async">
         <div class="overlay" id="overlay">
-          <div class="lvl-pick" role="group" aria-label="Nivel">
-            <button class="px tiny" type="button" data-lvl="0" aria-pressed="true">Nivel 1<span class="lvl-name"> · El Reino</span></button>
-            <button class="px tiny" type="button" data-lvl="1" aria-pressed="false">Nivel 2<span class="lvl-name"> · El Bosque</span></button>
-            <button class="px tiny" type="button" data-lvl="2" aria-pressed="false">Nivel 3<span class="lvl-name"> · La Montaña</span></button>
-            <button class="px tiny" type="button" data-lvl="3" aria-pressed="false">Nivel 4<span class="lvl-name"> · El Barco</span></button>
+          <div class="menu" data-screen="main">
+            <button class="px primary" id="go-campaign" type="button">▶ Campaña</button>
+            <button class="px primary boss" id="start-boss" type="button">▶ Jefe</button>
+            <button class="px primary villain" id="start-villain" type="button">▶ Villano</button>
+            <button class="px primary online" id="start-online" type="button">▶ Online</button>
+            <button class="px primary local" id="start-local" type="button">▶ Sillón</button>
           </div>
-          <button class="px primary" id="start-archer" type="button">▶ Arquero</button>
-          <button class="px primary alt" id="start-knight" type="button">▶ Caballero</button>
-          <button class="px primary barb" id="start-barb" type="button">▶ Bárbaro</button>
-          <button class="px primary mage" id="start-mage" type="button">▶ Mago</button>
-          <button class="px primary boss" id="start-boss" type="button">▶ Jefe</button>
-          <button class="px primary villain" id="start-villain" type="button">▶ Villano</button>
-          <button class="px primary online" id="start-online" type="button">▶ Online</button>
-          <button class="px primary local" id="start-local" type="button">▶ Sillón</button>
+          <div class="menu" data-screen="level" hidden>
+            <p class="menu-title" id="menu-level-title">Elegí el nivel</p>
+            <div class="lvl-pick" role="group" aria-label="Nivel">
+              <button class="px tiny" type="button" data-lvl="0" aria-pressed="true">Nivel 1<span class="lvl-name"> · El Reino</span></button>
+              <button class="px tiny" type="button" data-lvl="1" aria-pressed="false">Nivel 2<span class="lvl-name"> · El Bosque</span></button>
+              <button class="px tiny" type="button" data-lvl="2" aria-pressed="false">Nivel 3<span class="lvl-name"> · La Montaña</span></button>
+              <button class="px tiny" type="button" data-lvl="3" aria-pressed="false">Nivel 4<span class="lvl-name"> · El Barco</span></button>
+            </div>
+            <button class="px menu-back" type="button">← Volver</button>
+          </div>
+          <div class="menu" data-screen="hero" hidden>
+            <p class="menu-title" id="menu-hero-title">Elegí tu héroe</p>
+            <button class="px primary" id="start-archer" type="button">▶ Arquero</button>
+            <button class="px primary alt" id="start-knight" type="button">▶ Caballero</button>
+            <button class="px primary barb" id="start-barb" type="button">▶ Bárbaro</button>
+            <button class="px primary mage" id="start-mage" type="button">▶ Mago</button>
+            <button class="px menu-back" type="button">← Volver</button>
+          </div>
+          <div class="menu menu-net" data-screen="online" hidden>
+            <p class="menu-title">Online</p>
+            <p class="net-help">Quien crea la sala es el <b>villano</b>; hasta cuatro amigos entran de <b>héroes</b> (los que falten los maneja un bot). Pasales el código de 4 letras o el link.</p>
+        <div class="net-box">
+          <p class="net-status" id="net-status" role="status">Buscando conexión…</p>
+          <div class="net-idle" id="net-idle" hidden>
+            <div class="net-row">
+              <label class="net-lab" for="net-nick">Tu nombre</label>
+              <input id="net-nick" maxlength="12" autocomplete="off" spellcheck="false" placeholder="PIP">
+              <button class="px primary villain" id="net-host" type="button">Crear sala · sos el villano</button>
+            </div>
+            <div class="net-row">
+              <span class="net-lab">Entrar como</span>
+              <span class="seg" id="net-want"><button class="px" type="button" data-want="archer" aria-pressed="true">Arquero</button><button class="px" type="button" data-want="knight" aria-pressed="false">Caballero</button><button class="px" type="button" data-want="barb" aria-pressed="false">Bárbaro</button><button class="px" type="button" data-want="mage" aria-pressed="false">Mago</button></span>
+              <form class="net-join" id="net-join"><input id="net-code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD" aria-label="Código de sala"><button class="px" type="submit">Unirme</button></form>
+            </div>
+            <ul class="net-rooms" id="net-rooms" aria-label="Salas abiertas" hidden></ul>
+          </div>
+          <div class="net-room" id="net-room" hidden>
+            <div class="net-row"><span class="net-lab">Sala</span><span class="net-code" id="net-code-show">----</span></div>
+            <ul class="net-slots" id="net-slots"></ul>
+            <div class="net-row">
+              <button class="px primary" id="net-start" type="button">▶ Empezar partida</button>
+              <button class="px" id="net-leave" type="button">Salir de la sala</button>
+              <button class="px" id="net-copy" type="button" hidden>Copiar link</button>
+            </div>
+          </div>
+        </div>
+            <button class="px menu-back" type="button">← Volver</button>
+          </div>
           <p class="pad-hint" id="pad-hint" hidden></p>
-          <button class="px primary villain" id="start-net" type="button">▶ Empezar online</button>
           <p class="net-wait" id="net-wait">Esperando al villano…</p>
         </div>
       </div>
@@ -324,37 +373,6 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
     </ul>
   </section>
 
-  <section class="net" id="net" aria-labelledby="net-title">
-    <div class="sec-head">
-      <h2 id="net-title">Online</h2>
-      <p>Quien crea la sala es el <b>villano</b>: maneja a los enemigos y, si los héroes llegan al trono, al Mega Caballero. Hasta cuatro amigos entran como el <b>arquero</b>, el <b>caballero</b>, el <b>bárbaro</b> y el <b>mago</b>; si falta alguno, lo maneja un bot (y cualquiera puede tomarlo desde la sala). Creá la sala y pasales el link con <b>Copiar link</b>, o el código de 4 letras.</p>
-    </div>
-    <div class="net-box">
-      <p class="net-status" id="net-status" role="status">Buscando conexión…</p>
-      <div class="net-idle" id="net-idle" hidden>
-        <div class="net-row">
-          <label class="net-lab" for="net-nick">Tu nombre</label>
-          <input id="net-nick" maxlength="12" autocomplete="off" spellcheck="false" placeholder="PIP">
-          <button class="px primary villain" id="net-host" type="button">Crear sala · sos el villano</button>
-        </div>
-        <div class="net-row">
-          <span class="net-lab">Entrar como</span>
-          <span class="seg" id="net-want"><button class="px" type="button" data-want="archer" aria-pressed="true">Arquero</button><button class="px" type="button" data-want="knight" aria-pressed="false">Caballero</button><button class="px" type="button" data-want="barb" aria-pressed="false">Bárbaro</button><button class="px" type="button" data-want="mage" aria-pressed="false">Mago</button></span>
-          <form class="net-join" id="net-join"><input id="net-code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD" aria-label="Código de sala"><button class="px" type="submit">Unirme</button></form>
-        </div>
-        <ul class="net-rooms" id="net-rooms" aria-label="Salas abiertas" hidden></ul>
-      </div>
-      <div class="net-room" id="net-room" hidden>
-        <div class="net-row"><span class="net-lab">Sala</span><span class="net-code" id="net-code-show">----</span></div>
-        <ul class="net-slots" id="net-slots"></ul>
-        <div class="net-row">
-          <button class="px primary" id="net-start" type="button">▶ Empezar partida</button>
-          <button class="px" id="net-leave" type="button">Salir de la sala</button>
-          <button class="px" id="net-copy" type="button" hidden>Copiar link</button>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <section aria-labelledby="sfx-title">
     <div class="sec-head">
@@ -3933,7 +3951,7 @@ function padHint() {
   padHintN = n;
   const el = document.getElementById('pad-hint'); if (!el) return;
   el.hidden = !n;
-  el.textContent = (n > 1 ? n + ' joysticks' : '1 joystick') + ' · ← → elegir · ↑ ↓ niveles · A aceptar · START jugar';
+  el.textContent = (n > 1 ? n + ' joysticks' : '1 joystick') + ' · cruceta elegir · A aceptar · B volver';
 }
 function padToInput() {
   padHint();
@@ -3946,20 +3964,18 @@ function padToInput() {
     const real = ids.some(id => { const d = DEV.get(id); return d && d.cur[k] && !d.prev[k]; });
     if (now) { if (PRESS.has(k) && !input[k] && real) input[k + 'Pressed'] = true; input[k] = true; } else input[k] = false;
   }
-  // en el menú: START empieza; ← → recorren los botones, ↑ ↓ pasan de la fila de niveles a la de modos y A aprieta
-  if (!playing && !LOCAL.lobby && overlay && !overlay.hidden && NET.role !== 'guest') {
+  // en el menú: la cruceta recorre los botones de la pantalla, A aprieta, B vuelve y START empieza
+  if (!playing && !LOCAL.lobby && overlay && !overlay.hidden) {
     for (const id of padsOn()) {
-      const vis = sel => [...overlay.querySelectorAll(sel)].filter(bt => bt.offsetParent !== null);
-      const lv = vis('.lvl-pick button'), md = vis('.px.primary'), cur = overlay.querySelector('.pad-sel'), ae = cur && cur.offsetParent !== null ? cur : null;
-      const row = lv.includes(ae) ? lv : md.includes(ae) ? md : null;
+      const btns = [...overlay.querySelectorAll('.menu:not([hidden]) button')].filter(bt => bt.offsetParent !== null && !bt.disabled);
+      if (!btns.length) break;
+      const cur = overlay.querySelector('.pad-sel'), i = btns.indexOf(cur);
       const go = bt => { if (bt) { padSel(bt); play('menu', { rate: 1.3, vol: 0.4, vary: false }); } };
-      const dx = take(id, 'right') ? 1 : take(id, 'left') ? -1 : 0, dy = take(id, 'down') ? 1 : take(id, 'up') ? -1 : 0;
-      if (dx || dy) {
-        if (!row) go(md[0]);
-        else if (dx) go(row[(row.indexOf(ae) + dx + row.length) % row.length]);
-        else go(dy < 0 ? lv.find(bt => bt.getAttribute('aria-pressed') === 'true') || lv[0] : md[0]);
-      } else if (take(id, 'jump')) { if (row) ae.click(); else go(md.find(bt => bt.id === 'start-' + (lastKind === 'invade' ? 'villain' : lastKind)) || md[0]); }
-      else if (take(id, 'start')) { if (md.includes(ae)) ae.click(); else startGame(lastKind); }
+      const dx = take(id, 'right') || take(id, 'down') ? 1 : take(id, 'left') || take(id, 'up') ? -1 : 0;
+      if (dx) go(i < 0 ? btns.find(bt => bt.getAttribute('aria-pressed') === 'true') || btns[0] : btns[(i + dx + btns.length) % btns.length]);
+      else if (take(id, 'jump')) { if (i >= 0) cur.click(); else go(btns.find(bt => bt.getAttribute('aria-pressed') === 'true') || btns[0]); }
+      else if (take(id, 'special') || take(id, 'back')) menuBack();
+      else if (take(id, 'start')) { if (i >= 0) cur.click(); else if (MENU.screen === 'main' && NET.role !== 'guest') startGame(lastKind); }
     }
   }
 }
@@ -4010,9 +4026,9 @@ function lobbyStep() {
   }
   for (const k in LOCAL.flash) LOCAL.flash[k] = Math.max(0, LOCAL.flash[k] - 1 / 60);
 }
-function closeLobby() { LOCAL.lobby = false; overlay.hidden = false; play('menu', { rate: 0.7, vary: false }); }
+function closeLobby() { LOCAL.lobby = false; overlay.hidden = false; menuShow('level'); play('menu', { rate: 0.7, vary: false }); }
 function beginLocal() {
-  LOCAL.lobby = false; LOCAL.on = true;
+  LOCAL.lobby = false; LOCAL.on = true; menuShow('main');
   for (const d of DEV.values()) d.p = {};
   startGame('local');
 }
@@ -8334,6 +8350,7 @@ window.addEventListener('keydown', e => {
   const kk = KB_EXTRA[e.code] || BOSS_KEYS[e.code] || KEYS[e.code];
   if (kk) { KB[kk] = true; if (!e.repeat) devOf('kb').p[kk] = performance.now(); if (kk === 'jump' && (e.code === 'ArrowUp' || e.code === 'KeyW')) KB.up = true; }
   if (LOCAL.lobby) { e.preventDefault(); return; }
+  if (e.code === 'Escape' && !overlay.hidden && isIdle() && MENU.screen !== 'main') { const ae2 = document.activeElement; if (!(ae2 instanceof HTMLInputElement)) { menuBack(); return; } }
   if (e.code === 'Escape' && stage.classList.contains('immersive')) { exitImmersive(); return; }
   const k = (bossCtl() && BOSS_KEYS[e.code]) || KEYS[e.code];
   const ae = document.activeElement;
@@ -8382,6 +8399,7 @@ function startGame(kind) {
   initAudio();
   play('menu', { vary: false });
   padSel(null);
+  if (!NET.role && MENU.screen !== 'main' && kind !== 'local') menuShow('main');
   if (kind !== 'local') LOCAL.on = false;
   if (kind === 'local' && !LOCAL.on) { openLobby(); return; }
   if (kind === 'boss') newBossMode(); else if (kind === 'invade' || kind === 'local') newInvadeMode(); else newGame(kind, opts.boss);
@@ -8400,13 +8418,45 @@ function pickLevel(n) {
   try { localStorage.setItem('pip-lvl', String(startLvl)); } catch (e) {}
   lvlBtns.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.lvl === startLvl)));
 }
-lvlBtns.forEach(b => b.addEventListener('click', () => { pickLevel(+b.dataset.lvl); initAudio(); play('menu', { rate: 1.2, vary: false }); }));
+lvlBtns.forEach(b => b.addEventListener('click', () => { initAudio(); play('menu', { rate: 1.2, vary: false }); menuLevel(+b.dataset.lvl); }));
 pickLevel(startLvl);
-document.getElementById('start-boss').addEventListener('click', () => startGame('boss'));
-document.getElementById('start-villain').addEventListener('click', () => startGame('invade'));
+/* ---- el menú en pantalla: modo → nivel → héroe (campaña); el online también vive acá ---- */
+const MENU = { screen: 'main', mode: 'campaign' };
+const MODE_NAME = { campaign: 'Campaña', boss: 'Jefe', villain: 'Villano', local: 'Sillón', host: 'Sala online' };
+const LVL_TITLE = ['El Reino', 'El Bosque Oscuro', 'La Montaña Helada', 'El Barco Pirata'];
+function menuShow(screen) {
+  MENU.screen = screen;
+  for (const el of overlay.querySelectorAll('.menu')) el.hidden = el.dataset.screen !== screen;
+  overlay.classList.toggle('menu-online', screen === 'online');
+  padSel(null);
+  if (screen === 'level') document.getElementById('menu-level-title').textContent = 'Elegí el nivel · ' + MODE_NAME[MENU.mode];
+  if (screen === 'hero') document.getElementById('menu-hero-title').textContent = 'Elegí tu héroe · Nivel ' + (startLvl + 1) + ' · ' + LVL_TITLE[startLvl];
+  if (screen === 'online') { netSig = ''; netUI(); }
+}
+function menuMode(mode) { initAudio(); play('menu', { vary: false }); MENU.mode = mode; menuShow('level'); }
+function menuLevel(n) {
+  pickLevel(n);
+  const m = MENU.mode;
+  if (m === 'campaign') menuShow('hero');
+  else if (m === 'boss') startGame('boss');
+  else if (m === 'villain') startGame('invade');
+  else if (m === 'local') { LOCAL.on = false; startGame('local'); }
+  else if (m === 'host') { menuShow('online'); netHost(); }
+}
+function menuBack() {
+  const sc = MENU.screen;
+  play('menu', { rate: 0.8, vary: false });
+  if (sc === 'hero') menuShow('level');
+  else if (sc === 'level') menuShow(MENU.mode === 'host' ? 'online' : 'main');
+  else if (sc === 'online' && !NET.role) menuShow('main');
+}
+for (const bt of overlay.querySelectorAll('.menu-back')) bt.addEventListener('click', menuBack);
+document.getElementById('go-campaign').addEventListener('click', () => menuMode('campaign'));
+document.getElementById('start-boss').addEventListener('click', () => menuMode('boss'));
+document.getElementById('start-villain').addEventListener('click', () => menuMode('villain'));
 document.getElementById('start-archer').addEventListener('click', () => startGame('archer'));
 document.getElementById('start-mage').addEventListener('click', () => startGame('mage'));
-document.getElementById('start-local').addEventListener('click', () => { LOCAL.on = false; startGame('local'); });
+document.getElementById('start-local').addEventListener('click', () => menuMode('local'));
 document.getElementById('start-knight').addEventListener('click', () => startGame('knight'));
 document.getElementById('start-barb').addEventListener('click', () => startGame('barb'));
 
@@ -9374,13 +9424,13 @@ async function netHost() {
   NET.busy = false;
   if (r === 'taken') { netMsg('No pude crear la sala. Probá de nuevo.'); return; }
   if (!r) return;
-  Object.assign(NET, { role: 'host', note: '', code, room: r, playing: false, slots: { archer: null, knight: null, barb: null }, pickSeen: {}, nicks: {}, nicksKey: '', sq: [], seq: 0, spect: 0 });
+  Object.assign(NET, { role: 'host', note: '', code, room: r, playing: false, slots: { archer: null, knight: null, barb: null, mage: null }, pickSeen: {}, nicks: {}, nicksKey: '', sq: [], seq: 0, spect: 0 });
   r.presence({ r: 'host', code, st: 'lobby', slots: NET.slots, nicks: {}, nm: nick(), s: null }).catch(() => {});
   if (r !== NET.lobby) r.onPeers(() => netUI(), () => {});
   netLobbyPresence();
   stage.classList.add('net-host');
   if (G) { G = null; musicStop(); }
-  overlay.hidden = false;
+  overlay.hidden = false; menuShow('online');
   play('menu', { vary: false });
   netUI();
 }
@@ -9398,7 +9448,7 @@ async function netJoin(code) {
   if (r !== NET.lobby) r.onPeers(() => netUI(), () => {});
   stage.classList.add('net-guest');
   if (G) { G = null; musicStop(); }
-  overlay.hidden = false;
+  overlay.hidden = false; menuShow('online');
   initAudio(); play('menu', { vary: false });
   netUI();
 }
@@ -9467,7 +9517,7 @@ function netUI() {
   }
   netEl('net-code-show').textContent = NET.code;
   const mySlot = NET.role === 'guest' ? NET_SLOTS.find(k => slots[k] && slots[k] === NET.me) : null;
-  if (NET.role === 'host') status.textContent = NET.note || 'Sos el villano. Pasales el código: entran desde esta misma sección. ' + (NET.playing ? 'Partida en curso.' : 'Cuando estén, tocá Empezar.');
+  if (NET.role === 'host') status.textContent = NET.note || 'Sos el villano. Pasales el código (entran desde Online) o el link. ' + (NET.playing ? 'Partida en curso.' : 'Cuando estén, tocá Empezar.');
   else if (!hostP) status.textContent = 'Buscando la sala ' + NET.code + '…';
   else status.textContent = mySlot ? 'Sos el ' + NET_LABEL[mySlot] + '. ' + (NET.playing ? '¡A jugar!' : 'Esperando que el villano arranque.') : 'La sala está llena: mirás la partida.';
   const ul = netEl('net-slots'); ul.textContent = '';
@@ -9502,9 +9552,9 @@ async function netInit() {
   room.onConnection(() => netUI(), () => {});
   netUI();
   const qs = new URLSearchParams(location.search).get('sala');
-  if (qs) { netEl('net').scrollIntoView(); netJoin(qs); }
+  if (qs) { menuShow('online'); netJoin(qs); }
 }
-netEl('net-host').addEventListener('click', () => { initAudio(); netHost(); });
+netEl('net-host').addEventListener('click', () => { initAudio(); if (NET.status === 'ready' && !NET.role) menuMode('host'); else netHost(); });
 netEl('net-join').addEventListener('submit', e => { e.preventDefault(); initAudio(); netJoin(netEl('net-code').value); });
 netEl('net-leave').addEventListener('click', () => netLeave(''));
 netEl('net-start').addEventListener('click', () => startGame('invade'));
@@ -9515,8 +9565,7 @@ netEl('net-copy').addEventListener('click', () => {
 });
 addEventListener('pointerdown', () => initAudio(), { once: true });
 addEventListener('pip-room-lost', () => netLeave('Se cortó la conexión con el servidor.'));
-netEl('start-net').addEventListener('click', () => startGame('invade'));
-netEl('start-online').addEventListener('click', () => { exitImmersive(); netEl('net').scrollIntoView({ behavior: RM ? 'auto' : 'smooth', block: 'start' }); });
+netEl('start-online').addEventListener('click', () => { initAudio(); play('menu', { vary: false }); menuShow('online'); });
 document.querySelectorAll('#net-want [data-want]').forEach(b => b.addEventListener('click', () => {
   NET.want = b.dataset.want;
   document.querySelectorAll('#net-want [data-want]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
