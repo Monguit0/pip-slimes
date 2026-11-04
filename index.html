@@ -4301,7 +4301,7 @@ function bombBlast(f) {
    (daño fuerte al que toca, uno menos alrededor) y deja a todos quemándose un rato.
    Nigromante (su evolución): con el poder invoca dos esqueletos aliados al azar (hacha o arco).
    ========================================================= */
-const FIRE_V = 175, FIRE_LIFE = 1.15, BURN_T = 2.4, BURN_TICK = 0.8, ALLY_LIFE = 15, ALLY_HP = 4;
+const FIRE_V = 175, FIRE_LIFE = 1.15, BURN_T = 2.4, BURN_TICK = 0.8, ALLY_LIFE = 12, ALLY_HP = 2;
 const fireR = s => s.big ? 30 : 19;
 const fireCol = (s, k) => s.evo ? (k < 0.3 ? PAL.w : k < 0.65 ? PAL.l : PAL.g) : (k < 0.25 ? PAL.w : k < 0.55 ? PAL.y : k < 0.85 ? PAL.o : PAL.r);
 const ownerKey = h => h === G.p ? 0 : h.id;
@@ -4487,13 +4487,13 @@ function allyBounds(w) {
 // hachazo del esqueleto aliado
 function allyChop(a) {
   const hb = a.face > 0 ? { x: a.x + 5, y: a.y - 4, w: 15, h: a.h + 6 } : { x: a.x - 12, y: a.y - 4, w: 15, h: a.h + 6 };
-  for (const t of heroFoes()) if (overlap(hb, t)) { if (G.p) hitSlime(t, 2, 'sword', a.face); else hitMob(t, 2, a.face, 'sword'); }
+  for (const t of heroFoes()) if (overlap(hb, t)) { if (G.p) hitSlime(t, 1, 'sword', a.face); else hitMob(t, 1, a.face, 'sword'); }
   const B = bossUp();
   if (B && overlap(hb, bossBody(B))) { if (bossCtl()) bossTakeHit(1, a.x + 4 + a.face * 8, a.y + 4); else damageBoss(1, a.x + 4 + a.face * 8, a.y + 4); } // al jefe le hace menos
   hitBoulders(hb, 1, 'al' + a.id + ':' + a.swingId);
 }
 function allyShoot(a) {
-  a.twang = 0.16; a.cool = 1.1 + Math.random() * 0.5;
+  a.twang = 0.16; a.cool = 1.8 + Math.random() * 0.6;
   G.arrows.push({ id: uid++, x: a.face > 0 ? a.x + 7 : a.x - 7, y: a.y + 4, vx: a.face * 220, vy: -12, face: a.face, stuck: false, wob: 0, life: 0, trail: 0, dead: false, hero: true, dmg: 1, ally: true });
   play('disparo', { rate: 1.25, vol: 0.4 });
   if (jOn()) { a.vx -= a.face * 25; a.sx = 0.85; a.sy = 1.1; }
@@ -4524,7 +4524,7 @@ function updateAllies(dt) {
       a.face = toward;
       if (a.type === 'skaxe') {
         move = dist > reach - 3 ? toward : 0;
-        if (dist < reach + 3 && Math.abs(dy) < 18 && a.cool <= 0) { a.swingT = 0; a.swingId++; a.cool = 0.85; play('tajo', { rate: 0.85, vol: 0.45 }); if (jOn()) { a.vx += a.face * 40; a.sx = 1.2; a.sy = 0.85; } }
+        if (dist < reach + 3 && Math.abs(dy) < 18 && a.cool <= 0) { a.swingT = 0; a.swingId++; a.cool = 1.3; play('tajo', { rate: 0.85, vol: 0.45 }); if (jOn()) { a.vx += a.face * 40; a.sx = 1.2; a.sy = 0.85; } }
       } else {
         move = dist < 36 ? -toward : dist > 96 ? toward : 0;
         if (a.cool <= 0 && dist < 150 && Math.abs(dy) < 16) allyShoot(a);
@@ -4949,7 +4949,7 @@ function finishPick() {
     if (key === 'v') {
       const got = pk.vgot.slice();
       if (pk.c.v === undefined) { got.push(id); while (got.length < pk.vn) { const more = offerFor('v', G.vcm || 0, got); if (!more.length) break; got.push(more[0]); } }
-      got.forEach((vid, j) => { G.vcm = (G.vcm || 0) | VBIT[vid]; applyVillainCard(vid); popup(G.cam + W / 2, 40 + j * 9, cardName(cardOf('v', vid)), PAL.p); });
+      got.forEach((vid, j) => { G.vcm = (G.vcm || 0) | VBIT[vid]; applyVillainCard(vid); popup(G.cam + VIEW.w / 2, 40 + j * 9, cardName(cardOf('v', vid)), PAL.p); });
     } else {
       const hs = G.p ? [G.p] : G.heroes.filter(e => e.kind === key && !e.dead);
       for (const h of hs) { h.cm |= HBIT[id]; applyHeroCard(h, id); popup((h.x || 0) + 4, (h.y || 60) - 12, cardName(c, key), PAL.y); }
@@ -6673,20 +6673,12 @@ function enterInvadeZone(n) {
   if (n < 3) { for (const e of G.heroes) if (!e.dead) { e.hp = Math.min(e.max, e.hp + 2); e.cureUsed = false; popup(e.x + 4, e.y - 8, '+2', PAL.l); } alliesFollow(); }
   if (n === 3) {
     G.ctrl = null;
-    // antes del jefe: todos con la vida llena y los caídos vuelven (con sus cartas)
-    const old = new Map(G.heroes.map(e => [e.kind, e])), base = HERO_BASE_HP;
-    G.heroes = HERO_KINDS.map((kind, i) => {
-      const prev = old.get(kind);
-      if (prev && !prev.dead) { prev.hp = prev.max; prev.poisonT = 0; prev.cureUsed = false; popup(prev.x + 4, prev.y - 8, 'VIDA LLENA', PAL.l); return prev; }
-      const src = prev || G.heroKeep[kind], e = spawnHero(kind); // id nuevo: la pantalla del amigo lo vuelve a ubicar
-      e.max = src ? src.max : base[kind]; e.cm = src ? src.cm || 0 : 0; e.hp = e.max;
-      e.x = 1544 + i * 11; e.inv = 1.2; e.vx = 0;
-      e.net = NET.role === 'host' ? NET.slots[kind] || null : null;
-      e.pad = localDev(kind); e.own = e.pad != null;
-      e.kb = (prev ? prev.kb || 0 : 0) + 1;
-      popup(e.x + 4, e.y - 10, '¡VOLVIÓ!', PAL.y);
-      if (jOn()) burst(e.x + 4, e.y + 5, 14, [PAL.y, PAL.w, PAL.l], 70, 40, 0, 0.5);
-      return e;
+    // antes del jefe: los que llegaron se curan del todo; los caídos no vuelven (vuelven en el nivel siguiente)
+    G.heroes.filter(e => !e.dead).forEach((e, i) => {
+      e.hp = e.max; e.poisonT = 0; e.cureUsed = false; e.chillT = 0; e.burnT = 0;
+      e.x = Math.max(1544 + i * 11, Math.min(e.x, 1600)); e.vx = 0; e.inv = Math.max(e.inv, 0.8);
+      popup(e.x + 4, e.y - 8, 'VIDA LLENA', PAL.l);
+      if (jOn()) burst(e.x + 4, e.y + 5, 10, [PAL.l, PAL.w, PAL.y], 60, 30, -20, 0.5);
     });
     alliesFollow();
     G.boss = makePlayerBoss(BOSS_TYPES[G.lvl] || 'knight');
@@ -6749,21 +6741,58 @@ function updateInvade(dt) {
   if (G.soul) { G.soul.t += dt; if (jOn() && G.soul.t < 0.6) { const k = G.soul.t / 0.6; G.parts.push({ x: lerp(G.soul.x, G.soul.tx, k), y: lerp(G.soul.y, G.soul.ty, k) - Math.sin(k * Math.PI) * 30, vx: 0, vy: -10, g: 0, life: 0.3, max: 0.3, c: Math.random() < 0.5 ? PAL.c : PAL.w, s: 1 }); } if (G.soul.t > 0.6) G.soul = null; }
   input.jumpPressed = input.attackPressed = input.chargePressed = input.rainPressed = input.specialPressed = input.powerPressed = false;
 }
+// en el sillón la cámara tiene que mostrar a TODOS los que juegan: los héroes con joystick y el bicho del villano.
+// Si están lejos, se aleja (hasta ver la zona entera, que mide dos pantallas) y vuelve a acercarse cuando se juntan.
+const CAMZ_MIN = 0.5, CAM_PAD = 30;
+function sillonXs() {
+  const xs = G.heroes.filter(e => !e.dead && isLocal(e)).map(e => e.x + 4);
+  if (G.ctrl && !G.ctrl.dead) xs.push(G.ctrl.x + G.ctrl.w / 2);
+  else if (G.soul && G.soul.t < 0.6) xs.push(lerp(G.soul.x, G.soul.tx, G.soul.t / 0.6)); // el alma volando a otro cuerpo
+  return xs;
+}
 function updateCameraInvade(real) {
-  const z = G.z;
-  if (z === 3) { G.cam += (ZONES[3].start - G.cam) * (jOn() ? Math.min(1, real * 3) : 1); return; }
+  const z = G.z, sillon = LOCAL.on && z < 3;
+  // zoom: 1 = normal; menos de 1 = más lejos
+  let tz = 1, xs = sillon ? sillonXs() : [];
+  if (sillon && xs.length > 1) tz = Math.max(CAMZ_MIN, Math.min(1, W / (Math.max(...xs) - Math.min(...xs) + CAM_PAD * 2)));
+  const cz = G.camZ || 1;
+  // se aleja rápido (que nadie quede afuera) y se acerca despacio (sin mareos); con poca diferencia no se mueve
+  if (Math.abs(tz - cz) > 0.004) G.camZ = jOn() ? cz + (tz - cz) * Math.min(1, real * (tz < cz ? 6 : 1.6)) : tz;
+  if (tz < cz && !jOn()) G.camZ = tz;
+  if (G.camZ > 0.995 && tz === 1) G.camZ = 1;
+  const VW = W / (G.camZ || 1);
+  // en la arena el zoom vuelve a 1; mientras tanto la cámara no muestra más allá del final del mundo
+  if (z === 3) { const t3 = Math.min(ZONES[3].start, WW - VW); G.cam += (t3 - G.cam) * (jOn() ? Math.min(1, real * 3) : 1); return; }
   let fx, face = 1;
-  const lh = LOCAL.on ? G.heroes.filter(e => !e.dead && isLocal(e)) : [];
-  if (lh.length) { const xs = lh.map(e => e.x + 4); if (G.ctrl && !G.ctrl.dead) xs.push(G.ctrl.x + G.ctrl.w / 2); fx = (Math.min(...xs) + Math.max(...xs)) / 2; face = 0; }
+  if (xs.length > 1) { fx = (Math.min(...xs) + Math.max(...xs)) / 2; face = 0; }
   else if (G.ctrl && !G.ctrl.dead) { fx = G.ctrl.x + G.ctrl.w / 2; face = G.ctrl.face; }
-  else { const al = G.heroes.filter(e => !e.dead); fx = al.length ? al.reduce((s, e) => s + e.x, 0) / al.length + 4 : G.cam + W / 2; }
-  let minX = ZONES[z].start, maxX = ZONES[z].end - W;
+  else if (xs.length) { fx = xs[0]; face = 0; }
+  else { const al = G.heroes.filter(e => !e.dead); fx = al.length ? al.reduce((s, e) => s + e.x, 0) / al.length + 4 : G.cam + VW / 2; }
+  let minX = ZONES[z].start, maxX = ZONES[z].end - VW;
   if (G.cam < minX) minX = G.cam; // al pasar de zona la cámara no da un tirón hacia adelante
-  if (GATES[z].open > 0.5) maxX = ZONES[z + 1].end - W;
-  const target = Math.max(minX, Math.min(maxX, fx - W / 2 + (jOn() ? face * 20 : 0)));
+  if (GATES[z].open > 0.5) maxX = ZONES[z + 1].end - VW;
+  maxX = Math.max(minX, maxX);
+  const target = Math.max(minX, Math.min(maxX, fx - VW / 2 + (jOn() ? face * 20 : 0)));
   const before = G.cam;
-  if (jOn()) G.cam += (target - G.cam) * Math.min(1, real * 5); else G.cam = target;
+  // alejándose, la cámara acompaña sin retraso (si no, el que corre se escapa por el borde)
+  if (jOn()) G.cam += (target - G.cam) * Math.min(1, real * (G.camZ < 0.999 ? 9 : 5)); else G.cam = target;
   if (Math.abs(G.cam - before) > 0.6) flashJ('cam');
+  if (sillon) sillonLeash(VW);
+}
+// con el portón abierto los héroes pueden separarse más que la zona entera: el de adelante espera al de atrás
+// (como en los beat 'em up de sillón). Nunca se tiene en cuenta al villano, así no traba el avance.
+const LEASH = W / CAMZ_MIN - 12; // con la cámara bien lejos, el borde de la pantalla
+function sillonLeash(VW) {
+  const lh = G.heroes.filter(e => !e.dead && isLocal(e));
+  if (lh.length < 2) return;
+  for (const e of lh) {
+    const o = lh.filter(h => h !== e).map(h => h.x + 4), lo = Math.max(...o) - LEASH, hi = Math.min(...o) + LEASH;
+    if (lo > hi) continue;
+    // frena solo al que se está alejando (no arrastra al que quedó quieto)
+    const c = e.x + 4;
+    if (c < lo && e.vx < 0) { e.x = lo - 4; e.vx = 0; }
+    else if (c > hi && e.vx > 0) { e.x = hi - 4; e.vx = 0; }
+  }
 }
 
 /* enemigos */
@@ -7712,6 +7741,7 @@ function drawPip(p, kind, isPlayer) {
   }
 }
 const CINE = { k: 0, at: 0 }, LIGHTNING = { on: false };
+const VIEW = { a: 1, bx: 0, by: 0, w: W };
 function render() {
   const camX = G ? Math.round(G.cam * RS) / RS : 0, q2 = v => Math.round(v * RS) / RS;
   g.setTransform(RS, 0, 0, RS, 0, 0);
@@ -7732,17 +7762,23 @@ function render() {
   }
   g.drawImage(FAR, -q2(camX * 0.25), 0);
   g.drawImage(MID, -q2(camX * 0.5), 0);
-  let ox = 0, oy = 0, z = 1, zsx = 0, zsy = 0;
+  let ox = 0, oy = 0;
   if (LSHAKE.t > 0) { LSHAKE.t -= 1 / 60; ox += Math.round((Math.random() * 2 - 1) * LSHAKE.mag); oy += Math.round((Math.random() * 2 - 1) * LSHAKE.mag); }
   if (G && G.shake > 0 && G.shakeMag) { const f = G.shake / (G.shakeMax || 1); ox = Math.round((Math.random() * 2 - 1) * G.shakeMag * Math.min(1, f)); oy = Math.round((Math.random() * 2 - 1) * G.shakeMag * Math.min(1, f)); }
-  if (G && G.zoom) { const f = G.zoom.t / 0.55; z = 1 + 0.24 * f * f; zsx = G.zoom.x - camX; zsy = G.zoom.y; }
-  g.setTransform(RS * z, 0, 0, RS * z, RS * (zsx * (1 - z) - camX * z + ox), RS * (zsy * (1 - z) + oy));
-  if (camX + W > ZONES[3].start) g.drawImage(ARENA_BG, ZONES[3].start, 0);
-  const sx = Math.max(0, camX - 20), sw = Math.min(WW - sx, W + 40);
+  // pantalla = VIEW.a * mundo + VIEW.b. La cámara del sillón se aleja apoyada en el piso (abajo);
+  // el zoom de los golpes críticos se suma encima, centrado en el golpe.
+  const cz = G && G.camZ && G.camZ < 1 ? G.camZ : 1;
+  let va = cz, vbx = -camX * cz, vby = H * (1 - cz);
+  if (G && G.zoom) { const f = G.zoom.t / 0.55, zc = 1 + 0.24 * f * f, px = cz * (G.zoom.x - camX), py = H * (1 - cz) + cz * G.zoom.y; va *= zc; vbx = px * (1 - zc) + zc * vbx; vby = py * (1 - zc) + zc * vby; }
+  VIEW.a = va; VIEW.bx = vbx; VIEW.by = vby; VIEW.w = W / cz;
+  const VW = VIEW.w;
+  g.setTransform(RS * va, 0, 0, RS * va, RS * (vbx + ox), RS * (vby + oy));
+  if (camX + VW > ZONES[3].start) g.drawImage(ARENA_BG, ZONES[3].start, 0);
+  const sx = Math.max(0, camX - 20), sw = Math.min(WW - sx, VW + 40);
   g.drawImage(LEVEL, sx, 0, sw, H, sx, 0, sw, H);
   // antorchas
   for (const t of TORCHES) {
-    if (t.x < camX - 10 || t.x > camX + W + 10) continue;
+    if (t.x < camX - 10 || t.x > camX + VW + 10) continue;
     const fl = Math.floor(T * 12 + t.x) % 3;
     if (CUR_LVL === 3) {
       // farol colgado de una soga, se mece con el barco
@@ -7782,7 +7818,7 @@ function render() {
 
   // portones
   for (const gt of GATES) {
-    if (gt.x < camX - 12 || gt.x > camX + W + 4) continue;
+    if (gt.x < camX - 12 || gt.x > camX + VW + 4) continue;
     const lift = Math.round(gt.open * 44);
     for (let i = 0; i < 3; i++) { g.fillStyle = PAL.k; g.fillRect(gt.x + i * 3, DOOR_TOP - lift, 2, GROUND - DOOR_TOP); g.fillStyle = PAL.S; g.fillRect(gt.x + i * 3, DOOR_TOP - lift, 1, GROUND - DOOR_TOP); g.fillStyle = PAL.s; g.fillRect(gt.x + i * 3, DOOR_TOP - lift, 0.5, GROUND - DOOR_TOP); }
     g.fillStyle = PAL.d; for (let yy = DOOR_TOP + 4 - lift; yy < GROUND - lift; yy += 8) g.fillRect(gt.x - 1, yy, 10, 2);
@@ -7816,7 +7852,7 @@ function render() {
   }
   // pinchos: agujeritos, la punta que avisa y afuera
   for (const tr of TRAPS) {
-    if (tr.x > camX + W + 4 || tr.x + tr.w < camX - 4) continue;
+    if (tr.x > camX + VW + 4 || tr.x + tr.w < camX - 4) continue;
     const ph = trapPhase(tr, G.t);
     for (let i = tr.x + 1; i < tr.x + tr.w - 1; i += 4) {
       g.fillStyle = PAL.k; g.fillRect(i, GROUND, 3, 1);
@@ -7837,7 +7873,7 @@ function render() {
   }
   // slimes
   for (const s of G.slimes) {
-    if (s.x < camX - 20 || s.x > camX + W + 10) continue;
+    if (s.x < camX - 20 || s.x > camX + VW + 10) continue;
     if (isSea(s.kind)) {
       if (s.spawn > 0) { if (Math.floor(s.spawn * 20) % 2) continue; g.save(); g.translate(s.x + s.w / 2, s.y + s.h); const k = Math.max(0.1, 1 - s.spawn); g.scale(k, k); g.translate(-(s.x + s.w / 2), -(s.y + s.h)); drawSea(s, s.kind); g.restore(); continue; }
       if (s.parryT > 0 && !s.dead) stunStars(s.x + s.w / 2, s.y - 4);
@@ -8041,7 +8077,7 @@ function render() {
   for (const f of LFX) if (f.own && performance.now() - f.t0 < 60) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(0, 0, W, H); }
   if (G.impact) {
     const inv = G.impact.t < 0.045 + (G.impact.t > 0.09 ? 0.01 : 0);
-    const ix = (G.impact.x - camX - zsx) * z + zsx, iy = (G.impact.y - zsy) * z + zsy;
+    const ix = G.impact.x * VIEW.a + VIEW.bx, iy = G.impact.y * VIEW.a + VIEW.by;
     g.fillStyle = inv ? PAL.k : PAL.w; g.fillRect(0, 0, W, H);
     g.fillStyle = inv ? PAL.w : PAL.k;
     for (let i = 0; i < 26; i++) {
@@ -8113,7 +8149,7 @@ function render() {
       drawText(g, NET.role === 'guest' ? netHint() : m ? 'SOS ' + MOB[m.type].name + ' · ' + MOB[m.type].hint : 'BUSCANDO OTRO CUERPO...', 4, 136, PAL.y, 1, 'left');
       for (const e of G.heroes) {
         if (e.dead) continue;
-        const sxp = e.x + 4 - camX, col = KIND_COL()[e.kind], yy = Math.max(24, Math.min(118, Math.round(e.y)));
+        const sxp = (e.x + 4) * VIEW.a + VIEW.bx, col = KIND_COL()[e.kind], yy = Math.max(24, Math.min(118, Math.round(e.y * VIEW.a + VIEW.by)));
         if (sxp < 0) drawText(g, '<', 2, yy, col, 1, 'left'); else if (sxp > W) drawText(g, '>', W - 5, yy, col, 1, 'left');
       }
     }

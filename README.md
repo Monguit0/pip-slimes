@@ -106,12 +106,14 @@ en el nivel 2 ya tenés media barra, y en el nivel 3 empezás evolucionado.
 - **Nigromante** (mago): capucha y cara de calavera; su bola de fuego pasa a ser verde. Con `C` (o `E`, o el botón
   *Huesos*, cuesta media barra de energía) **invoca dos esqueletos aliados al azar**: pueden salir dos de hacha, dos de
   arco o uno de cada uno. Salen de la tierra a sus costados, buscan al enemigo más cercano (los de hacha van al cuerpo a
-  cuerpo, los arqueros guardan distancia y disparan), siguen a su dueño entre zonas y duran 15 segundos o hasta que los
-  rompan (4 golpes). Si invocás de nuevo, los viejos se deshacen y salen dos nuevos.
+  cuerpo, los arqueros guardan distancia y disparan), siguen a su dueño entre zonas y duran 12 segundos o hasta que los
+  rompan (2 golpes). Son una ayuda, no un ejército: pegan de a 1 y tardan entre golpe y golpe. Si invocás de nuevo, los
+  viejos se deshacen y salen dos nuevos.
 
 ## Jefes
 - **El jefe que maneja una persona** (Jefe, Villano, Online) tiene menos vida que antes: 42 el Mega Caballero y 50 el
-  Campeón. Antes de entrar a pelear con él, en Villano/Online los héroes se curan del todo y los caídos vuelven con sus cartas.
+  Campeón. Antes de entrar a pelear con él, en Villano/Online/Sillón los héroes que llegaron se curan del todo; los
+  que cayeron en el camino **no vuelven** para el jefe (vuelven recién en el nivel siguiente).
 - **Presentación**: franjas de cine y una placa con el nombre cuando entran. El Campeón primero se asoma: dos ojos
   rojos en la oscuridad de la cueva, y después salta.
 - **Tres fases**: a la mitad de vida se enfurecen y al 25% viene la **última furia**. El Mega Caballero pierde el casco
@@ -217,8 +219,11 @@ El navegador lo "ve" recién cuando apretás un botón con la página abierta.
   el teclado) para sumarse y elige lugar con ← →: el **villano** (teclado o joystick) y hasta **cuatro héroes**
   (arquero, caballero, bárbaro y mago); los lugares vacíos los maneja un bot. `B` o `Esc` para salir, `START` o `Enter`
   para arrancar. Cada héroe tiene su cartel (`J1`, `J2`…) y su energía en el panel; las cartas se eligen por turno
-  (primero el villano y después cada joystick). La cámara sigue al grupo de héroes y al bicho del villano, el parry
-  del caballero anda igual, y el joystick vibra cuando te pegan.
+  (primero el villano y después cada joystick). El parry del caballero anda igual y el joystick vibra cuando te pegan.
+- **Cámara del sillón**: encuadra a todos los que juegan (los héroes con joystick y el bicho del villano). Si se
+  separan, la cámara **se aleja** apoyada en el piso, hasta ver la zona entera (dos pantallas), y cuando se juntan
+  vuelve a acercarse despacio. Con el portón abierto los héroes pueden separarse más: ahí el de adelante no puede
+  alejarse más de una zona del de atrás (como en los beat 'em up de sillón). Los bots no cuentan para la cámara.
 
 ## Jugar
 1. Abrí la URL, bajá a **Online**, poné tu nombre y tocá **Crear sala**: sos el villano.
