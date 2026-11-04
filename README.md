@@ -199,6 +199,20 @@ el juego funciona igual, solo que esos jugadores van por el servidor.
 Listo: el servidor reparte credenciales temporales en `/ice` y los navegadores usan el relé solo cuando no pueden ir directo.
 Las claves nunca llegan al navegador.
 
+## Joysticks y multijugador local (Sillón)
+Cualquier joystick que el navegador reconozca (Xbox, PlayStation o genérico, por USB o Bluetooth) maneja el juego.
+El navegador lo "ve" recién cuando apretás un botón con la página abierta.
+- **Botones**: `A` saltar · `X` atacar (mantené para cargar) · `B` especial (dash, escudo, furia o bola de fuego) ·
+  `Y` poder de la evolución (veneno o esqueletos) · `LB` lluvia y `RB` carga cuando sos el jefe · stick o cruceta para
+  moverte (abajo + `A` baja de la plataforma; arriba sube volando con la gaviota o el murciélago) · `START` empieza.
+- **En el menú**: ← → recorren los botones, ↑ ↓ pasan de la fila de niveles a la de modos, `A` aprieta y `START` empieza.
+- **Sillón** (botón *Sillón*): el modo villano para jugar en la misma pantalla. Cada uno aprieta `A` (o `Espacio` en
+  el teclado) para sumarse y elige lugar con ← →: el **villano** (teclado o joystick) y hasta **cuatro héroes**
+  (arquero, caballero, bárbaro y mago); los lugares vacíos los maneja un bot. `B` o `Esc` para salir, `START` o `Enter`
+  para arrancar. Cada héroe tiene su cartel (`J1`, `J2`…) y su energía en el panel; las cartas se eligen por turno
+  (primero el villano y después cada joystick). La cámara sigue al grupo de héroes y al bicho del villano, el parry
+  del caballero anda igual, y el joystick vibra cuando te pegan.
+
 ## Jugar
 1. Abrí la URL, bajá a **Online**, poné tu nombre y tocá **Crear sala**: sos el villano.
 2. Tocá **Copiar link** y pasáselo a tus amigos (o diles el código de 4 letras).

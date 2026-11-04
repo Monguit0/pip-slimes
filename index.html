@@ -74,6 +74,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 44px
 .px.primary.barb { background: var(--hurt); }
 .px.primary.barb:hover { background: #ea7f90; }
 .px.primary.mage { background: #b98cf0; }
+.px.primary.local { background: #8fd6c8; }
+.px.primary.local:hover { background: #b2e6dc; }
 .px.primary.mage:hover { background: #cfaef7; }
 .px.primary.boss { background: var(--ember); }
 .px.primary.boss:hover { background: #f59a7c; }
@@ -239,7 +241,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
   <header class="top">
     <p class="eyebrow">Mockup · demo de juice para juegos pixel art · edición 16 bits</p>
     <h1>Pip y los Slimes</h1>
-    <p class="lede">Elegí a Pip <b>arquero</b>, <b>caballero</b>, <b>bárbaro</b> o <b>mago</b> y cruzá la Pradera, las Ruinas y las Murallas: en cada zona el portón se abre cuando no queda ningún slime. Al final te espera el <b>Mega Caballero</b> en el Salón del Trono, después el <b>Bosque Oscuro</b> con slimes tóxicos, murciélagos, lobeznos, trampas y el <b>Campeón</b>, un lobo gigante, la <b>Montaña Helada</b> con el <b>Yeti</b> y el <b>Barco Pirata</b> con cangrejos, piratas, peces globo, gaviotas y el <b>Kraken</b>. Monedas, enemigos y jefes dan experiencia: al llenarla, el arquero evoluciona a <b>Cazador</b>, el caballero a <b>Paladín</b>, el bárbaro a <b>Warlord</b> y el <b>mago</b> (bastón y bola de fuego que quema) a <b>Nigromante</b>, que levanta esqueletos aliados; o elegí <b>Jefe</b> y defendé vos el trono contra oleadas de héroes. En <b>Villano</b> manejás a los enemigos para frenar a los cuatro héroes, y si llegan al trono, al jefe. Cada golpe tiene 20% de chance de crítico. En <b>Online</b> creás una sala y hasta cuatro amigos juegan de héroes contra vos. Probá con el juice apagado y después prendido: misma mecánica, otra sensación.</p>
+    <p class="lede">Elegí a Pip <b>arquero</b>, <b>caballero</b>, <b>bárbaro</b> o <b>mago</b> y cruzá la Pradera, las Ruinas y las Murallas: en cada zona el portón se abre cuando no queda ningún slime. Al final te espera el <b>Mega Caballero</b> en el Salón del Trono, después el <b>Bosque Oscuro</b> con slimes tóxicos, murciélagos, lobeznos, trampas y el <b>Campeón</b>, un lobo gigante, la <b>Montaña Helada</b> con el <b>Yeti</b> y el <b>Barco Pirata</b> con cangrejos, piratas, peces globo, gaviotas y el <b>Kraken</b>. Monedas, enemigos y jefes dan experiencia: al llenarla, el arquero evoluciona a <b>Cazador</b>, el caballero a <b>Paladín</b>, el bárbaro a <b>Warlord</b> y el <b>mago</b> (bastón y bola de fuego que quema) a <b>Nigromante</b>, que levanta esqueletos aliados; o elegí <b>Jefe</b> y defendé vos el trono contra oleadas de héroes. En <b>Villano</b> manejás a los enemigos para frenar a los cuatro héroes, y si llegan al trono, al jefe. Cada golpe tiene 20% de chance de crítico. En <b>Online</b> creás una sala y hasta cuatro amigos juegan de héroes contra vos. En <b>Sillón</b> juegan todos en la misma pantalla con joysticks: uno de villano y hasta cuatro de héroes. Probá con el juice apagado y después prendido: misma mecánica, otra sensación.</p>
   </header>
 
   <section class="console" aria-label="Juego">
@@ -266,6 +268,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
           <button class="px primary boss" id="start-boss" type="button">▶ Jefe</button>
           <button class="px primary villain" id="start-villain" type="button">▶ Villano</button>
           <button class="px primary online" id="start-online" type="button">▶ Online</button>
+          <button class="px primary local" id="start-local" type="button">▶ Sillón</button>
           <button class="px primary villain" id="start-net" type="button">▶ Empezar online</button>
           <p class="net-wait" id="net-wait">Esperando al villano…</p>
         </div>
@@ -3878,6 +3881,178 @@ function hasteAura(dt) {
 }
 function noEnergy(h) { if (h.enFlash > 0.25) return; h.enFlash = 0.45; play('menu', { rate: 0.55, vol: 0.5, vary: false }); }
 /* =========================================================
+   Joysticks y multijugador local (en el sillón)
+   Cualquier joystick (Xbox, PlayStation o genérico, con el mapeo estándar del navegador) maneja el juego:
+   A saltar · X atacar (mantener carga) · B especial · Y poder · LB lluvia · RB carga (jefe) · START empezar.
+   En "Sillón" uno es el villano (teclado o joystick) y hasta cuatro juegan de héroes; los lugares vacíos son bots.
+   ========================================================= */
+const PAD_KEYS = ['left', 'right', 'up', 'down', 'jump', 'attack', 'special', 'power', 'rain', 'charge', 'start', 'back'];
+const PAD_BTN = { jump: [0], special: [1, 6], attack: [2, 7], power: [3], rain: [4], charge: [5], back: [8], start: [9], up: [12], down: [13], left: [14], right: [15] };
+const DEV = new Map(); // 'kb' o el número del joystick -> { cur, prev, p (aprietes sin usar, con su hora) }
+const KB = {};          // teclas apretadas, por nombre de acción (para el teclado como jugador del sillón)
+const LOCAL = { lobby: false, on: false, slots: { v: null, archer: null, knight: null, barb: null, mage: null }, at: new Map(), flash: {} };
+const LSLOTS = ['v', 'archer', 'knight', 'barb', 'mage'];
+const PAD_COL = () => [PAL.y, PAL.c, PAL.l, RAMPS.p[4]];
+const devOf = id => { let d = DEV.get(id); if (!d) { d = { cur: {}, prev: {}, p: {} }; DEV.set(id, d); } return d; };
+const padsOn = () => [...DEV.keys()].filter(k => k !== 'kb' && DEV.get(k).live);
+const devName = id => id === 'kb' ? 'TECLADO' : 'JOYSTICK ' + (id + 1);
+const isLocal = e => LOCAL.on && e && e.pad != null && !e.net;
+const localDev = kind => LOCAL.on ? LOCAL.slots[kind] ?? null : null;
+// un apretón reciente (y lo gasta)
+function take(id, k) { const d = DEV.get(id); if (!d || !d.p[k]) return false; const ok = performance.now() - d.p[k] < 300; d.p[k] = 0; return ok; }
+function padRead() {
+  const now = performance.now();
+  let list = [];
+  try { list = navigator.getGamepads ? [...navigator.getGamepads()] : []; } catch (e) { list = []; }
+  for (const d of DEV.values()) d.live = false;
+  for (const gp of list) {
+    if (!gp || !gp.connected) continue;
+    const d = devOf(gp.index), b = i => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > 0.5));
+    d.live = true; d.gp = gp; d.prev = d.cur; d.cur = {};
+    for (const k of PAD_KEYS) d.cur[k] = (PAD_BTN[k] || []).some(b);
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+    if (ax < -0.45) d.cur.left = true; if (ax > 0.45) d.cur.right = true;
+    if (ay > 0.6) d.cur.down = true; if (ay < -0.6) d.cur.up = true;
+    for (const k of PAD_KEYS) if (d.cur[k] && !d.prev[k]) d.p[k] = now;
+  }
+  const kb = devOf('kb'); kb.live = true; kb.prev = kb.cur; kb.cur = { ...KB };
+  for (const k of PAD_KEYS) if (kb.cur[k] && !kb.prev[k]) kb.p[k] = now;
+}
+// lo que manda el villano (o, sin sillón, cualquier joystick) llega al mismo lugar que el teclado
+const PAD_INPUT = ['left', 'right', 'down', 'jump', 'attack', 'special', 'power', 'rain', 'charge'];
+function padToInput() {
+  const ids = LOCAL.on ? (LOCAL.slots.v != null && LOCAL.slots.v !== 'kb' ? [LOCAL.slots.v] : []) : padsOn();
+  const playing = G && G.state === 'play';
+  for (const k of PAD_INPUT) {
+    let now = false, was = false;
+    for (const id of ids) { const d = DEV.get(id); if (!d) continue; now = now || !!d.cur[k] || (k === 'jump' && !!d.cur.up); was = was || !!d.prev[k] || (k === 'jump' && !!d.prev.up); }
+    if (!playing || now === was) continue;
+    const real = ids.some(id => { const d = DEV.get(id); return d && d.cur[k] && !d.prev[k]; });
+    if (now) { if (PRESS.has(k) && !input[k] && real) input[k + 'Pressed'] = true; input[k] = true; } else input[k] = false;
+  }
+  // en el menú: START empieza; ← → recorren los botones, ↑ ↓ pasan de la fila de niveles a la de modos y A aprieta
+  if (!playing && !LOCAL.lobby && overlay && !overlay.hidden && NET.role !== 'guest') {
+    for (const id of padsOn()) {
+      const vis = sel => [...overlay.querySelectorAll(sel)].filter(bt => bt.offsetParent !== null);
+      const lv = vis('.lvl-pick button'), md = vis('.px.primary'), ae = document.activeElement;
+      const row = lv.includes(ae) ? lv : md.includes(ae) ? md : null;
+      const go = bt => { if (bt) { bt.focus(); play('menu', { rate: 1.3, vol: 0.4, vary: false }); } };
+      const dx = take(id, 'right') ? 1 : take(id, 'left') ? -1 : 0, dy = take(id, 'down') ? 1 : take(id, 'up') ? -1 : 0;
+      if (dx || dy) {
+        if (!row) go(md[0]);
+        else if (dx) go(row[(row.indexOf(ae) + dx + row.length) % row.length]);
+        else go(dy < 0 ? lv.find(bt => bt.getAttribute('aria-pressed') === 'true') || lv[0] : md[0]);
+      } else if (take(id, 'jump') && row) ae.click();
+      else if (take(id, 'start')) { if (md.includes(ae)) ae.click(); else startGame(lastKind); }
+    }
+  }
+}
+// vibración del joystick (si la tiene)
+function rumble(id, ms = 80, strong = 0.6) {
+  if (!opts.juice || id == null || id === 'kb') return;
+  const d = DEV.get(id), a = d && d.gp && d.gp.vibrationActuator;
+  try { if (a && a.playEffect) a.playEffect('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: Math.min(1, strong + 0.2) }); } catch (e) {}
+}
+/* ---- la sala del sillón: cada uno aprieta A (o espacio) y elige lugar con ← → ---- */
+function openLobby() {
+  if (NET.role) return;
+  initAudio();
+  LOCAL.lobby = true; LOCAL.on = false; LOCAL.at = new Map(); LOCAL.slots = { v: null, archer: null, knight: null, barb: null, mage: null };
+  overlay.hidden = true; G = null; musicStop();
+  for (const d of DEV.values()) d.p = {};
+  play('posesion', { rate: 1.3, vary: false });
+}
+function lobbyStep() {
+  const free = slot => LOCAL.slots[slot] == null;
+  const ids = ['kb', ...padsOn()];
+  for (const id of ids) {
+    const at = LOCAL.at.get(id);
+    if (at == null) {
+      if (take(id, 'jump') || take(id, 'attack') || (id !== 'kb' && take(id, 'start'))) {
+        const order = id === 'kb' ? LSLOTS : [...LSLOTS.slice(1), 'v'];
+        const slot = (LOCAL.slots.v == null && id !== 'kb' && !ids.includes('kb') ? ['v', ...order] : order).find(free);
+        if (slot) { LOCAL.slots[slot] = id; LOCAL.at.set(id, slot); LOCAL.flash[slot] = 0.4; play('moneda', { vary: false }); rumble(id, 120, 0.5); }
+      } else if (take(id, 'back') || (id !== 'kb' && take(id, 'special'))) { if (!LOCAL.at.size) { closeLobby(); return; } }
+      continue;
+    }
+    const dir = take(id, 'right') ? 1 : take(id, 'left') ? -1 : 0;
+    if (dir) {
+      let i = LSLOTS.indexOf(at);
+      for (let k = 0; k < LSLOTS.length - 1; k++) { i = (i + dir + LSLOTS.length) % LSLOTS.length; if (free(LSLOTS[i])) { LOCAL.slots[at] = null; LOCAL.slots[LSLOTS[i]] = id; LOCAL.at.set(id, LSLOTS[i]); LOCAL.flash[LSLOTS[i]] = 0.3; play('menu', { rate: 1.2, vary: false }); break; } }
+    }
+    if (take(id, 'back') || (id !== 'kb' && take(id, 'special'))) { LOCAL.slots[LOCAL.at.get(id)] = null; LOCAL.at.delete(id); play('menu', { rate: 0.7, vary: false }); continue; }
+    if (take(id, 'start') && LOCAL.slots.v != null) { beginLocal(); return; }
+  }
+  for (const k in LOCAL.flash) LOCAL.flash[k] = Math.max(0, LOCAL.flash[k] - 1 / 60);
+}
+function closeLobby() { LOCAL.lobby = false; overlay.hidden = false; play('menu', { rate: 0.7, vary: false }); }
+function beginLocal() {
+  LOCAL.lobby = false; LOCAL.on = true;
+  for (const d of DEV.values()) d.p = {};
+  startGame('local');
+}
+// el sillón, dibujado sobre el título
+function drawLobby() {
+  g.setTransform(RS, 0, 0, RS, 0, 0);
+  g.fillStyle = 'rgba(8,8,22,0.86)'; g.fillRect(0, 0, W, H);
+  drawText(g, 'MULTIJUGADOR LOCAL', W / 2, 6, PAL.y, 2, 'center');
+  drawText(g, 'NIVEL ' + (startLvl + 1) + ' · ' + LEVEL_NAMES[startLvl], W / 2, 21, PAL.s, 1, 'center');
+  const T = performance.now() / 1000, cols = PAD_COL();
+  LSLOTS.forEach((slot, i) => {
+    const x = 6 + i * 50, y = 32, id = LOCAL.slots[slot], on = id != null, fl = LOCAL.flash[slot] > 0 && Math.floor(T * 20) % 2;
+    g.fillStyle = PAL.k; g.fillRect(x, y, 46, 68); g.fillStyle = fl ? PAL.w : on ? (slot === 'v' ? RAMPS.r[1] : RAMPS.B[1]) : PAL.d; g.fillRect(x + 1, y + 1, 44, 66);
+    drawText(g, slot === 'v' ? 'VILLANO' : KIND_NAME[slot], x + 23, y + 4, slot === 'v' ? PAL.r : KIND_COL()[slot], 1, 'center');
+    const bob = on ? Math.abs(Math.sin(T * 4 + i)) * 2 : 0;
+    if (slot === 'v') drawScaled(SLIME_HD.ok ? slimeHD('red', { t: T, fps: 12 }, false, false) : RED.r, x + 23, y + 44 - bob, 1.2, 1.2);
+    else drawScaled(HEROES[slot].idle.n.r, x + 23, y + 44 - bob, 1.4, 1.4);
+    const col = id === 'kb' ? PAL.w : on ? cols[id % 4] : PAL.S;
+    drawText(g, on ? devName(id) : slot === 'v' ? 'FALTA' : 'BOT', x + 23, y + 52, col, 1, 'center');
+    if (on && id !== 'kb') drawText(g, 'J' + (id + 1), x + 23, y + 60, col, 1, 'center');
+  });
+  const n = padsOn().length;
+  drawText(g, n ? 'JOYSTICKS: ' + n : 'CONECTÁ UN JOYSTICK Y APRETÁ UN BOTÓN', W / 2, 106, n ? PAL.c : PAL.o, 1, 'center');
+  drawText(g, 'A O ESPACIO: SUMARSE · < > CAMBIAR DE LUGAR · B O ESC: SALIR', W / 2, 117, PAL.s, 1, 'center');
+  drawText(g, LOCAL.slots.v != null ? 'START O ENTER: ¡A JUGAR!' : 'FALTA EL VILLANO (TECLADO O JOYSTICK)', W / 2, 128, LOCAL.slots.v != null && Math.floor(T * 3) % 2 ? PAL.y : PAL.w, 1, 'center');
+}
+/* ---- un héroe manejado con un joystick (o el teclado) en el sillón ---- */
+function localHero(e, dt) {
+  const id = e.pad, d = DEV.get(id) || { cur: {} }, P = d.cur;
+  const dir = (P.right ? 1 : 0) - (P.left ? 1 : 0);
+  e.move = dir; if (dir && e.inv < 0.45) e.face = dir;
+  skillStep(e, e.kind, dt, !!P.special, take(id, 'special'), dir);
+  const pw = take(id, 'power');
+  if (e.evo && e.kind === 'archer') venomStep(e, dt, pw);
+  if (e.evo && e.kind === 'mage') necroStep(e, pw);
+  if (take(id, 'jump')) e.jbuf = 0.12; else e.jbuf = (e.jbuf || 0) - dt;
+  if (e.jbuf > 0 && e.dashT <= 0) {
+    if (e.onGround) { if (P.down && e.surf && !e.surf.ground) e.dropNow = true; else { e.jumpNow = true; e.cut = false; if (e.kind === 'archer' && charging(e)) e.chg = -1; } e.jbuf = 0; }
+    else if (!e.dj) { e.dj = true; e.vy = -CHARS[e.kind].jump * DJ; e.cut = false; e.jbuf = 0; if (e.kind === 'archer' && charging(e)) e.chg = -1; play('salto', { rate: 1.35 }); djFx(e); }
+  }
+  if (!P.jump && e.vy < -60 && !e.cut) { e.vy *= 0.45; e.cut = true; }
+  if (P.down && !P.jump && e.onGround && e.surf && !e.surf.ground) e.dropNow = true;
+  const act = chargeStep(e, dt, !!P.attack, take(id, 'attack'), !e.shield && e.dashT <= 0);
+  const C = CHARS[e.kind];
+  if (act === 'tap') {
+    if (e.kind === 'archer') { heroShoot(e); e.cool = C.cool * (e.evo ? 1.5 : 1) * hasteMul(e); }
+    else { heroSlash(e); e.cool = C.cool * hasteMul(e); }
+  } else if (act === 'big') {
+    e.cool = C.cool * hasteMul(e);
+    if (e.kind === 'archer') powerShot(e, G.arrows, { hero: true, venom: !!e.venom }); else if (e.kind === 'barb') spinSlash(e); else bigSlash(e);
+  }
+}
+// el escudo de un jugador del sillón: parry si lo levantó justo, si no frena
+function localBlock(e, dir) {
+  rumble(e.pad, 60, 0.35);
+  if (!parryNow(e)) { shieldBlock(e, dir); return; }
+  if (e.blockT > 0) return;
+  e.en = Math.min(SK.max, e.en + 12);
+  parryFx(e, dir, true); parryPush(e, dir);
+  const B = bossUp(); if (B && Math.abs(B.x + BW / 2 - (e.x + 4)) < 56) stunBoss(B);
+  if (e.evo && e.kind === 'knight') healWave(e);
+  popup(e.x + 4, e.y - 10, '¡PARRY!', PAL.y);
+  if (jOn()) { hitstop(0.1); G.slowmo = Math.max(G.slowmo, 0.2); }
+}
+/* =========================================================
    Nivel 4: bichos del barco. Funcionan igual en la campaña (G.slimes) y en el modo villano (G.mobs):
    Cangrejo: camina de costado; si te tiene a tiro abre las pinzas y se lanza de costado (tijeretazo).
    Pirata: guarda distancia, apunta con una mira roja y dispara una bala rápida y recta (saltala o pará con el escudo).
@@ -4666,6 +4841,12 @@ function startPick() {
 // qué elección me toca en esta pantalla
 function myPickKey() {
   if (!G || !G.pick) return null;
+  if (LOCAL.on && G.kind === 'invade') {
+    const pk = G.pick;
+    if (pk.o.v && pk.c.v === undefined) return 'v';
+    const e = G.heroes.find(h => isLocal(h) && !h.dead && pk.o[h.kind] && pk.c[h.kind] === undefined);
+    return e ? e.kind : null;
+  }
   if (NET.role === 'guest') { const e = G.heroes && G.heroes.find(h => h.net === NET.me && !h.dead); return e ? e.kind : null; }
   if (G.p) return G.kind;
   if (G.kind === 'invade') return 'v';
@@ -4674,17 +4855,20 @@ function myPickKey() {
 const PICK = { r: -1, sel: 1, done: false, l: false, rt: false, tap: -1 };
 // flechas para moverse entre cartas; ataque o salto (o tocarla) para elegir. Devuelve el número elegido.
 // número de cada elección (el villano tiene una por héroe)
-const pickRid = (pk, key) => pk.r * 10 + (key === 'v' ? (pk.vgot || []).length : 0);
-function pickInput(pk, key) {
+const pickRid = (pk, key) => pk.r * 10 + (key === 'v' ? (pk.vgot || []).length : 5 + HK_LIST.indexOf(key));
+// lo que aprieta el jugador del sillón que está eligiendo, con la forma de "input"
+function pickPad(id) { const d = DEV.get(id) || { cur: {} }; return { left: !!d.cur.left, right: !!d.cur.right, leftPressed: take(id, 'left'), rightPressed: take(id, 'right'), attackPressed: take(id, 'attack'), jumpPressed: take(id, 'jump'), specialPressed: false }; }
+function pickInput(pk, key, inp) {
+  const IN = inp || input;
   const n = pk.o[key].length, rid = pickRid(pk, key);
-  if (PICK.r !== rid) { PICK.r = rid; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; input.leftPressed = input.rightPressed = false; }
+  if (PICK.r !== rid) { PICK.r = rid; PICK.sel = Math.min(1, n - 1); PICK.done = false; PICK.tap = -1; PICK.l = PICK.rt = true; IN.leftPressed = IN.rightPressed = false; }
   if (PICK.done) return null;
-  if (input.leftPressed || (input.left && !PICK.l)) { PICK.sel = (PICK.sel + n - 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
-  else if (input.rightPressed || (input.right && !PICK.rt)) { PICK.sel = (PICK.sel + 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
-  PICK.l = input.left; PICK.rt = input.right; input.leftPressed = input.rightPressed = false;
-  let ok = input.attackPressed || input.jumpPressed;
+  if (IN.leftPressed || (IN.left && !PICK.l)) { PICK.sel = (PICK.sel + n - 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
+  else if (IN.rightPressed || (IN.right && !PICK.rt)) { PICK.sel = (PICK.sel + 1) % n; play('menu', { rate: 1.2, vol: 0.5, vary: false }); }
+  PICK.l = IN.left; PICK.rt = IN.right; IN.leftPressed = IN.rightPressed = false;
+  let ok = IN.attackPressed || IN.jumpPressed;
   if (PICK.tap >= 0) { if (PICK.tap < n) { if (PICK.sel === PICK.tap) ok = true; PICK.sel = PICK.tap; } PICK.tap = -1; }
-  input.attackPressed = input.jumpPressed = input.specialPressed = false;
+  IN.attackPressed = IN.jumpPressed = IN.specialPressed = false;
   if (!ok) return null;
   PICK.done = true;
   play('moneda', { rate: 0.8, vary: false }); vib(20);
@@ -4696,7 +4880,8 @@ function updatePick(dt) {
   pk.t += dt;
   const key = myPickKey();
   if (key && pk.o[key] && pk.c[key] === undefined) {
-    const i = pickInput(pk, key);
+    const lh = key !== 'v' && LOCAL.on ? G.heroes.find(h => isLocal(h) && h.kind === key) : null;
+    const i = lh ? pickInput(pk, key, pickPad(lh.pad)) : pickInput(pk, key);
     if (i !== null && key === 'v') {
       // el villano junta una carta por héroe: después de cada una, se reparten tres nuevas
       pk.vgot.push(pk.o.v[i]);
@@ -4709,7 +4894,7 @@ function updatePick(dt) {
     if (e.net && !e.dead) {
       const inp = NET.inputs && NET.inputs.get(e.net);
       if (inp && Array.isArray(inp.cp) && inp.cp[0] === pk.r) pk.c[e.kind] = Math.max(0, Math.min(pk.o[e.kind].length - 1, inp.cp[1] | 0));
-    } else pk.c[e.kind] = Math.floor(Math.random() * pk.o[e.kind].length);
+    } else if (!isLocal(e) || e.dead) pk.c[e.kind] = Math.floor(Math.random() * pk.o[e.kind].length);
   }
   if (Object.keys(pk.o).every(k => pk.c[k] !== undefined) || (pk.mx && pk.t > pk.mx)) finishPick();
 }
@@ -6133,7 +6318,7 @@ function updateHeroes(dt) {
   const B = G.boss;
   hasteAura(dt);
   for (const e of G.heroes) {
-    if (!e.net && !e.dead) { botVenom(e, dt); if (e.spellCd > 0) e.spellCd -= dt; if (e.sumCd > 0) e.sumCd -= dt; }
+    if (!e.net && !isLocal(e) && !e.dead) { botVenom(e, dt); if (e.spellCd > 0) e.spellCd -= dt; if (e.sumCd > 0) e.sumCd -= dt; }
     if (e.dead) {
       e.vy += GRAV * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.deadT -= dt; e.flash = 0.05;
       if (e.deadT <= 0 && !e.popped) {
@@ -6144,6 +6329,7 @@ function updateHeroes(dt) {
       continue;
     }
     if (e.net) { if (netHero(e, dt)) heroTimers(e, dt); else heroPhysics(e, dt); }
+    else if (isLocal(e)) { localHero(e, dt); heroPhysics(e, dt); }
     else {
       e.think -= dt;
       if (e.think <= 0) { e.think = e.react; heroThink(e); }
@@ -6205,7 +6391,7 @@ function heroDodge(e) {
 function heroPhysics(e, dt) {
   const C = CHARS[e.kind];
   const acc = (e.onGround ? 800 : 500) * dt, dash = e.dashT > 0;
-  if (e.inv < 0.45 && !dash) e.vx += Math.max(-acc, Math.min(acc, e.move * C.speed * (e.net ? 1 : 0.78) * skillSlow(e, e.kind) - e.vx));
+  if (e.inv < 0.45 && !dash) e.vx += Math.max(-acc, Math.min(acc, e.move * C.speed * (e.net || isLocal(e) ? 1 : 0.78) * skillSlow(e, e.kind) - e.vx));
   if (e.jumpNow && e.onGround && !dash) { e.vy = -C.jump; e.onGround = false; play('salto', { vol: e.own ? 1 : 0.3 }); if (jOn()) { e.sx = 0.7; e.sy = 1.35; } }
   else if (e.jumpNow && !e.onGround && !e.dj && !dash && !e.own && e.vy > -60) { e.dj = true; e.vy = -C.jump * DJ; play('salto', { vol: 0.3, rate: 1.35 }); djFx(e); }
   e.jumpNow = false;
@@ -6266,11 +6452,13 @@ function heroSlash(e) {
 function hitHero(e, dmg, dir, critOk = true, trusted = false) {
   if (e.dead || e.inv > 0) return false;
   if (!trusted && e.ghostT > 0) return false;
+  if (!trusted && e.shield && isLocal(e)) { localBlock(e, dir); return false; }
   if (!trusted && e.shield) { if (e.blockT <= 0) { e.blockT = 0.25; play('metal', { rate: 1.3, vol: 0.8 }); if (jOn()) burst(e.x + 4 - dir * 6, e.y + 5, 8, [PAL.c, PAL.w, PAL.y], 80, 20, 200, 0.3); } return false; }
   const isCrit = critOk && rollCrit();
   const total = isCrit ? dmg * 3 : dmg;
   if (G.kind === 'invade') { G.score += 20 * total; G.scoreBump = 1; }
   e.hp -= total; e.inv = 0.75; e.chg = -1; kick(e, dir * 170, -200, 1);
+  if (isLocal(e)) rumble(e.pad, isCrit ? 260 : 150, isCrit ? 1 : 0.75);
   play('dano', { rate: 1.3, vol: 0.8 });
   if (isCrit) crit(e.x + 4, e.y + 5);
   if (jOn()) { e.flash = 0.09; hitstop(0.05); shake(2.5, 0.15); flashJ('flash'); flashJ('squash'); burst(e.x + 4, e.y + 5, 10, [PAL.r, PAL.o, PAL.w], 80, 40, 220, 0.5); e.sx = 1.3; e.sy = 0.75; }
@@ -6410,6 +6598,7 @@ function invadeNextLevel() {
     e.hp = prev && !prev.dead ? e.max : Math.ceil(e.max / 2);
     e.x = 16 + i * 16; e.inv = 1; e.skill = 0.6; e.move = 0; e.vx = 0;
     e.net = NET.role === 'host' ? NET.slots[kind] || null : null;
+    e.pad = localDev(kind); e.own = e.pad != null;
     e.kb = (prev ? prev.kb || 0 : 0) + 1;
     return e;
   });
@@ -6452,6 +6641,7 @@ function enterInvadeZone(n) {
       e.max = src ? src.max : base[kind]; e.cm = src ? src.cm || 0 : 0; e.hp = e.max;
       e.x = 1544 + i * 11; e.inv = 1.2; e.vx = 0;
       e.net = NET.role === 'host' ? NET.slots[kind] || null : null;
+      e.pad = localDev(kind); e.own = e.pad != null;
       e.kb = (prev ? prev.kb || 0 : 0) + 1;
       popup(e.x + 4, e.y - 10, '¡VOLVIÓ!', PAL.y);
       if (jOn()) burst(e.x + 4, e.y + 5, 14, [PAL.y, PAL.w, PAL.l], 70, 40, 0, 0.5);
@@ -6460,7 +6650,7 @@ function enterInvadeZone(n) {
     alliesFollow();
     G.boss = makePlayerBoss(BOSS_TYPES[G.lvl] || 'knight');
     if (hasV('armadura')) { G.boss.hp += 12; G.boss.maxHp += 12; G.boss.show = G.boss.hp; }
-    for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = 1; }
+    for (const e of G.heroes) { e.think = 0; e.seen = {}; e.skill = 0.62; e.cool = 0.8; e.move = isLocal(e) ? 0 : 1; }
     G.banner = G.lvl === 3 ? { text: '¡LLEGARON A LA PROA!', sub: 'AHORA SOS EL KRAKEN', t: 0, long: true } : G.lvl === 2 ? { text: '¡LLEGARON A LA CUMBRE!', sub: 'AHORA SOS EL YETI', t: 0, long: true } : G.lvl ? { text: '¡LLEGARON A LA GUARIDA!', sub: 'AHORA SOS EL CAMPEÓN', t: 0, long: true } : { text: '¡LLEGARON AL TRONO!', sub: 'AHORA SOS EL MEGA CABALLERO', t: 0, long: true };
     play('rugido', { vary: false, rate: [1, 0.75, 0.55, 0.45][G.lvl || 0] });
     setTempo(148, -2); musicStop(); if (opts.music) musicStart();
@@ -6522,7 +6712,9 @@ function updateCameraInvade(real) {
   const z = G.z;
   if (z === 3) { G.cam += (ZONES[3].start - G.cam) * (jOn() ? Math.min(1, real * 3) : 1); return; }
   let fx, face = 1;
-  if (G.ctrl && !G.ctrl.dead) { fx = G.ctrl.x + G.ctrl.w / 2; face = G.ctrl.face; }
+  const lh = LOCAL.on ? G.heroes.filter(e => !e.dead && isLocal(e)) : [];
+  if (lh.length) { const xs = lh.map(e => e.x + 4); if (G.ctrl && !G.ctrl.dead) xs.push(G.ctrl.x + G.ctrl.w / 2); fx = (Math.min(...xs) + Math.max(...xs)) / 2; face = 0; }
+  else if (G.ctrl && !G.ctrl.dead) { fx = G.ctrl.x + G.ctrl.w / 2; face = G.ctrl.face; }
   else { const al = G.heroes.filter(e => !e.dead); fx = al.length ? al.reduce((s, e) => s + e.x, 0) / al.length + 4 : G.cam + W / 2; }
   let minX = ZONES[z].start, maxX = ZONES[z].end - W;
   if (G.cam < minX) minX = G.cam; // al pasar de zona la cámara no da un tirón hacia adelante
@@ -6903,13 +7095,14 @@ function mobDie(m, dir, isCrit) {
 function updateBots(dt) {
   hasteAura(dt);
   for (const e of G.heroes) {
-    if (!e.net && !e.dead) { botVenom(e, dt); if (e.spellCd > 0) e.spellCd -= dt; if (e.sumCd > 0) e.sumCd -= dt; }
+    if (!e.net && !isLocal(e) && !e.dead) { botVenom(e, dt); if (e.spellCd > 0) e.spellCd -= dt; if (e.sumCd > 0) e.sumCd -= dt; }
     if (e.dead) {
       e.vy += GRAV * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.deadT -= dt; e.flash = 0.05;
       if (e.deadT <= 0 && !e.popped) { e.popped = true; play('explotar', { rate: 1.2 }); burst(e.x + 4, e.y + 5, 16, HERO_GORE[e.kind], 90, 40, 200, 0.6); }
       continue;
     }
     if (e.net) { if (netHero(e, dt)) heroTimers(e, dt); else heroPhysics(e, dt); }
+    else if (isLocal(e)) { localHero(e, dt); heroPhysics(e, dt); }
     else {
       e.think -= dt;
       if (e.think <= 0) { e.think = e.react; botThink(e); }
@@ -7544,7 +7737,7 @@ function render() {
     g.fillStyle = PAL.y; g.fillRect(t.x + (fl === 2 ? -1 : 0), t.y - 6 - (fl === 0 ? 1 : 0), 1, 2);
     if (G && jOn() && Math.random() < 0.04) G.parts.push({ x: t.x, y: t.y - 6, vx: (Math.random() - 0.5) * 8, vy: -20, g: -10, life: 0.6, max: 0.6, c: PAL.o, s: 1, _n: 1 });
   }
-  if (!G) { g.setTransform(RS, 0, 0, RS, 0, 0); renderTitle(); return; }
+  if (!G) { g.setTransform(RS, 0, 0, RS, 0, 0); renderTitle(); if (LOCAL.lobby) drawLobby(); return; }
 
   // portones
   for (const gt of GATES) {
@@ -7748,6 +7941,7 @@ function render() {
   if (G.p) drawPip(G.p, G.kind, true);
   for (const e of G.heroes || []) if (!e.popped) drawPip(e, e.kind, false);
   for (const e of G.heroes || []) if (!e.popped && !e.dead && e.net) drawNetTag(e);
+  for (const e of G.heroes || []) if (!e.popped && !e.dead && isLocal(e)) drawPadTag(e);
   // partículas
   for (const q of G.parts) {
     g.fillStyle = q.c;
@@ -7867,6 +8061,7 @@ function render() {
       // mi energía, debajo de mi vida
       const me = NET.role === 'guest' && NET.mine && NET.mine.id === e.id && !e.dead;
       if (me) { drawEnergy(19, y + 7, 36, NET.mine, e.kind); y += 5; }
+      else if (isLocal(e) && !e.dead) { drawEnergy(19, y + 7, 36, e, e.kind); drawText(g, e.pad === 'kb' ? 'TEC' : 'J' + (e.pad + 1), 58, y, e.pad === 'kb' ? PAL.w : PAD_COL()[e.pad % 4], 1, 'left'); y += 5; }
       y += 9;
     }
     drawXP(19, y, 36, G.evo, G.xp || 0, 'EVOLUCIONADOS');
@@ -7990,7 +8185,8 @@ function drawPicker() {
   const rid = key ? pickRid(pk, key) : -1;
   const mine = key && pk.o[key], chose = mine && (done.includes(key) || (PICK.r === rid && PICK.done));
   drawText(g, mine ? (chose ? '¡LISTO!' : 'ELEGÍ UNA CARTA') : 'ELIGIENDO CARTAS...', W / 2, 3, PAL.y, 2, 'center');
-  drawText(g, mine ? (key === 'v' ? 'PARA TUS ENEMIGOS · ' + Math.min(pk.vn, (pk.vgot || []).length + 1) + ' DE ' + pk.vn : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO', W / 2, 16, PAL.s, 1, 'center');
+  const who = LOCAL.on && key ? (key === 'v' ? devName(LOCAL.slots.v) : devName(LOCAL.slots[key])) : '';
+  drawText(g, (mine ? (key === 'v' ? 'PARA TUS ENEMIGOS · ' + Math.min(pk.vn, (pk.vgot || []).length + 1) + ' DE ' + pk.vn : 'PARA EL ' + KIND_NAME[key]) : 'ESPERÁ UN MOMENTO') + (who ? ' · ' + who : ''), W / 2, 16, who ? PAL.y : PAL.s, 1, 'center');
   if (mine) {
     const ids = pk.o[key], xs = PICK_X(ids.length), sel = PICK.r === rid ? PICK.sel : Math.min(1, ids.length - 1);
     ids.forEach((id, i) => drawCard(cardOf(key, id), key, xs[i], i === sel, chose && i !== sel, chose && i === sel));
@@ -8048,6 +8244,8 @@ function renderTitle() {
   drawScaled(SLIME_HD.ok ? slimeHD('green', { t: T, fps: 8 }, true, false) : SLIME.l, 160, GROUND, 1 + Math.sin(T * 6) * 0.08, 1 - Math.sin(T * 6) * 0.08);
   drawScaled(SLIME_HD.ok ? slimeHD('red', { t: T, fps: 12, phase: 3 }, true, false) : RED.l, 182, GROUND, 1 + Math.sin(T * 9) * 0.1, 1 - Math.sin(T * 9) * 0.1);
   g.drawImage(COIN, 197, 108 + Math.round(Math.sin(T * 4) * 1.5));
+  const np = padsOn().length;
+  if (np && !LOCAL.lobby) drawText(g, (np > 1 ? np + ' JOYSTICKS' : 'JOYSTICK') + ' · START EMPIEZA', W / 2, 72, PAL.c, 1, 'center');
 }
 
 /* =========================================================
@@ -8056,6 +8254,8 @@ function renderTitle() {
 let last = performance.now();
 function step(now) {
   const real = Math.min(1 / 30, Math.max(0, now - last) / 1000); last = now;
+  padRead();
+  if (LOCAL.lobby) lobbyStep(); else padToInput();
   if (NET.role === 'guest') netGuestFrame(now, real);
   else if (G) {
     let dt = real;
@@ -8106,7 +8306,11 @@ const BOSS_KEYS = { KeyZ: 'charge', KeyV: 'rain' };
 const PRESS = new Set(['jump', 'attack', 'charge', 'rain', 'special', 'power', 'left', 'right']);
 const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyZ: 'jump', ArrowDown: 'down', KeyS: 'down', KeyX: 'attack', KeyK: 'attack', KeyF: 'attack', ShiftLeft: 'special', ShiftRight: 'special', KeyV: 'special', KeyL: 'special', KeyG: 'special', KeyC: 'power', KeyE: 'power' };
 const isIdle = () => !G || G.state === 'over' || (G.state === 'win' && G.endT > 2.6);
+const KB_EXTRA = { Enter: 'start', NumpadEnter: 'start', Escape: 'back', Backspace: 'back' };
 window.addEventListener('keydown', e => {
+  const kk = KB_EXTRA[e.code] || BOSS_KEYS[e.code] || KEYS[e.code];
+  if (kk) { KB[kk] = true; if (!e.repeat) devOf('kb').p[kk] = performance.now(); if (kk === 'jump' && (e.code === 'ArrowUp' || e.code === 'KeyW')) KB.up = true; }
+  if (LOCAL.lobby) { e.preventDefault(); return; }
   if (e.code === 'Escape' && stage.classList.contains('immersive')) { exitImmersive(); return; }
   const k = (bossCtl() && BOSS_KEYS[e.code]) || KEYS[e.code];
   const ae = document.activeElement;
@@ -8117,14 +8321,21 @@ window.addEventListener('keydown', e => {
   if (free && isIdle() && DIG[e.code]) { startGame(DIG[e.code]); return; }
   if (free && isIdle() && e.code === 'KeyN' && NET.role !== 'guest') { pickLevel((startLvl + 1) % (LAST_LVL + 1)); play('menu', { rate: 1.2, vary: false }); return; }
   if (!k) return;
+  if (LOCAL.on && LOCAL.slots.v !== 'kb') { if (G && G.state === 'play') e.preventDefault(); return; } // el teclado juega de héroe (o no juega)
   if (G && G.state === 'play' && (free || !(ae instanceof HTMLButtonElement || ae instanceof HTMLInputElement))) {
     e.preventDefault();
     if (PRESS.has(k) && !input[k]) input[k + 'Pressed'] = true;
     input[k] = true;
   } else if (free && isIdle() && k === 'jump') { e.preventDefault(); startGame(lastKind); }
 });
-window.addEventListener('keyup', e => { const k = KEYS[e.code], k2 = BOSS_KEYS[e.code]; if (k) input[k] = false; if (k2) input[k2] = false; });
-window.addEventListener('blur', () => { for (const k in input) input[k] = false; });
+window.addEventListener('keyup', e => {
+  const kk = KB_EXTRA[e.code] || BOSS_KEYS[e.code] || KEYS[e.code];
+  if (kk) { KB[kk] = false; if (e.code === 'ArrowUp' || e.code === 'KeyW') KB.up = false; }
+  if (LOCAL.on && LOCAL.slots.v !== 'kb') return;
+  const k = KEYS[e.code], k2 = BOSS_KEYS[e.code]; if (k) input[k] = false; if (k2) input[k2] = false;
+});
+window.addEventListener('blur', () => { for (const k in input) input[k] = false; for (const k in KB) KB[k] = false; });
+window.addEventListener('gamepadconnected', ev => { play('moneda', { rate: 1.3, vary: false }); devOf(ev.gamepad.index).live = true; });
 cv.addEventListener('pointerdown', e => {
   // tocar una carta la marca; tocarla de nuevo la elige
   if (G && G.pick) {
@@ -8147,7 +8358,10 @@ function startGame(kind) {
   try { localStorage.setItem('pip-kind', kind); } catch (e) {}
   initAudio();
   play('menu', { vary: false });
-  if (kind === 'boss') newBossMode(); else if (kind === 'invade') newInvadeMode(); else newGame(kind, opts.boss);
+  if (kind !== 'local') LOCAL.on = false;
+  if (kind === 'local' && !LOCAL.on) { openLobby(); return; }
+  if (kind === 'boss') newBossMode(); else if (kind === 'invade' || kind === 'local') newInvadeMode(); else newGame(kind, opts.boss);
+  if (kind === 'local') { for (const e of G.heroes) { e.pad = localDev(e.kind); e.own = e.pad != null; } G.banner = { text: 'MULTIJUGADOR LOCAL', sub: 'VILLANO: ' + devName(LOCAL.slots.v), t: 0, long: true }; }
   if (NET.role === 'host') netBeginMatch();
   overlay.hidden = true;
   syncButtons();
@@ -8168,6 +8382,7 @@ document.getElementById('start-boss').addEventListener('click', () => startGame(
 document.getElementById('start-villain').addEventListener('click', () => startGame('invade'));
 document.getElementById('start-archer').addEventListener('click', () => startGame('archer'));
 document.getElementById('start-mage').addEventListener('click', () => startGame('mage'));
+document.getElementById('start-local').addEventListener('click', () => { LOCAL.on = false; startGame('local'); });
 document.getElementById('start-knight').addEventListener('click', () => startGame('knight'));
 document.getElementById('start-barb').addEventListener('click', () => startGame('barb'));
 
@@ -8316,6 +8531,7 @@ const isTouch = () => document.documentElement.classList.contains('has-touch');
 if (window.matchMedia && matchMedia('(pointer: coarse)').matches) document.documentElement.classList.add('has-touch');
 window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') document.documentElement.classList.add('has-touch'); }, true);
 function vib(pattern) {
+  if (opts.juice) { const ms = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : pattern; for (const id of LOCAL.on ? [LOCAL.slots.v] : padsOn()) rumble(id, Math.min(400, ms * 2), Math.min(1, 0.3 + ms / 80)); }
   if (!opts.juice || !isTouch()) return;
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
@@ -9083,6 +9299,12 @@ function netKill(k, e) {
   if (x === undefined) return;
   NET.sndOwner = e.net; play('clavar', { rate: 1.9, vol: 0.7, vary: false }); NET.sndOwner = null;
   sparks(x, y, 6, [PAL.y, PAL.w, PAL.o], e.id);
+}
+function drawPadTag(e) {
+  const col = e.pad === 'kb' ? PAL.w : PAD_COL()[e.pad % 4], tx = Math.round(e.x + 4), ty = Math.round(e.y) - (e.hp < e.max ? 13 : 9) + Math.round(Math.sin(G.t * 6 + e.id));
+  g.fillStyle = PAL.k; g.fillRect(tx - 3, ty - 1, 7, 1);
+  g.fillStyle = col; g.fillRect(tx - 3, ty, 7, 1); g.fillRect(tx - 2, ty + 1, 5, 1); g.fillRect(tx - 1, ty + 2, 3, 1); g.fillRect(tx, ty + 3, 1, 1);
+  drawText(g, e.pad === 'kb' ? 'TEC' : 'J' + (e.pad + 1), tx + 0.5, ty - 5, col, 1, 'center');
 }
 function drawNetTag(e) {
   const mine = NET.role === 'guest' && e.net === NET.me;
