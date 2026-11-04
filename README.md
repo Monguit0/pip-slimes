@@ -30,9 +30,9 @@ modo villano (también online) y en la pantalla de título. La hoja sale de las 
 (`export_game_slimes.py`) y va incrustada en `index.html`.
 
 ## Nivel 2 · El Bosque Oscuro
-En el menú hay un **selector de nivel** (*Nivel 1 · El Reino* / *Nivel 2 · El Bosque* / *Nivel 3 · La Montaña*, o la tecla `N`) que vale para
-todos los modos: la campaña arranca directo en el bosque, en **Jefe** sos el Campeón y en **Villano**/**Online** la
-partida empieza en el nivel 2. Se recuerda para la próxima vez.
+Después de elegir el modo, el menú pregunta el **nivel** (*El Reino*, *El Bosque*, *La Montaña* o *El Barco*; la tecla `N`
+también lo cambia) y vale para todos los modos: la campaña arranca directo en ese nivel, en **Jefe** sos su jefe y en
+**Villano**/**Online**/**Sillón** la partida empieza ahí. Se recuerda para la próxima vez.
 Al vencer al Mega Caballero la aventura sigue: una noche de luna roja en el bosque (Linde del bosque, Bosque oscuro,
 Ciénaga de raíces) y al final la cueva del **Campeón**, un lobo gigante todo negro. Al empezar el nivel se vuelve a
 elegir carta (se suman a las que ya tenías).
@@ -198,6 +198,13 @@ el juego funciona igual, solo que esos jugadores van por el servidor.
 3. En Render, en el servicio → **Environment**, agregá `CF_TURN_KEY_ID` (el Token ID) y `CF_TURN_API_TOKEN` (el API Token) y guardá.
 Listo: el servidor reparte credenciales temporales en `/ice` y los navegadores usan el relé solo cuando no pueden ir directo.
 Las claves nunca llegan al navegador.
+
+## Menú
+El menú vive en la misma pantalla del juego y va por pasos: primero el **modo** (*Campaña*, *Jefe*, *Villano*,
+*Online* o *Sillón*), después el **nivel** y, en la campaña, el **héroe** (arquero, caballero, bárbaro o mago).
+*← Volver* (o `Esc`, o `B` en el joystick) vuelve un paso. **Online** abre ahí mismo el panel de la sala: crear una
+(sos el villano y elegís el nivel), entrar con el código de 4 letras o tocar una de las salas abiertas, el código
+grande para pasar, los lugares de cada héroe y *Empezar partida*. Ya no hace falta bajar en la página.
 
 ## Joysticks y multijugador local (Sillón)
 Cualquier joystick que el navegador reconozca (Xbox, PlayStation o genérico, por USB o Bluetooth) maneja el juego.
